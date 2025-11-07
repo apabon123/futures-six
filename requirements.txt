@@ -1,0 +1,24 @@
+# Core dependencies for futures-six MarketData broker
+# Read-only data access for continuous futures backtesting
+
+# Database connectors
+duckdb>=0.9.0
+# sqlite3 is part of Python standard library
+
+# Data manipulation
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Configuration
+pyyaml>=6.0
+
+# Optional: Covariance shrinkage
+scikit-learn>=1.3.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Logging (standard library, but documenting for reference)
+# logging
+

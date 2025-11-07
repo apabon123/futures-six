@@ -1,0 +1,29 @@
+# MarketData Broker Configuration
+# Read-only connection to continuous futures OHLCV database
+
+db:
+  path: "C:/Users/alexp/OneDrive/Gdrive/Trading/GitHub Projects/databento-es-options/data/silver"
+  engine: "auto"  # auto-detect: duckdb or sqlite
+
+# Phase-1 Universe: Six continuous futures
+# Using calendar-based roll (2 days before expiry) or volume-weighted roll
+universe:
+  - "ES_FRONT_CALENDAR_2D"
+  - "NQ_FRONT_CALENDAR_2D"
+  - "ZN_FRONT_VOLUME"
+  - "CL_FRONT_VOLUME"
+  - "GC_FRONT_VOLUME"
+  - "6E_FRONT_CALENDAR_2D"
+
+# Default parameters for data methods
+defaults:
+  vol_lookbacks: [21, 63, 252]
+  cov_lookback: 252
+  return_method: "log"
+  roll_jump_threshold_bp: 100
+
+# Logging
+logging:
+  level: "DEBUG"
+  prefix: "[READ-ONLY]"
+
