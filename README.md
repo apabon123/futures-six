@@ -25,14 +25,27 @@ Out of the box, the framework achieves:
 
 ## Universe
 
-The strategy trades six continuous futures contracts:
+The strategy now trades twelve continuous futures contracts across equities, rates, commodities, and FX:
 
-- **ES_FRONT_CALENDAR_2D** - E-mini S&P 500 (calendar roll, 2 days before expiry)
-- **NQ_FRONT_CALENDAR_2D** - E-mini NASDAQ-100 (calendar roll)
-- **ZN_FRONT_VOLUME** - 10-Year Treasury Note (volume-weighted roll)
-- **CL_FRONT_VOLUME** - Crude Oil WTI (volume-weighted roll)
-- **GC_FRONT_VOLUME** - Gold (volume-weighted roll)
-- **6E_FRONT_CALENDAR_2D** - Euro FX (calendar roll)
+**Equities**
+- **ES_FRONT_CALENDAR_2D** – E-mini S&P 500 (calendar roll, 2 days before expiry)
+- **NQ_FRONT_CALENDAR_2D** – E-mini NASDAQ-100 (calendar roll)
+- **RTY_FRONT_CALENDAR_2D** – E-mini Russell 2000 (calendar roll)
+
+**Rates**
+- **ZN_FRONT_VOLUME** – 10-Year Treasury Note (volume-weighted roll)
+- **ZF_FRONT_VOLUME** – 5-Year Treasury Note (volume-weighted roll)
+- **ZT_FRONT_VOLUME** – 2-Year Treasury Note (volume-weighted roll)
+- **UB_FRONT_VOLUME** – Ultra U.S. Treasury Bond (volume-weighted roll)
+
+**Commodities**
+- **CL_FRONT_VOLUME** – Crude Oil WTI (volume-weighted roll)
+- **GC_FRONT_VOLUME** – Gold (volume-weighted roll)
+
+**FX**
+- **6E_FRONT_CALENDAR_2D** – Euro FX (calendar roll)
+- **6B_FRONT_CALENDAR_2D** – British Pound (calendar roll)
+- **6J_FRONT_CALENDAR_2D** – Japanese Yen (calendar roll)
 
 ## Key Features
 
@@ -61,6 +74,7 @@ futures-six/
 │       ├── risk_vol.py        # RiskVol: Volatility & covariance calculations
 │       ├── allocator.py       # Allocator: Portfolio weight optimization
 │       ├── exec_sim.py        # ExecSim: Backtest execution engine
+│       ├── param_sweep.py     # ParamSweepRunner: Parameter optimization
 │       ├── diagnostics.py     # Diagnostics: Performance metrics & attribution
 │       └── feature_store.py   # FeatureStore: Optional caching layer
 ├── tests/
@@ -72,6 +86,7 @@ futures-six/
 │   ├── test_risk_vol.py       # Risk calculation tests
 │   ├── test_allocator.py      # Portfolio optimization tests
 │   ├── test_exec_sim.py       # Backtest engine tests
+│   ├── test_param_sweep.py    # Parameter sweep tests (17 tests)
 │   └── test_diagnostics.py    # Diagnostics & attribution tests
 ├── docs/                      # Centralized documentation (see docs/README.md)
 ├── run_strategy.py            # Main entry point - run the complete backtest
@@ -197,6 +212,14 @@ The framework uses an agent-based architecture where each component has a specif
 - **Metrics**: CAGR, volatility, Sharpe, Calmar, hit rate, avg drawdown length, exposure, turnover, cost drag
 - **Outputs**: CSV reports (equity, weights, P&L, turnover/costs)
 - **Features**: Time-aligned data, backward compatible with ExecSim output
+
+### 9. ParamSweepRunner (Parameter Optimization)
+- **Role**: Systematic exploration of configuration space to find optimal parameters
+- **Methods**: Grid search (exhaustive), Latin hypercube (coming soon)
+- **Parallelization**: Multi-process execution for fast sweeps
+- **Outputs**: Tidy CSV summaries with all metrics, top-N YAML configs
+- **Features**: Reproducible with seeds, compare specific configurations
+- **See**: `docs/PARAM_SWEEP.md` for full guide and examples
 
 ## Usage
 
@@ -381,6 +404,80 @@ print(macro_filter.describe())
 
 md.close()
 ```
+
+### Parameter Sweeps and Optimization
+
+Run systematic parameter sweeps to find optimal configurations:
+
+```python
+from src.agents.param_sweep import run_sweep, compare_configs
+
+# Define base configuration
+base_config = {
+    "tsmom": {"lookbacks": [252], "skip_recent": 21, "standardize": "vol",
+             "signal_cap": 3.0, "rebalance": "W-FRI"},
+    "vol_overlay": {"target_vol": 0.20, "lookback_vol": 63,
+                   "leverage_mode": "global", "cap_leverage": 7.0,
+                   "position_bounds": [-3.0, 3.0]},
+    "risk_vol": {"cov_lookback": 252, "vol_lookback": 63,
+                "shrinkage": "lw", "nan_policy": "mask-asset"},
+    "allocator": {"method": "signal-beta", "gross_cap": 7.0,
+                 "net_cap": 2.0, "w_bounds_per_asset": [-1.5, 1.5],
+                 "turnover_cap": 0.5, "lambda_turnover": 0.001},
+    "exec": {"rebalance": "W-FRI", "slippage_bps": 0.5,
+            "commission_per_contract": 0.0, "position_notional_scale": 1.0}
+}
+
+# Define parameter grid (dot-notation for nested params)
+grid = {
+    "macro_regime.vol_thresholds.low": [0.10, 0.12, 0.14],
+    "macro_regime.vol_thresholds.high": [0.20, 0.22, 0.25],
+    "tsmom.lookbacks": [[252], [126, 252], [63, 126, 252]],
+    "vol_overlay.target_vol": [0.15, 0.20, 0.25],
+    "exec.rebalance": ["W-FRI", "M"]
+}
+
+# Run sweep (parallelized)
+results = run_sweep(
+    base_config=base_config,
+    grid=grid,
+    seeds=[0],  # Add more seeds for robustness
+    start="2021-01-01",
+    end="2025-11-05",
+    n_workers=None,  # Auto-detect CPU count
+    save_top_n=10
+)
+
+# Analyze results
+print(results[results['success']].nlargest(5, 'sharpe'))
+
+# Or compare specific configurations
+configs = {
+    "Baseline": baseline_config,
+    "Macro": macro_config,
+    "Macro+XSec": macro_xsec_config
+}
+comparison = compare_configs(configs)
+```
+
+**Example command-line usage:**
+
+```bash
+# Quick test sweep
+python examples/run_param_sweep.py --mode test
+
+# Compare specific configurations
+python examples/run_param_sweep.py --mode compare
+
+# Full grid sweep
+python examples/run_param_sweep.py --mode grid
+```
+
+**Output:**
+- `reports/sweeps/<timestamp>/summary.csv` - All results with metrics
+- `reports/sweeps/<timestamp>/top_*.yaml` - Top N configurations
+
+See `docs/PARAM_SWEEP.md` for comprehensive guide and examples.
 
 ### Using FeatureStore (Caching)
 

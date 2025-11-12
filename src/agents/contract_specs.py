@@ -1,9 +1,9 @@
 """
 Read-only ContractSpecs service for futures contract metadata.
 
-Provides consistent contract specifications for ES, NQ, ZN, CL, GC, and 6E
-to enable USD P&L conversion and position sizing. Entirely config-driven,
-never touches the database.
+Provides consistent contract specifications (loaded from YAML) to enable
+USD P&L conversion and position sizing across the supported futures
+universe. Entirely config-driven, never touches the database.
 """
 
 import yaml

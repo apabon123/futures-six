@@ -6,6 +6,7 @@ All project documentation lives in this `docs/` directory so it stays easy to di
 - `CROSS_SECTIONAL_MOMENTUM.md` – Full design document, API details, and usage examples for the cross-sectional strategy
 - `TSMOM_IMPLEMENTATION.md` – Time-Series Momentum strategy reference
 - `MACRO_REGIME_FILTER.md` – MacroRegimeFilter design, configuration, and integration guide
+- `PARAM_SWEEP.md` – Parameter sweep runner for grid search and configuration optimization
 
 Additional resources:
 

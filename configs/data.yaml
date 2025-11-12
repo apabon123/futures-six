@@ -8,12 +8,22 @@ db:
 # Phase-1 Universe: Six continuous futures
 # Using calendar-based roll (2 days before expiry) or volume-weighted roll
 universe:
+  # Equity Index
   - "ES_FRONT_CALENDAR_2D"
   - "NQ_FRONT_CALENDAR_2D"
+  - "RTY_FRONT_CALENDAR_2D"
+  # Rates
   - "ZN_FRONT_VOLUME"
+  - "ZF_FRONT_VOLUME"
+  - "ZT_FRONT_VOLUME"
+  - "UB_FRONT_VOLUME"
+  # Commodities
   - "CL_FRONT_VOLUME"
   - "GC_FRONT_VOLUME"
+  # FX
   - "6E_FRONT_CALENDAR_2D"
+  - "6B_FRONT_CALENDAR_2D"
+  - "6J_FRONT_CALENDAR_2D"
 
 # Default parameters for data methods
 defaults:

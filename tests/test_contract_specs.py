@@ -27,18 +27,20 @@ class TestAliasResolution:
         assert specs.canonical_root("ES_FRONT_CALENDAR_2D") == "ES"
         assert specs.canonical_root("NQ_FRONT_CALENDAR_2D") == "NQ"
         assert specs.canonical_root("ZN_FRONT_VOLUME") == "ZN"
+        assert specs.canonical_root("ZF_FRONT_VOLUME") == "ZF"
+        assert specs.canonical_root("ZT_FRONT_VOLUME") == "ZT"
+        assert specs.canonical_root("UB_FRONT_VOLUME") == "UB"
         assert specs.canonical_root("CL_FRONT_VOLUME") == "CL"
         assert specs.canonical_root("GC_FRONT_VOLUME") == "GC"
         assert specs.canonical_root("6E_FRONT_CALENDAR_2D") == "6E"
+        assert specs.canonical_root("6B_FRONT_CALENDAR_2D") == "6B"
+        assert specs.canonical_root("6J_FRONT_CALENDAR_2D") == "6J"
+        assert specs.canonical_root("RTY_FRONT_CALENDAR_2D") == "RTY"
     
     def test_root_symbol_returns_itself(self, specs):
         """Root symbols resolve to themselves."""
-        assert specs.canonical_root("ES") == "ES"
-        assert specs.canonical_root("NQ") == "NQ"
-        assert specs.canonical_root("ZN") == "ZN"
-        assert specs.canonical_root("CL") == "CL"
-        assert specs.canonical_root("GC") == "GC"
-        assert specs.canonical_root("6E") == "6E"
+        for root in ["ES", "NQ", "RTY", "ZN", "ZF", "ZT", "UB", "CL", "GC", "6E", "6B", "6J"]:
+            assert specs.canonical_root(root) == root
     
     def test_unknown_symbol_raises_error(self, specs):
         """Unknown symbols raise ValueError."""
@@ -53,7 +55,7 @@ class TestSpecFieldsPresent:
         """All contracts have required fields."""
         required_fields = ['root', 'multiplier', 'point_value', 'tick_size', 'currency', 'fx_base']
         
-        for symbol in ['ES', 'NQ', 'ZN', 'CL', 'GC', '6E']:
+        for symbol in ['ES', 'NQ', 'RTY', 'ZN', 'ZF', 'ZT', 'UB', 'CL', 'GC', '6E', '6B', '6J']:
             spec = specs.spec(symbol)
             for field in required_fields:
                 assert field in spec, f"{symbol} missing field: {field}"
@@ -62,7 +64,7 @@ class TestSpecFieldsPresent:
         """Numeric fields contain numeric values."""
         numeric_fields = ['multiplier', 'point_value', 'tick_size']
         
-        for symbol in ['ES', 'NQ', 'ZN', 'CL', 'GC', '6E']:
+        for symbol in ['ES', 'NQ', 'RTY', 'ZN', 'ZF', 'ZT', 'UB', 'CL', 'GC', '6E', '6B', '6J']:
             spec = specs.spec(symbol)
             for field in numeric_fields:
                 value = spec[field]
@@ -72,7 +74,7 @@ class TestSpecFieldsPresent:
     
     def test_meta_field_exists(self, specs):
         """Meta field exists in returned spec (even if empty)."""
-        for symbol in ['ES', 'NQ', 'ZN', 'CL', 'GC', '6E']:
+        for symbol in ['ES', 'NQ', 'RTY', 'ZN', 'ZF', 'ZT', 'UB', 'CL', 'GC', '6E', '6B', '6J']:
             spec = specs.spec(symbol)
             assert 'meta' in spec
             assert isinstance(spec['meta'], dict)
@@ -91,19 +93,19 @@ class TestUsdMoveSign:
     
     def test_positive_price_change_positive_usd_move(self, specs):
         """Positive price change produces positive USD move."""
-        for symbol in ['ES', 'NQ', 'ZN', 'CL', 'GC', '6E']:
+        for symbol in ['ES', 'NQ', 'RTY', 'ZN', 'ZF', 'ZT', 'UB', 'CL', 'GC', '6E', '6B', '6J']:
             usd_move = specs.usd_move(symbol, 1.0)
             assert usd_move > 0, f"{symbol} positive move should be positive: {usd_move}"
     
     def test_negative_price_change_negative_usd_move(self, specs):
         """Negative price change produces negative USD move."""
-        for symbol in ['ES', 'NQ', 'ZN', 'CL', 'GC', '6E']:
+        for symbol in ['ES', 'NQ', 'RTY', 'ZN', 'ZF', 'ZT', 'UB', 'CL', 'GC', '6E', '6B', '6J']:
             usd_move = specs.usd_move(symbol, -1.0)
             assert usd_move < 0, f"{symbol} negative move should be negative: {usd_move}"
     
     def test_zero_price_change_zero_usd_move(self, specs):
         """Zero price change produces zero USD move."""
-        for symbol in ['ES', 'NQ', 'ZN', 'CL', 'GC', '6E']:
+        for symbol in ['ES', 'NQ', 'RTY', 'ZN', 'ZF', 'ZT', 'UB', 'CL', 'GC', '6E', '6B', '6J']:
             usd_move = specs.usd_move(symbol, 0.0)
             assert usd_move == 0.0, f"{symbol} zero move should be zero: {usd_move}"
     
