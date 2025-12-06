@@ -1,0 +1,47 @@
+{
+  "type": "csmom_phase1",
+  "lookbacks": [
+    63,
+    126,
+    252
+  ],
+  "weights": [
+    0.4,
+    0.35,
+    0.25
+  ],
+  "vol_lookback": 63,
+  "rebalance_freq": "D",
+  "neutralize_cross_section": true,
+  "clip_score": 3.0,
+  "universe": [
+    "ES_FRONT_CALENDAR_2D",
+    "NQ_FRONT_CALENDAR_2D",
+    "RTY_FRONT_CALENDAR_2D",
+    "ZT_FRONT_VOLUME",
+    "ZF_FRONT_VOLUME",
+    "ZN_FRONT_VOLUME",
+    "UB_FRONT_VOLUME",
+    "SR3_FRONT_CALENDAR",
+    "CL_FRONT_VOLUME",
+    "GC_FRONT_VOLUME",
+    "6E_FRONT_CALENDAR",
+    "6B_FRONT_CALENDAR",
+    "6J_FRONT_CALENDAR"
+  ],
+  "n_assets": 13,
+  "n_days": 1822,
+  "date_range": {
+    "start": "2020-01-02 00:00:00",
+    "end": "2025-10-31 00:00:00"
+  },
+  "portfolio_metrics": {
+    "CAGR": 0.012756417925052554,
+    "Vol": 0.06865469543397704,
+    "Sharpe": 0.2189043681171728,
+    "MaxDD": -0.16870049860247305,
+    "HitRate": 0.5362239297475302,
+    "n_days": 1822,
+    "years": 7.23015873015873
+  }
+}

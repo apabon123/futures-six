@@ -528,8 +528,13 @@ class Allocator:
             logger.debug("[Allocator] Empty or zero signals, returning zeros")
             return signals * 0
         
+        logger.debug(f"[ALLOC] signals universe: {sorted(signals.index)}")
+        logger.debug(f"[ALLOC] risk returns universe (cov): {sorted(cov.index)}")
+        
         # Check for overlap between signals and cov
         common = signals.index.intersection(cov.index)
+        logger.debug(f"[ALLOC] common (used in allocation): {sorted(common)}")
+        
         if len(common) == 0:
             logger.warning("[Allocator] No common symbols between signals and covariance")
             return pd.Series(dtype=float)  # Return empty series

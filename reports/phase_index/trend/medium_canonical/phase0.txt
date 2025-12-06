@@ -1,0 +1,8 @@
+# Phase-0: Canonical Medium-Term (84d) Sign-Only Sanity Check
+# Registered: 2025-11-19 11:38:59
+run_id: 20251119_113856
+lookback: 84
+skip_recent: 10
+sharpe: 0.7142
+cagr: 0.0447
+path: reports\sanity_checks\trend\medium_canonical\archive\20251119_113856

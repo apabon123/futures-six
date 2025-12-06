@@ -761,6 +761,127 @@ class TestTSMOMAPI:
             assert len(signals) == len(universe)
 
 
+class TestShortTermMomentumVariants:
+    """Test Short-Term Momentum Strategy variants (canonical vs legacy)."""
+    
+    def test_canonical_variant_initialization(self):
+        """Test canonical variant initializes with equal weights."""
+        from agents.strat_momentum_short import ShortTermMomentumStrategy
+        
+        strategy = ShortTermMomentumStrategy(variant="canonical")
+        
+        # Canonical should have equal weights (1/3, 1/3, 1/3)
+        assert abs(strategy.weights["ret_21"] - 1.0/3.0) < 0.01
+        assert abs(strategy.weights["breakout_21"] - 1.0/3.0) < 0.01
+        assert abs(strategy.weights["slope_fast"] - 1.0/3.0) < 0.01
+        assert strategy.weights["reversal_filter"] == 0.0
+        assert strategy.variant == "canonical"
+    
+    def test_legacy_variant_initialization(self):
+        """Test legacy variant initializes with legacy weights."""
+        from agents.strat_momentum_short import ShortTermMomentumStrategy
+        
+        strategy = ShortTermMomentumStrategy(variant="legacy")
+        
+        # Legacy should have 0.5, 0.3, 0.2 weights
+        assert abs(strategy.weights["ret_21"] - 0.5) < 0.01
+        assert abs(strategy.weights["breakout_21"] - 0.3) < 0.01
+        assert abs(strategy.weights["slope_fast"] - 0.2) < 0.01
+        assert strategy.weights["reversal_filter"] == 0.0
+        assert strategy.variant == "legacy"
+    
+    def test_default_variant_is_canonical(self):
+        """Test that default variant is canonical."""
+        from agents.strat_momentum_short import ShortTermMomentumStrategy
+        
+        strategy = ShortTermMomentumStrategy()
+        
+        assert strategy.variant == "canonical"
+        assert abs(strategy.weights["ret_21"] - 1.0/3.0) < 0.01
+    
+    def test_invalid_variant_raises_error(self):
+        """Test that invalid variant raises error."""
+        from agents.strat_momentum_short import ShortTermMomentumStrategy
+        
+        with pytest.raises(ValueError):
+            ShortTermMomentumStrategy(variant="invalid")
+    
+    def test_explicit_weights_override_variant(self):
+        """Test that explicit weights override variant defaults."""
+        from agents.strat_momentum_short import ShortTermMomentumStrategy
+        
+        custom_weights = {
+            "ret_21": 0.6,
+            "breakout_21": 0.2,
+            "slope_fast": 0.2
+        }
+        
+        strategy = ShortTermMomentumStrategy(
+            variant="canonical",
+            weights=custom_weights
+        )
+        
+        # Weights should be normalized but preserve ratios
+        total = sum(custom_weights.values())
+        assert abs(strategy.weights["ret_21"] - 0.6/total) < 0.01
+        assert abs(strategy.weights["breakout_21"] - 0.2/total) < 0.01
+        assert abs(strategy.weights["slope_fast"] - 0.2/total) < 0.01
+    
+    def test_describe_includes_variant(self):
+        """Test that describe() includes variant information."""
+        from agents.strat_momentum_short import ShortTermMomentumStrategy
+        
+        strategy_canonical = ShortTermMomentumStrategy(variant="canonical")
+        strategy_legacy = ShortTermMomentumStrategy(variant="legacy")
+        
+        desc_canonical = strategy_canonical.describe()
+        desc_legacy = strategy_legacy.describe()
+        
+        assert 'variant' in desc_canonical
+        assert desc_canonical['variant'] == 'canonical'
+        
+        assert 'variant' in desc_legacy
+        assert desc_legacy['variant'] == 'legacy'
+
+
+class TestTSMOMMultiHorizonShortVariant:
+    """Test TSMOMMultiHorizon strategy with short_variant parameter."""
+    
+    def test_short_variant_initialization(self):
+        """Test that short_variant parameter is accepted."""
+        from agents.strat_tsmom_multihorizon import TSMOMMultiHorizonStrategy
+        
+        strategy_canonical = TSMOMMultiHorizonStrategy(short_variant="canonical")
+        strategy_legacy = TSMOMMultiHorizonStrategy(short_variant="legacy")
+        
+        assert strategy_canonical.short_variant == "canonical"
+        assert strategy_legacy.short_variant == "legacy"
+    
+    def test_default_short_variant_is_legacy(self):
+        """Test that default short_variant is legacy."""
+        from agents.strat_tsmom_multihorizon import TSMOMMultiHorizonStrategy
+        
+        strategy = TSMOMMultiHorizonStrategy()
+        
+        assert strategy.short_variant == "legacy"
+    
+    def test_describe_includes_short_variant(self):
+        """Test that describe() includes short_variant."""
+        from agents.strat_tsmom_multihorizon import TSMOMMultiHorizonStrategy
+        
+        strategy_canonical = TSMOMMultiHorizonStrategy(short_variant="canonical")
+        strategy_legacy = TSMOMMultiHorizonStrategy(short_variant="legacy")
+        
+        desc_canonical = strategy_canonical.describe()
+        desc_legacy = strategy_legacy.describe()
+        
+        assert 'short_variant' in desc_canonical
+        assert desc_canonical['short_variant'] == 'canonical'
+        
+        assert 'short_variant' in desc_legacy
+        assert desc_legacy['short_variant'] == 'legacy'
+
+
 if __name__ == "__main__":
     # Run tests with pytest
     pytest.main([__file__, "-v", "--tb=short"])

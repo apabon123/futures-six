@@ -1,0 +1,47 @@
+# FRED Economic Indicators Configuration
+# Organized by usage: macro regime filter vs. rates curve features
+
+series:
+  # ============================================================
+  # Macro FRED Series (used by MacroRegimeFilter)
+  # ============================================================
+  # Phase 1: Core Macro Indicators
+  - id: VIXCLS        # VIX Close
+  - id: VXVCLS        # VIX 3M Close
+  - id: FEDFUNDS      # Effective Fed Funds
+  - id: DGS2          # 2Y UST (also used by Rates Curve)
+  - id: DGS10         # 10Y UST (also used by Rates Curve)
+  - id: BAMLH0A0HYM2  # HY OAS
+  - id: TEDRATE       # TED spread
+  - id: CPIAUCSL      # CPI (monthly)
+  - id: UNRATE        # Unemployment (monthly)
+  - id: DTWEXBGS       # Broad USD
+  
+  # ============================================================
+  # Curve FRED Series (used by RatesCurveFeatures)
+  # ============================================================
+  # Phase 2: Rates Curve (must-have)
+  - id: DGS2          # 2Y UST (also in macro_fred)
+  - id: DGS5          # 5-Year Treasury Constant Maturity
+  - id: DGS10         # 10Y UST (also in macro_fred)
+  - id: DGS30         # 30-Year Treasury Constant Maturity
+  
+  # ============================================================
+  # Future Phases (not yet integrated)
+  # ============================================================
+  # Phase 3: VRP / VIX Term Structure
+  - id: VIX9D         # 9-Day VIX (CBOE)
+  - id: VVIX          # Vol-of-Vol (CBOE)
+  
+  # Phase 4-5: Macro Factors
+  - id: T10Y2Y        # 10y-2y spread (confirmatory)
+  - id: T10YIE        # 10y Breakeven Inflation
+  - id: T5YIFR        # 5-year Inflation Forward
+  - id: BAMLC0A0CM    # High yield OAS
+
+options:
+  frequency: daily     # downsample + ffill to biz days
+  start: "2003-01-01"  # or your backtest start
+  table: f_fred_observations
+  parquet_dir: data/external/fred
+

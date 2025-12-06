@@ -1,0 +1,25 @@
+{
+  "run_id": "persistence_phase1_external_20251118_220849",
+  "start_date": "2021-01-01",
+  "end_date": "2025-10-31",
+  "strategy_config_name": "CombinedStrategy",
+  "universe": [
+    "ES_FRONT_CALENDAR_2D",
+    "NQ_FRONT_CALENDAR_2D",
+    "RTY_FRONT_CALENDAR_2D",
+    "ZT_FRONT_VOLUME",
+    "ZF_FRONT_VOLUME",
+    "ZN_FRONT_VOLUME",
+    "UB_FRONT_VOLUME",
+    "SR3_FRONT_CALENDAR",
+    "CL_FRONT_VOLUME",
+    "GC_FRONT_VOLUME",
+    "6E_FRONT_CALENDAR",
+    "6B_FRONT_CALENDAR",
+    "6J_FRONT_CALENDAR"
+  ],
+  "rebalance": "W-FRI",
+  "slippage_bps": 0.5,
+  "n_rebalances": 253,
+  "n_trading_days": 1509
+}

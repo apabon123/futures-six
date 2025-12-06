@@ -1,0 +1,6 @@
+core_v3_medcanon_v1
+core_v3_no_macro_baseline
+
+Promoted to production: Nov 2025
+Production profile: core_v3_no_macro (updated with medium_variant: "canonical")
+

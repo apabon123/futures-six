@@ -1,0 +1,8 @@
+# Phase-0: Canonical Short-Term (21d) Sign-Only Sanity Check
+# Registered: 2025-11-19 16:07:24
+run_id: 20251119_160722
+lookback: 21
+skip_recent: 5
+sharpe: 0.3116
+cagr: 0.0212
+path: reports\sanity_checks\trend\short_canonical\archive\20251119_160722

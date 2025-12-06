@@ -1,0 +1,33 @@
+{
+  "start_date": "2021-01-01",
+  "end_date": "2025-10-31",
+  "lookback": 252,
+  "skip_recent": 21,
+  "vol_window": 63,
+  "universe": [
+    "6B_FRONT_CALENDAR",
+    "6E_FRONT_CALENDAR",
+    "6J_FRONT_CALENDAR",
+    "CL_FRONT_VOLUME",
+    "ES_FRONT_CALENDAR_2D",
+    "GC_FRONT_VOLUME",
+    "NQ_FRONT_CALENDAR_2D",
+    "RTY_FRONT_CALENDAR_2D",
+    "SR3_FRONT_CALENDAR",
+    "UB_FRONT_VOLUME",
+    "ZF_FRONT_VOLUME",
+    "ZN_FRONT_VOLUME",
+    "ZT_FRONT_VOLUME"
+  ],
+  "n_assets": 13,
+  "n_days": 1509,
+  "portfolio_metrics": {
+    "CAGR": 0.03154423350813551,
+    "Vol": 0.05618344798129067,
+    "Sharpe": 0.5838159713054097,
+    "MaxDD": -0.11035121616402122,
+    "HitRate": 0.5394300861497681,
+    "n_days": 1509,
+    "years": 5.988095238095238
+  }
+}

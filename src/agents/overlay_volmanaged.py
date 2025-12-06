@@ -192,7 +192,7 @@ class VolManagedOverlay:
         """
         # Get covariance matrix
         try:
-            cov = self.risk_vol.covariance(market, date)
+            cov = self.risk_vol.covariance(market, date, signals=signals)
         except Exception as e:
             logger.warning(f"[VolManagedOverlay] Could not compute covariance: {e}")
             # Fallback: return signals unscaled but bounded
@@ -246,7 +246,7 @@ class VolManagedOverlay:
         """
         # Get volatilities
         try:
-            vols = self.risk_vol.vols(market, date)
+            vols = self.risk_vol.vols(market, date, signals=signals)
         except Exception as e:
             logger.warning(f"[VolManagedOverlay] Could not compute vols: {e}")
             # Fallback: return signals unscaled but bounded

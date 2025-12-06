@@ -1,0 +1,6 @@
+CSMOM Phase-2 Promotion
+- Date: 2025-11-19
+- Baseline run_id: core_v3_baseline_2020_2025
+- Variant run_id: core_v4_trend_csmom_2020_2025
+- Verdict: PASS — Trend+CSMOM promoted to multi-sleeve baseline profile core_v4_trend_csmom_no_macro.
+

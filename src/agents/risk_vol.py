@@ -111,7 +111,8 @@ class RiskVol:
         self,
         market,
         date: Union[str, datetime],
-        lookback: int
+        lookback: int,
+        signals: Optional[pd.Series] = None
     ) -> pd.DataFrame:
         """
         Get returns window up to and including date.
@@ -120,6 +121,7 @@ class RiskVol:
             market: MarketData instance
             date: End date for window
             lookback: Number of days to look back
+            signals: Optional signals Series to use for filtering universe
             
         Returns:
             DataFrame of log returns [dates x symbols]
@@ -127,10 +129,22 @@ class RiskVol:
         date = pd.to_datetime(date)
         
         # Get all returns up to date (using asof if available)
-        returns = market.get_returns(method="log", end=date)
+        # Use continuous returns for covariance/vol calculations
+        returns = market.returns_cont
         
         if returns.empty:
             raise ValueError(f"No returns data available up to {date}")
+        
+        # If signals provided, filter to signal universe first
+        if signals is not None and not signals.empty:
+            sig_cols = list(signals.index)
+            logger.debug(f"[RISK] signals.columns: {sorted(sig_cols)}")
+            # Only use columns that exist in returns
+            available_cols = [c for c in sig_cols if c in returns.columns]
+            if len(available_cols) < len(sig_cols):
+                missing = set(sig_cols) - set(available_cols)
+                logger.warning(f"[RISK] Some signal symbols missing from returns_cont: {sorted(missing)}")
+            returns = returns[available_cols]
         
         # Ensure date is in index
         if date not in returns.index:
@@ -149,6 +163,13 @@ class RiskVol:
         # Extract window
         window = returns.iloc[start_pos:date_pos + 1]
         
+        logger.debug(f"[RISK] returns_window initial columns ({date}): {sorted(window.columns)}")
+        logger.debug(f"[RISK] NaN counts per column:")
+        nan_counts = window.isna().sum().sort_values(ascending=False)
+        for col, count in nan_counts.items():
+            if count > 0:
+                logger.debug(f"[RISK]   {col}: {count}/{len(window)} NaNs ({100*count/len(window):.1f}%)")
+        
         if len(window) < lookback:
             raise ValueError(
                 f"Insufficient history: need {lookback} days, got {len(window)} "
@@ -160,7 +181,8 @@ class RiskVol:
     def vols(
         self,
         market,
-        date: Union[str, datetime]
+        date: Union[str, datetime],
+        signals: Optional[pd.Series] = None
     ) -> pd.Series:
         """
         Calculate annualized volatility for each symbol at a given date.
@@ -168,12 +190,13 @@ class RiskVol:
         Args:
             market: MarketData instance
             date: Date to calculate volatility for
+            signals: Optional signals Series to use for filtering universe
             
         Returns:
             pd.Series of annualized volatilities indexed by symbol
         """
         # Get returns window
-        window = self._get_returns_window(market, date, self.vol_lookback)
+        window = self._get_returns_window(market, date, self.vol_lookback, signals)
         
         # Calculate standard deviation per symbol
         if self.nan_policy == "drop-row":
@@ -193,7 +216,11 @@ class RiskVol:
         vol_ann = vol * np.sqrt(252)
         
         # Remove any symbols with NaN volatility
+        dropped = vol_ann.isna().sum()
         vol_ann = vol_ann.dropna()
+        
+        if dropped > 0:
+            logger.debug(f"[RiskVol] Dropped {dropped} symbols with NaN volatility")
         
         if len(vol_ann) == 0:
             raise ValueError(f"No valid volatilities calculated for date {date}")
@@ -205,7 +232,8 @@ class RiskVol:
     def covariance(
         self,
         market,
-        date: Union[str, datetime]
+        date: Union[str, datetime],
+        signals: Optional[pd.Series] = None
     ) -> pd.DataFrame:
         """
         Calculate shrunk covariance matrix at a given date.
@@ -213,12 +241,13 @@ class RiskVol:
         Args:
             market: MarketData instance
             date: Date to calculate covariance for
+            signals: Optional signals Series to use for filtering universe
             
         Returns:
             pd.DataFrame covariance matrix [symbols x symbols], annualized
         """
         # Get returns window
-        window = self._get_returns_window(market, date, self.cov_lookback)
+        window = self._get_returns_window(market, date, self.cov_lookback, signals)
         
         # Handle NaN policy
         if self.nan_policy == "drop-row":
@@ -232,12 +261,26 @@ class RiskVol:
         else:  # mask-asset
             # Drop columns that are all NaN
             clean_window = window.dropna(axis=1, how='all')
+            logger.debug(f"[RISK] returns_window after dropna(axis=1, how='all'): {sorted(clean_window.columns)}")
+            
             if clean_window.shape[1] == 0:
                 raise ValueError(f"No valid symbols with data in window ending {date}")
+            
+            # Allow some missing data; drop dates that have any NaNs
+            # Only drop a column if it has too few observations
+            min_obs = min(self.cov_lookback // 2, 60)  # Require at least 50% or 60 obs, whichever is smaller
+            valid_cols = [c for c in clean_window.columns if clean_window[c].count() >= min_obs]
+            
+            if len(valid_cols) < len(clean_window.columns):
+                dropped_cols = set(clean_window.columns) - set(valid_cols)
+                logger.debug(f"[RISK] Dropped {len(dropped_cols)} columns with < {min_obs} observations: {sorted(dropped_cols)}")
+                clean_window = clean_window[valid_cols]
             
             # For mask-asset, we need to drop rows with ANY NaN for covariance calculation
             # (covariance requires pairwise complete observations)
             clean_window = clean_window.dropna(axis=0, how='any')
+            logger.debug(f"[RISK] returns_window after dropna(axis=0): {sorted(clean_window.columns)}, {len(clean_window)} rows")
+            
             if len(clean_window) < 2:
                 raise ValueError(
                     f"Insufficient complete observations for covariance: "
@@ -275,6 +318,13 @@ class RiskVol:
         # Annualize with 252
         cov_ann = cov * 252
         
+        # Add min vol floor (50 bps annualized) to avoid exploding leverage in ultra-calm regimes
+        min_vol_floor = 0.005  # 50 bps = 0.5% annualized
+        for sym in symbols:
+            vol_sq = cov_ann.loc[sym, sym]
+            if vol_sq < min_vol_floor ** 2:
+                cov_ann.loc[sym, sym] = min_vol_floor ** 2
+        
         # Ensure symmetry (numerical precision)
         cov_ann = (cov_ann + cov_ann.T) / 2
         
@@ -287,7 +337,8 @@ class RiskVol:
     def mask(
         self,
         market,
-        date: Union[str, datetime]
+        date: Union[str, datetime],
+        signals: Optional[pd.Series] = None
     ) -> pd.Index:
         """
         Get tradable symbols at a given date.
@@ -298,13 +349,14 @@ class RiskVol:
         Args:
             market: MarketData instance
             date: Date to check tradability
+            signals: Optional signals Series to use for filtering universe
             
         Returns:
             pd.Index of tradable symbol names
         """
         try:
             # Try to calculate volatilities - this will tell us which symbols are valid
-            vol = self.vols(market, date)
+            vol = self.vols(market, date, signals)
             tradable = vol.index
             
             logger.debug(f"[RiskVol] mask({date}): {len(tradable)} tradable symbols")

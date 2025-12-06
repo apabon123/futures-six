@@ -1,0 +1,6 @@
+# Phase-1: Canonical Short-Term (21d) Standalone Atomic Sleeve
+# Registered: 2025-11-19 16:09:37
+standalone_run_id: short_canonical_phase1_standalone_20251119_160802
+legacy_run_id: short_canonical_phase1_legacy_20251119_160802
+start_date: 2018-01-01
+end_date: 2025-10-31

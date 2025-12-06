@@ -36,6 +36,7 @@ exec:
   position_notional_scale: 1.0
 
 macro_regime:
+  enabled: true  # Set to false to disable macro regime overlay
   rebalance: "W-FRI"
   vol_thresholds:
     low: 0.12
@@ -47,4 +48,1804 @@ macro_regime:
   vol_lookback: 21
   breadth_lookback: 200
   proxy_symbols: ["ES_FRONT_CALENDAR_2D", "NQ_FRONT_CALENDAR_2D"]
+  # FRED economic indicators (8-9 indicators as mentioned)
+  fred_series: ["VIXCLS", "DGS10", "DGS2", "FEDFUNDS", "UNRATE", "CPIAUCSL", "DTWEXBGS", "TEDRATE"]
+  fred_lookback: 252  # 1 year rolling window for normalization
+  fred_weight: 0.3    # Weight of FRED signal in scaler calculation
+
+# Strategy sleeves configuration
+# IMPORTANT: Weights are RELATIVE IMPORTANCE weights, not absolute risk budgets.
+# They are automatically normalized to sum to 1.0 by CombinedStrategy.
+# Example: tsmom=0.6, sr3=0.15, rates=0.15, fx_commod=0.10 → normalized to tsmom=0.60, sr3=0.15, rates=0.15, fx_commod=0.10
+strategies:
+  tsmom:
+    enabled: true
+    weight: 0.6   # Relative importance weight (will be normalized to sum to 1.0)
+    params:
+      weights:
+        ret_252: 0.5      # Weight for 252-day return momentum
+        breakout_252: 0.3  # Weight for 252-day breakout strength
+        slope_slow: 0.2    # Weight for slow trend slope
+      signal_cap: 3.0     # Signal cap in standard deviations
+      rebalance: "W-FRI"   # Rebalance frequency
+  
+  sr3_carry_curve:
+    enabled: true  # Set to true to enable SR3 carry/curve sleeve
+    weight: 0.15   # Relative importance weight (will be normalized to sum to 1.0)
+    params:
+      w_carry: 0.30      # Weight for carry feature
+      w_curve: 0.25      # Weight for curve feature
+      w_pack_slope: 0.20 # Weight for pack slope feature
+      w_front_lvl: 0.10  # Weight for front-pack level feature
+      w_curv_belly: 0.15 # Weight for belly curvature feature
+      cap: 3.0           # Signal cap in standard deviations
+      window: 252        # Rolling window for feature standardization
+  
+  rates_curve:
+    enabled: true  # Set to true to enable rates curve sleeve
+    weight: 0.15    # Relative importance weight (will be normalized to sum to 1.0)
+    params:
+      z_cap: 3.0           # Cap on z-score signals
+      w_slope_2s10s: 0.35  # Weight for 2s10s slope feature
+      w_slope_5s30s: 0.35  # Weight for 5s30s slope feature
+      w_curv_2s5s10s: 0.15 # Weight for 2s-5s-10s curvature feature
+      w_curv_5s10s30s: 0.15 # Weight for 5s-10s-30s curvature feature
+  
+  fx_commod_carry:
+    enabled: true  # Set to true to enable FX/Commodity carry sleeve
+    weight: 0.10    # Relative importance weight (will be normalized to sum to 1.0)
+    params:
+      w_ts: 0.6      # Weight for time-series carry feature
+      w_xs: 0.25     # Weight for cross-sectional carry feature
+      w_mom: 0.15    # Weight for carry momentum feature
+      clip: 3.0      # Signal cap in standard deviations
+      roots: ["CL", "GC", "6E", "6B", "6J"]  # Roots to trade
+      window: 252    # Rolling window for feature standardization
+  
+  tsmom_med_canonical:
+    enabled: false  # Set to true to enable canonical medium-term momentum sleeve
+    weight: 0.15    # Relative importance weight (will be normalized to sum to 1.0)
+    params:
+      signal_cap: 3.0     # Signal cap in standard deviations
+      rebalance: "W-FRI"   # Rebalance frequency
+  
+  tsmom_med:
+    enabled: true  # Set to true to enable medium-term momentum sleeve
+    weight: 0.15    # Relative importance weight (will be normalized to sum to 1.0)
+    params:
+      weights:
+        ret_84: 0.4      # Weight for 84-day return momentum
+        breakout_126: 0.3  # Weight for 126-day breakout strength
+        slope_med: 0.2    # Weight for medium trend slope
+        persistence: 0.1  # Weight for trend persistence
+      signal_cap: 3.0     # Signal cap in standard deviations
+      rebalance: "W-FRI"   # Rebalance frequency
+  
+  tsmom_short:
+    enabled: true  # Set to true to enable short-term momentum sleeve
+    weight: 0.10    # Relative importance weight (will be normalized to sum to 1.0)
+    params:
+      weights:
+        ret_21: 0.5      # Weight for 21-day return momentum
+        breakout_21: 0.3  # Weight for 21-day breakout strength
+        slope_fast: 0.2   # Weight for fast trend slope
+        reversal_filter: 0.0  # Weight for reversal filter (optional, not used by default)
+      signal_cap: 3.0     # Signal cap in standard deviations
+      rebalance: "W-FRI"   # Rebalance frequency
+  
+  tsmom_multihorizon:
+    enabled: false  # Set to true to enable multi-horizon TSMOM (v2) sleeve
+    weight: 0.6     # Relative importance weight (will be normalized to sum to 1.0)
+    params:
+      horizon_weights:
+        long_252: 0.50   # Weight for long-term horizon (252d)
+        med_84: 0.30     # Weight for medium-term horizon (84/126d)
+        short_21: 0.20   # Weight for short-term horizon (21d)
+        # breakout_mid_50_100: 0.0  # DISABLED by default - enable in experimental profiles only
+      feature_weights:
+        long:
+          ret_252: 0.5       # Weight for 252-day return momentum
+          breakout_252: 0.3  # Weight for 252-day breakout strength
+          slope_slow: 0.2    # Weight for slow trend slope
+        med:
+          ret_84: 0.4        # Weight for 84-day return momentum
+          breakout_126: 0.3  # Weight for 126-day breakout strength
+          slope_med: 0.2     # Weight for medium trend slope
+          persistence: 0.1   # Weight for trend persistence
+        short:
+          ret_21: 0.5        # Weight for 21-day return momentum
+          breakout_21: 0.3   # Weight for 21-day breakout strength
+          slope_fast: 0.2    # Weight for fast trend slope
+          reversal: 0.0      # Weight for reversal filter (not used by default)
+        breakout_mid_50_100:
+          breakout_50: 0.5   # Weight for 50-day breakout strength
+          breakout_100: 0.5  # Weight for 100-day breakout strength
+      signal_cap: 3.0     # Signal cap in standard deviations
+      rebalance: "W-FRI"   # Rebalance frequency
+      vol_normalization:
+        enabled: true              # Enable EWMA volatility normalization
+        halflife_days: 63          # EWMA half-life in trading days (standard CTA choice)
+        sigma_floor_annual: 0.05   # Minimum annualized vol floor (5%)
+        risk_scale: 0.2            # Global scale factor for risk-normalized signals
+  
+  csmom_meta:
+    enabled: false  # Set to true to enable Cross-Sectional Momentum Meta-Sleeve
+    weight: 0.25     # Relative importance weight (will be normalized to sum to 1.0)
+    params:
+      lookbacks: [63, 126, 252]  # Multi-horizon lookback periods
+      horizon_weights: [0.4, 0.35, 0.25]  # Weights for each horizon (will be normalized)
+      vol_lookback: 63  # Lookback for volatility calculation
+      rebalance: "D"    # Rebalance frequency ("D" for daily, "W" for weekly)
+      neutralize_cross_section: true  # Whether to z-score cross-sectionally
+      clip: 3.0  # Z-score clipping threshold
+
+# Strategy Profiles
+# These profiles override the default strategies configuration
+# Use --strategy_profile <profile_name> in run_strategy.py to select a profile
+strategy_profiles:
+  momentum_only_v1:
+    # Momentum-Only Baseline: Only long-term TSMOM enabled, everything else disabled
+    # Use this to test core trend-following performance
+    strategies:
+      tsmom:
+        enabled: true
+        weight: 1.0
+        params:
+          weights:
+            ret_252: 0.5
+            breakout_252: 0.3
+            slope_slow: 0.2
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  momentum_stack_v1:
+    # Momentum Stack: Long + Medium + Short term momentum, everything else disabled
+    # Tests whether adding medium/short-term momentum improves or degrades performance
+    strategies:
+      tsmom:
+        enabled: true
+        weight: 1.0
+        params:
+          weights:
+            ret_252: 0.5
+            breakout_252: 0.3
+            slope_slow: 0.2
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+      tsmom_med:
+        enabled: true
+        weight: 0.5
+        params:
+          weights:
+            ret_84: 0.4
+            breakout_126: 0.3
+            slope_med: 0.2
+            persistence: 0.1
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+      tsmom_short:
+        enabled: true
+        weight: 0.2
+        params:
+          weights:
+            ret_21: 0.5
+            breakout_21: 0.3
+            slope_fast: 0.2
+            reversal_filter: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  momentum_long_fxcarry_v1:
+    # Momentum + FX/Commodity Carry: Long-term TSMOM + FX/Commodity carry sleeve
+    # Tests whether adding carry signals improves performance
+    strategies:
+      tsmom:
+        enabled: true
+        weight: 1.0
+        params:
+          weights:
+            ret_252: 0.5
+            breakout_252: 0.3
+            slope_slow: 0.2
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: true
+        weight: 1.0
+        params:
+          w_ts: 0.6
+          w_xs: 0.25
+          w_mom: 0.15
+          clip: 3.0
+          roots: ["CL", "GC", "6E", "6B", "6J"]
+          window: 252
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  momentum_long_fxcarry_sr3_v1:
+    # Momentum + FX/Commodity Carry + SR3 Carry/Curve: Long-term TSMOM + FX/Commodity carry + SR3 curve
+    # Tests whether adding SR3 curve signals improves or degrades performance
+    strategies:
+      tsmom:
+        enabled: true
+        weight: 1.0
+        params:
+          weights:
+            ret_252: 0.5
+            breakout_252: 0.3
+            slope_slow: 0.2
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: true
+        weight: 1.0
+        params:
+          w_carry: 0.4
+          w_curve: 0.3
+          w_slope: 0.2
+          w_level: 0.1
+          clip: 3.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: true
+        weight: 1.0
+        params:
+          w_ts: 0.6
+          w_xs: 0.25
+          w_mom: 0.15
+          clip: 3.0
+          roots: ["CL", "GC", "6E", "6B", "6J"]
+          window: 252
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  core_v2_no_macro:
+    # Core v2: Multi-Horizon TSMOM (v2) only, no macro overlay
+    # Tests the new unified multi-horizon momentum sleeve
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 1.0
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  core_v3_no_macro:
+    # Core v3: Multi-Horizon TSMOM (v2) only, no macro overlay
+    # Current production baseline - Trend Meta-Sleeve with canonical Long-Term (1/3,1/3,1/3) and canonical Medium-Term (1/3,1/3,1/3)
+    # Nov 2025: Promoted canonical Long-Term equal-weight composite (Phase-0/1/2 passed)
+    # Nov 2025: Promoted canonical Medium-Term equal-weight composite (Phase-0/1/2 passed)
+    # Breakout Mid: Phase-2 approved → Phase-3, 3% horizon weight, 70/30 feature weights
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 1.0
+        params:
+          horizon_weights:
+            long_252: 0.485
+            med_84: 0.291
+            short_21: 0.194
+            breakout_mid_50_100: 0.03
+          feature_weights:
+            long:
+              ret_252: 0.333333       # Canonical (1/3) - Promoted Nov 2025
+              breakout_252: 0.333333  # Canonical (1/3) - Promoted Nov 2025
+              slope_slow: 0.333334    # Canonical (1/3) - Promoted Nov 2025
+            med:
+              # Canonical medium-term (1/3 each) - Promoted Nov 2025
+              # Note: feature_weights are placeholders; actual features come from medium_variant="canonical"
+              ret_84: 0.333333        # Canonical (1/3) - Promoted Nov 2025
+              breakout_84: 0.333333   # Canonical (1/3) - Promoted Nov 2025
+              slope_21_84: 0.333334   # Canonical (1/3) - Promoted Nov 2025
+              persistence: 0.0        # Disabled in canonical version
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+            breakout_mid_50_100:
+              breakout_50: 0.7
+              breakout_100: 0.3
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+          # Medium-term variant: canonical (promoted Nov 2025) or legacy
+          medium_variant: "canonical"  # Promoted to production Nov 2025
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  core_v3_no_macro_legacy:
+    # Core v3 (LEGACY): Multi-Horizon TSMOM with legacy Long-Term weights (0.5/0.3/0.2) and legacy Medium-Term (0.4/0.3/0.2/0.1)
+    # DEPRECATED: For historical comparison only. Use core_v3_no_macro for production.
+    # Replaced by canonical Long-Term (1/3,1/3,1/3) in Nov 2025 after Phase-0/1/2 validation
+    # Replaced by canonical Medium-Term (1/3,1/3,1/3) in Nov 2025 after Phase-0/1/2 validation
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 1.0
+        params:
+          horizon_weights:
+            long_252: 0.485
+            med_84: 0.291
+            short_21: 0.194
+            breakout_mid_50_100: 0.03
+          feature_weights:
+            long:
+              ret_252: 0.5          # Legacy weighting (DEPRECATED)
+              breakout_252: 0.3      # Legacy weighting (DEPRECATED)
+              slope_slow: 0.2        # Legacy weighting (DEPRECATED)
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+            breakout_mid_50_100:
+              breakout_50: 0.7
+              breakout_100: 0.3
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  core_v3_trend_plus_residual_experiment:
+    # Experimental: Trend Meta-Sleeve + Residual Trend atomic sleeve (EXTERNAL BLENDING)
+    # Phase-1 integration: Residual Trend added alongside Trend Multi-Horizon as separate sleeve
+    # NOTE: This is the old external blending approach. Use core_v3_trend_v2_with_residual for internal integration.
+    base_profile: core_v3_no_macro
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 0.80  # Trend backbone (reduced from 1.0)
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      residual_trend:
+        enabled: true
+        weight: 0.20  # Residual trend atomic sleeve (external blending)
+        params:
+          long_lookback: 252
+          short_lookback: 21
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  core_v3_trend_plus_persistence_external:
+    # Experimental: Trend Meta-Sleeve + Persistence atomic sleeve (EXTERNAL BLENDING)
+    # Phase-1 integration: Persistence added alongside Trend Multi-Horizon as separate sleeve
+    # NOTE: This is external blending for Phase-1 testing. Internal integration happens in Phase-2.
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 0.80  # Trend backbone (reduced from 1.0)
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      persistence:
+        enabled: true
+        weight: 0.20  # Persistence atomic sleeve (external blending)
+        params:
+          weights:
+            slope_accel: 0.80
+            breakout_accel: 0.10
+            return_accel: 0.10
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  persistence_phase1:
+    # Phase-1: Standalone Persistence atomic sleeve for diagnostics
+    # This profile runs ONLY persistence to validate the atomic sleeve independently
+    strategies:
+      persistence:
+        enabled: true
+        weight: 1.0  # 100% persistence
+        params:
+          weights:
+            slope_accel: 0.80
+            breakout_accel: 0.10
+            return_accel: 0.10
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+      tsmom_multihorizon:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  core_v3_trend_v2_with_residual:
+    # Experimental: Trend Meta-Sleeve v2 with Residual Trend as 4th atomic sleeve (INTERNAL BLENDING)
+    # Residual Trend is now integrated inside TSMOMMultiHorizon as an internal atomic sleeve
+    # This is the clean architecture: all trend atomic ideas inside Trend Meta-Sleeve
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 1.0  # Full weight on Trend Meta-Sleeve (residual included internally)
+        params:
+          horizon_weights:
+            long_252: 0.45      # Reduced from 0.50 to make room for residual
+            med_84: 0.28         # Reduced from 0.30
+            short_21: 0.20       # Unchanged
+            residual_252_21: 0.15  # NEW: Residual trend as 4th atomic sleeve
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0  # Disabled - now part of tsmom_multihorizon internally
+      persistence:
+        enabled: false
+        weight: 0.0  # Phase-1 experimental, not integrated internally yet
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  core_v4_trend_csmom_no_macro:
+    # Core v4: Trend Meta-Sleeve + CSMOM Meta-Sleeve, no macro overlay
+    # Phase-2 integration: CSMOM added alongside Trend
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 0.75  # Trend backbone
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      csmom_meta:
+        enabled: true
+        weight: 0.25  # CSMOM spice
+        params:
+          lookbacks: [63, 126, 252]
+          horizon_weights: [0.4, 0.35, 0.25]
+          vol_lookback: 63
+          rebalance: "D"
+          neutralize_cross_section: true
+          clip: 3.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+  
+  core_v3_trend_breakout:
+    # Experimental: Trend Meta-Sleeve with Breakout Mid (50-100d) as 5th atomic sleeve
+    # Phase-1 integration: Breakout Mid added as internal atomic sleeve
+    # Proposed horizon weights: long=0.45, med=0.28, short=0.20, residual=0.15, breakout_mid=0.10
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 1.0  # Full weight on Trend Meta-Sleeve (breakout included internally)
+        params:
+          horizon_weights:
+            long_252: 0.45      # Reduced from 0.50 to make room for breakout
+            med_84: 0.28        # Reduced from 0.30
+            short_21: 0.20      # Unchanged
+            residual_252_21: 0.07  # Reduced from 0.15 to make room for breakout
+            breakout_mid_50_100: 0.10  # NEW: Breakout mid as 5th atomic sleeve
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+            breakout_mid_50_100:
+              breakout_50: 0.5
+              breakout_100: 0.5
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  # Phase-1B: Breakout Mid Refinement Tests
+  # Testing lower weight (3%) and different feature weight schemes
+  core_v3_trend_breakout_1b_7030:
+    # Phase-1B Test 1: Breakout weight 3%, feature weights 70/30 (50d/100d)
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 1.0
+        params:
+          horizon_weights:
+            long_252: 0.485     # Adjusted from 0.50 to accommodate 3% breakout (0.50 * 0.97)
+            med_84: 0.291        # Adjusted from 0.30 (0.30 * 0.97)
+            short_21: 0.194      # Adjusted from 0.20 (0.20 * 0.97)
+            breakout_mid_50_100: 0.03  # Phase-1B: 3% weight
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+            breakout_mid_50_100:
+              breakout_50: 0.7   # Phase-1B: 70% weight on 50d
+              breakout_100: 0.3   # Phase-1B: 30% weight on 100d
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false
+
+  core_v3_trend_breakout_1b_3070:
+    # Phase-1B Test 2: Breakout weight 3%, feature weights 30/70 (50d/100d)
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 1.0
+        params:
+          horizon_weights:
+            long_252: 0.47
+            med_84: 0.29
+            short_21: 0.20
+            residual_252_21: 0.01
+            breakout_mid_50_100: 0.03  # Phase-1B: 3%
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+            breakout_mid_50_100:
+              breakout_50: 0.3   # Phase-1B: 30% weight on 50d
+              breakout_100: 0.7  # Phase-1B: 70% weight on 100d
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false
+
+  core_v3_trend_breakout_1b_1000:
+    # Phase-1B Test 3: Breakout weight 3%, pure 50d (100/0)
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 1.0
+        params:
+          horizon_weights:
+            long_252: 0.47
+            med_84: 0.29
+            short_21: 0.20
+            residual_252_21: 0.01
+            breakout_mid_50_100: 0.03  # Phase-1B: 3%
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+            breakout_mid_50_100:
+              breakout_50: 1.0   # Phase-1B: Pure 50d breakout
+              breakout_100: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false
+
+  core_v3_trend_breakout_1b_0100:
+    # Phase-1B Test 4: Breakout weight 3%, pure 100d (0/100)
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 1.0
+        params:
+          horizon_weights:
+            long_252: 0.47
+            med_84: 0.29
+            short_21: 0.20
+            residual_252_21: 0.01
+            breakout_mid_50_100: 0.03  # Phase-1B: 3%
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+            breakout_mid_50_100:
+              breakout_50: 0.0
+              breakout_100: 1.0   # Phase-1B: Pure 100d breakout
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false
+
+  core_v3_trend_breakout_70_30_phase2:
+    # Phase-2: Breakout Mid (50-100d) with winning Phase-1B configuration
+    # Configuration: 3% horizon weight, 70% breakout_50, 30% breakout_100
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 1.0
+        params:
+          horizon_weights:
+            long_252: 0.485     # Adjusted from 0.50 to accommodate 3% breakout
+            med_84: 0.291       # Adjusted from 0.30
+            short_21: 0.194      # Adjusted from 0.20
+            breakout_mid_50_100: 0.03  # Phase-2: 3% weight (Phase-1B winner)
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+            breakout_mid_50_100:
+              breakout_50: 0.7   # Phase-2: 70% weight on 50d (Phase-1B winner)
+              breakout_100: 0.3  # Phase-2: 30% weight on 100d
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false
+
+  medium_canonical_phase1:
+    # Phase-1: Canonical Medium-Term (84d) Standalone Atomic Sleeve
+    # Validates the canonical medium-term sleeve independently before Phase-2 integration
+    # Uses equal-weight composite (1/3, 1/3, 1/3):
+    #   - 84d return momentum (skip 10d, vol-scaled with 21d vol, z-scored)
+    #   - 84d breakout strength (z-scored)
+    #   - EMA21 vs EMA84 slope (vol-scaled with 21d vol, z-scored)
+    strategies:
+      tsmom_med_canonical:
+        enabled: true
+        weight: 1.0
+        params:
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+      tsmom_multihorizon:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+  
+  medium_legacy_phase1:
+    # Phase-1: Legacy Medium-Term Standalone (for comparison)
+    # Uses the legacy medium-term sleeve (84d/126d, persistence, 0.4/0.3/0.2/0.1)
+    strategies:
+      tsmom_med:
+        enabled: true
+        weight: 1.0
+        params:
+          weights:
+            ret_84: 0.4
+            breakout_126: 0.3
+            slope_med: 0.2
+            persistence: 0.1
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+      tsmom_multihorizon:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+  
+  core_v3_trend_medcanon_no_macro:
+    # Phase-2: Trend Meta-Sleeve with Canonical Medium-Term variant
+    # Tests canonical medium-term sleeve integrated into Trend Meta-Sleeve
+    # This is a clean A/B test vs core_v3_no_macro (which uses legacy medium-term)
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 1.0
+        params:
+          horizon_weights:
+            long_252: 0.485
+            med_84: 0.291
+            short_21: 0.194
+            breakout_mid_50_100: 0.03
+          feature_weights:
+            long:
+              ret_252: 0.333333    # Canonical long-term (1/3 each)
+              breakout_252: 0.333333
+              slope_slow: 0.333334
+            med:
+              # NOTE: This will use canonical medium-term features internally
+              # Implementation in TSMOMMultiHorizon needs to support "medium_variant: canonical"
+              ret_84: 0.333333      # Canonical medium-term (1/3 each)
+              breakout_84: 0.333333  # Note: using 84d breakout (not 126d)
+              slope_21_84: 0.333334  # Note: using EMA21-84 slope
+              persistence: 0.0       # Disabled in canonical version
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+            breakout_mid_50_100:
+              breakout_50: 0.7
+              breakout_100: 0.3
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+          # NEW: Medium-term variant selector
+          medium_variant: "canonical"  # Options: "legacy" (default), "canonical"
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+  
+  core_v3_trend_shortcanon_no_macro:
+    # Phase-2: Trend Meta-Sleeve with Canonical Short-Term variant
+    # Tests canonical short-term sleeve (equal-weight 1/3, 1/3, 1/3) integrated into Trend Meta-Sleeve
+    # This is a clean A/B test vs core_v3_no_macro (which uses legacy short-term)
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 1.0
+        params:
+          horizon_weights:
+            long_252: 0.485
+            med_84: 0.291
+            short_21: 0.194
+            breakout_mid_50_100: 0.03
+          feature_weights:
+            long:
+              ret_252: 0.333333       # Canonical (1/3) - Promoted Nov 2025
+              breakout_252: 0.333333  # Canonical (1/3) - Promoted Nov 2025
+              slope_slow: 0.333334    # Canonical (1/3) - Promoted Nov 2025
+            med:
+              # Canonical medium-term (1/3 each) - Promoted Nov 2025
+              ret_84: 0.333333        # Canonical (1/3) - Promoted Nov 2025
+              breakout_84: 0.333333   # Canonical (1/3) - Promoted Nov 2025
+              slope_21_84: 0.333334   # Canonical (1/3) - Promoted Nov 2025
+              persistence: 0.0        # Disabled in canonical version
+            short:
+              # Canonical short-term (1/3 each) - Phase-2 testing Nov 2025
+              ret_21: 0.333333        # Canonical (1/3) - Phase-2
+              breakout_21: 0.333333   # Canonical (1/3) - Phase-2
+              slope_fast: 0.333334    # Canonical (1/3) - Phase-2
+              reversal: 0.0           # Not used (weight 0)
+            breakout_mid_50_100:
+              breakout_50: 0.7
+              breakout_100: 0.3
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+          # Medium-term and short-term variant selectors
+          medium_variant: "canonical"  # Promoted to production Nov 2025
+          short_variant: "canonical"   # Phase-2 testing: canonical short-term
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+  
+  short_canonical_phase1:
+    # Phase-1: Canonical Short-Term (21d) Standalone Atomic Sleeve
+    # Validates the canonical short-term sleeve independently before Phase-2 integration
+    # Uses equal-weight composite (1/3, 1/3, 1/3):
+    #   - 21d return momentum (skip 5d, vol-scaled with 20d vol, z-scored)
+    #   - 21d breakout strength (z-scored)
+    #   - Fast slope: EMA10 vs EMA40 (vol-scaled with 20d vol, z-scored)
+    strategies:
+      tsmom_short:
+        enabled: true
+        weight: 1.0
+        params:
+          weights:
+            ret_21: 0.333333        # Canonical (1/3) - Phase-1
+            breakout_21: 0.333333   # Canonical (1/3) - Phase-1
+            slope_fast: 0.333334    # Canonical (1/3) - Phase-1
+            reversal_filter: 0.0    # Not used (weight 0)
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          variant: "canonical"  # Canonical short-term variant
+      tsmom_multihorizon:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+  
+  short_legacy_phase1:
+    # Phase-1: Legacy Short-Term Standalone (for comparison)
+    # Uses the legacy short-term sleeve (21d, weights 0.5, 0.3, 0.2)
+    strategies:
+      tsmom_short:
+        enabled: true
+        weight: 1.0
+        params:
+          weights:
+            ret_21: 0.5             # Legacy weighting
+            breakout_21: 0.3        # Legacy weighting
+            slope_fast: 0.2         # Legacy weighting
+            reversal_filter: 0.0    # Not used
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          variant: "legacy"  # Legacy short-term variant
+      tsmom_multihorizon:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+  
+  core_v3_trend_long_canonical:
+    # Phase-1: Canonical Long-Term Trend Sleeve (TSMOM-252)
+    # Formalizes the long-term 252d horizon as a clean atomic sleeve
+    # with academically grounded equal-weight composite:
+    # long_trend_score = (1/3) * ret_252 + (1/3) * breakout_252 + (1/3) * slope_slow
+    # This replaces the legacy (0.5, 0.3, 0.2) weighting with a canonical (1/3, 1/3, 1/3) approach
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 1.0
+        params:
+          horizon_weights:
+            long_252: 0.485     # Same horizon weight as core_v3_no_macro
+            med_84: 0.291
+            short_21: 0.194
+            breakout_mid_50_100: 0.03
+          feature_weights:
+            long:
+              ret_252: 0.333333    # Phase-1: Equal weighting (1/3 each)
+              breakout_252: 0.333333
+              slope_slow: 0.333334  # Sum to exactly 1.0
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+            breakout_mid_50_100:
+              breakout_50: 0.7
+              breakout_100: 0.3
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  momentum_long_fxcarry_rates_v1:
+    # Momentum + FX/Commodity Carry + Rates Curve: Long-term TSMOM + FX/Commodity carry + Rates curve
+    # Tests whether adding rates curve signals improves or degrades performance
+    strategies:
+      tsmom:
+        enabled: true
+        weight: 1.0
+        params:
+          weights:
+            ret_252: 0.5
+            breakout_252: 0.3
+            slope_slow: 0.2
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: true
+        weight: 1.0
+        params:
+          z_cap: 3.0
+          w_slope_2s10s: 0.35
+          w_slope_5s30s: 0.35
+          w_curv_2s5s10s: 0.15
+          w_curv_5s10s30s: 0.15
+          sym_2y: "ZT_FRONT_VOLUME"
+          sym_5y: "ZF_FRONT_VOLUME"
+          sym_10y: "ZN_FRONT_VOLUME"
+          sym_30y: "UB_FRONT_VOLUME"
+      fx_commod_carry:
+        enabled: true
+        weight: 1.0
+        params:
+          w_ts: 0.6
+          w_xs: 0.25
+          w_mom: 0.15
+          clip: 3.0
+          roots: ["CL", "GC", "6E", "6B", "6J"]
+          window: 252
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  core_v1:
+    # Core v1: Long-term momentum + FX/Commodity carry only
+    # Clean two-sleeve architecture for stable performance
+    strategies:
+      tsmom:
+        enabled: true
+        weight: 1.0
+        params:
+          weights:
+            ret_252: 0.5
+            breakout_252: 0.3
+            slope_slow: 0.2
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: true
+        weight: 1.0
+        params:
+          w_ts: 0.6
+          w_xs: 0.25
+          w_mom: 0.15
+          clip: 3.0
+          roots: ["CL", "GC", "6E", "6B", "6J"]
+          window: 252
+    macro_regime:
+      enabled: false  # Macro overlay OFF for core_v1 baseline
+
+  core_v1_with_macro:
+    # Core v1 with Macro Overlay: Long-term momentum + FX/Commodity carry + Macro regime filter
+    # Tests whether macro overlay reduces drawdowns without wrecking returns
+    strategies:
+      tsmom:
+        enabled: true
+        weight: 1.0
+        params:
+          weights:
+            ret_252: 0.5
+            breakout_252: 0.3
+            slope_slow: 0.2
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: true
+        weight: 1.0
+        params:
+          w_ts: 0.6
+          w_xs: 0.25
+          w_mom: 0.15
+          clip: 3.0
+          roots: ["CL", "GC", "6E", "6B", "6J"]
+          window: 252
+    macro_regime:
+      enabled: true  # Macro overlay ON for core_v1_with_macro
+
+# Feature service configuration
+features:
+  sr3_curve:
+    root: "SR3"
+    ranks: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]  # 12 ranks
+    window: 252  # Rolling window for z-score standardization
+  residual_trend:
+    long_lookback: 252  # Long-horizon lookback period
+    short_lookback: 21  # Short-horizon lookback period
+    clip: 3.0  # Z-score clipping bounds for cross-sectional z-scoring
+  persistence:
+    acceleration_window: 21  # Window for acceleration calculation (default: 21 days)
+    clip: 3.0  # Z-score clipping bounds for cross-sectional z-scoring
+  
+  rates_curve:
+    dv01_config_path: "configs/rates_dv01.yaml"  # Path to DV01 config
+    window: 252  # Rolling window for z-score standardization
+    anchor_lag_days: 2  # FRED anchor lag (business days). Use 0 for backtests, 2-3 for live
+  
+  fx_commod_carry:
+    roots: ["CL", "GC", "6E", "6B", "6J"]  # Roots for carry features
+    window: 252  # Rolling window for z-score standardization
+    clip: 3.0    # Z-score clipping bounds
+  
+  long_momentum:
+    lookback: 252      # Lookback period for return calculation (days)
+    skip_recent: 21    # Days to skip at the end (the "-1 month" gap)
+    vol_window: 63     # Window for volatility calculation (days)
+    window: 252        # Rolling window for z-score standardization (days)
+    clip: 3.0          # Z-score clipping bounds
+  
+  medium_momentum:
+    lookback: 84       # Lookback period for return calculation (days)
+    skip_recent: 10    # Days to skip at the end
+    vol_window: 63     # Window for volatility calculation (days)
+    window: 252        # Rolling window for z-score standardization (days)
+    clip: 3.0          # Z-score clipping bounds
+  
+  canonical_medium_momentum:
+    lookback: 84       # Lookback period for return calculation (days) - canonical
+    skip_recent: 10    # Days to skip at the end - canonical
+    vol_window: 21     # Window for volatility calculation (days) - canonical: 21-day vol
+    window: 252        # Rolling window for z-score standardization (days)
+    clip: 3.0          # Z-score clipping bounds
+  
+  short_momentum:
+    lookback: 21       # Lookback period for return calculation (days)
+    skip_recent: 5    # Days to skip at the end
+    vol_window: 20     # Window for volatility calculation (days)
+    window: 252        # Rolling window for z-score standardization (days)
+    clip: 3.0          # Z-score clipping bounds
 

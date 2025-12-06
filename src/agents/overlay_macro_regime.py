@@ -45,6 +45,9 @@ class MacroRegimeFilter:
         vol_lookback: int = 21,
         breadth_lookback: int = 200,
         proxy_symbols: tuple = ("ES", "NQ"),
+        fred_series: Optional[tuple] = None,
+        fred_lookback: int = 252,
+        fred_weight: float = 0.3,
         config_path: str = "configs/strategies.yaml"
     ):
         """
@@ -60,6 +63,9 @@ class MacroRegimeFilter:
             vol_lookback: Rolling window for realized vol (default: 21 days)
             breadth_lookback: SMA lookback for breadth calculation (default: 200 days)
             proxy_symbols: Symbols for regime detection (default: ("ES", "NQ"))
+            fred_series: Tuple of FRED series IDs to use (e.g., ("VIXCLS", "DGS10"))
+            fred_lookback: Rolling window for FRED indicator normalization (default: 252 days)
+            fred_weight: Weight for FRED indicators in scaler calculation (default: 0.3)
             config_path: Path to configuration YAML file
         """
         # Track which parameters were explicitly provided
@@ -70,7 +76,10 @@ class MacroRegimeFilter:
             'smoothing': 0.2,
             'vol_lookback': 21,
             'breadth_lookback': 200,
-            'proxy_symbols': ("ES", "NQ")
+            'proxy_symbols': ("ES", "NQ"),
+            'fred_series': None,
+            'fred_lookback': 252,
+            'fred_weight': 0.3
         }
         
         # Try to load from config if exists
@@ -102,6 +111,13 @@ class MacroRegimeFilter:
                 self.proxy_symbols = tuple(proxy_config) if isinstance(proxy_config, list) else proxy_symbols
             else:
                 self.proxy_symbols = proxy_symbols
+            
+            # Handle FRED indicators
+            self.fred_series = regime_config.get('fred_series', fred_series)
+            if self.fred_series is not None and isinstance(self.fred_series, list):
+                self.fred_series = tuple(self.fred_series)
+            self.fred_lookback = regime_config.get('fred_lookback', fred_lookback) if fred_lookback == defaults['fred_lookback'] else fred_lookback
+            self.fred_weight = regime_config.get('fred_weight', fred_weight) if fred_weight == defaults['fred_weight'] else fred_weight
         else:
             self.rebalance = rebalance
             self.vol_thresholds = vol_thresholds or {'low': 0.15, 'high': 0.30}
@@ -110,6 +126,9 @@ class MacroRegimeFilter:
             self.vol_lookback = vol_lookback
             self.breadth_lookback = breadth_lookback
             self.proxy_symbols = proxy_symbols
+            self.fred_series = fred_series
+            self.fred_lookback = fred_lookback
+            self.fred_weight = fred_weight
         
         # Validate parameters
         if not (0 <= self.smoothing <= 1):
@@ -136,6 +155,11 @@ class MacroRegimeFilter:
         self._last_scaler = None
         self._last_rebalance = None
         
+        # State for input smoothing (5-day EMA of breadth and FRED composite)
+        self._breadth_history = []
+        self._fred_signal_history = []
+        self._input_smoothing_window = 5
+        
         # Cache for rebalance dates
         self._rebalance_dates = None
         
@@ -143,7 +167,8 @@ class MacroRegimeFilter:
             f"[MacroRegimeFilter] Initialized: rebalance={self.rebalance}, "
             f"vol_thresholds={self.vol_thresholds}, k_bounds={self.k_bounds}, "
             f"smoothing={self.smoothing}, vol_lookback={self.vol_lookback}, "
-            f"breadth_lookback={self.breadth_lookback}, proxy_symbols={self.proxy_symbols}"
+            f"breadth_lookback={self.breadth_lookback}, proxy_symbols={self.proxy_symbols}, "
+            f"fred_series={self.fred_series}, fred_lookback={self.fred_lookback}, fred_weight={self.fred_weight}"
         )
     
     def _load_config(self, config_path: str) -> Optional[dict]:
@@ -218,11 +243,22 @@ class MacroRegimeFilter:
             Annualized realized volatility
         """
         # Get returns for proxy symbols
-        returns = market.get_returns(
-            symbols=self.proxy_symbols,
-            end=date,
-            method="log"
-        )
+        # Use continuous returns for realized vol calculation
+        returns_cont = market.returns_cont
+        
+        if returns_cont.empty:
+            logger.warning(f"[MacroRegimeFilter] No returns data for {date}")
+            return self.vol_thresholds['low']  # Default to low vol
+        
+        # Filter to proxy symbols and end date
+        available_symbols = [s for s in self.proxy_symbols if s in returns_cont.columns]
+        if not available_symbols:
+            logger.warning(f"[MacroRegimeFilter] No matching proxy symbols in continuous returns for {date}")
+            return self.vol_thresholds['low']  # Default to low vol
+        
+        returns = returns_cont[available_symbols].copy()
+        date_dt = pd.to_datetime(date)
+        returns = returns[returns.index <= date_dt]
         
         if returns.empty:
             logger.warning(f"[MacroRegimeFilter] No returns data for {date}")
@@ -265,12 +301,22 @@ class MacroRegimeFilter:
             Breadth value in [0.0, 0.5, 1.0] for 2 symbols
         """
         # Get prices for proxy symbols
-        prices = market.get_price_panel(
-            symbols=self.proxy_symbols,
-            fields=("close",),
-            end=date,
-            tidy=False
-        )
+        # Use continuous prices for breadth calculation
+        prices_cont = market.prices_cont
+        
+        if prices_cont.empty:
+            logger.warning(f"[MacroRegimeFilter] No price data for breadth calculation at {date}")
+            return 0.5  # Neutral
+        
+        # Filter to proxy symbols and end date
+        available_symbols = [s for s in self.proxy_symbols if s in prices_cont.columns]
+        if not available_symbols:
+            logger.warning(f"[MacroRegimeFilter] No matching proxy symbols in continuous prices for {date}")
+            return 0.5  # Neutral
+        
+        prices = prices_cont[available_symbols].copy()
+        date_dt = pd.to_datetime(date)
+        prices = prices[prices.index <= date_dt]
         
         if prices.empty:
             logger.warning(f"[MacroRegimeFilter] No price data for breadth calculation at {date}")
@@ -301,23 +347,141 @@ class MacroRegimeFilter:
         
         return breadth
     
+    def _compute_fred_signal(
+        self,
+        market,
+        date: pd.Timestamp
+    ) -> float:
+        """
+        Compute combined FRED indicator signal.
+        
+        Normalizes each FRED indicator using rolling z-score, then combines
+        them with equal weights. Returns a signal in [-1, 1] where:
+        - Positive = risk-on (favorable conditions)
+        - Negative = risk-off (adverse conditions)
+        
+        Args:
+            market: MarketData instance
+            date: Current date
+            
+        Returns:
+            Combined FRED signal in [-1, 1]
+        """
+        if self.fred_series is None or len(self.fred_series) == 0:
+            return 0.0  # Neutral if no FRED indicators
+        
+        try:
+            # Get FRED indicators up to date
+            fred_data = market.get_fred_indicators(
+                series_ids=self.fred_series,
+                end=date
+            )
+            
+            if fred_data.empty:
+                logger.warning(f"[MacroRegimeFilter] No FRED data available at {date}")
+                return 0.0
+            
+            # Filter to date
+            fred_at_date = fred_data[fred_data.index <= date]
+            
+            if len(fred_at_date) < self.fred_lookback:
+                logger.warning(
+                    f"[MacroRegimeFilter] Insufficient FRED data: "
+                    f"got {len(fred_at_date)} days, need {self.fred_lookback}"
+                )
+                return 0.0
+            
+            # Dailyize monthly series before z-scoring
+            # Forward-fill to business days for monthly series (CPI, UNRATE)
+            monthly_series = ['CPIAUCSL', 'UNRATE']
+            
+            # Data freshness check: warn if monthly series are stale > 45 days
+            for series_id in self.fred_series:
+                if series_id in monthly_series and series_id in fred_at_date.columns:
+                    series_data = fred_at_date[series_id].dropna()
+                    if len(series_data) > 0:
+                        last_date = series_data.index[-1]
+                        days_since_update = (date - last_date).days
+                        if days_since_update > 45:
+                            logger.warning(
+                                f"[MacroRegimeFilter] FRED series {series_id} is stale: "
+                                f"last update {last_date}, {days_since_update} days ago"
+                            )
+            fred_dailyized = fred_at_date.copy()
+            
+            for series_id in fred_dailyized.columns:
+                if series_id in monthly_series:
+                    # Forward-fill monthly data to daily business days
+                    series = fred_dailyized[series_id]
+                    # Resample to business days with forward-fill
+                    fred_dailyized[series_id] = series.asfreq('B', method='pad')
+            
+            # Get last fred_lookback days (after dailyization)
+            fred_window = fred_dailyized.iloc[-self.fred_lookback:]
+            
+            # Normalize each indicator using z-score
+            normalized_signals = []
+            for series_id in self.fred_series:
+                if series_id not in fred_window.columns:
+                    continue
+                
+                series = fred_window[series_id].dropna()
+                if len(series) < 20:  # Need minimum data
+                    continue
+                
+                # Get latest value
+                latest_value = series.iloc[-1]
+                
+                # Compute rolling mean and std for normalization (63-day window after dailyization)
+                z_window = min(63, len(series))
+                rolling_mean = series.rolling(window=z_window, min_periods=20).mean().iloc[-1]
+                rolling_std = series.rolling(window=z_window, min_periods=20).std().iloc[-1]
+                
+                if rolling_std == 0 or pd.isna(rolling_std):
+                    continue
+                
+                # Z-score normalization
+                z_score = (latest_value - rolling_mean) / rolling_std
+                
+                # Cap z-score to avoid single prints swinging the scaler
+                z_score = np.clip(z_score, -5.0, 5.0)
+                
+                # Map to [-1, 1] using tanh (bounded)
+                normalized = np.tanh(z_score / 2.0)  # Divide by 2 to make it less extreme
+                normalized_signals.append(normalized)
+            
+            if len(normalized_signals) == 0:
+                return 0.0
+            
+            # Combine with equal weights
+            combined_signal = np.mean(normalized_signals)
+            
+            return combined_signal
+        
+        except Exception as e:
+            logger.warning(f"[MacroRegimeFilter] Error computing FRED signal: {e}")
+            return 0.0
+    
     def _compute_base_scaler(
         self,
         realized_vol: float,
-        breadth: float
+        breadth: float,
+        fred_signal: float = 0.0
     ) -> float:
         """
-        Compute base scaler from realized vol and breadth.
+        Compute base scaler from realized vol, breadth, and FRED indicators.
         
         Logic:
         1. Map realized vol linearly from [low, high] to [k_max, k_min]
            (higher vol → lower scaler)
         2. Add breadth adjustment: +0.1 if breadth == 1.0, -0.1 if breadth == 0.0
-        3. Clamp to [k_min, k_max]
+        3. Add FRED signal adjustment: fred_signal * fred_weight
+        4. Clamp to [k_min, k_max]
         
         Args:
             realized_vol: Annualized realized volatility
             breadth: Market breadth [0, 1]
+            fred_signal: Combined FRED indicator signal [-1, 1]
             
         Returns:
             Base scaler k
@@ -346,7 +510,12 @@ class MacroRegimeFilter:
         
         k = base_k + breadth_adj
         
-        # 3. Clamp to bounds
+        # 3. Add FRED signal adjustment
+        # FRED signal: positive = risk-on (increase exposure), negative = risk-off (decrease)
+        fred_adj = fred_signal * self.fred_weight
+        k = k + fred_adj
+        
+        # 4. Clamp to bounds
         k = np.clip(k, k_min, k_max)
         
         return k
@@ -404,10 +573,35 @@ class MacroRegimeFilter:
         
         # Compute regime indicators
         realized_vol = self._compute_realized_vol(market, date)
-        breadth = self._compute_breadth(market, date)
+        breadth_raw = self._compute_breadth(market, date)
+        fred_signal_raw = self._compute_fred_signal(market, date)
+        
+        # Smooth inputs (5-day EMA) to avoid stepwise k-jumps at monthlies
+        self._breadth_history.append(breadth_raw)
+        self._fred_signal_history.append(fred_signal_raw)
+        
+        # Keep only last N values for EMA
+        if len(self._breadth_history) > self._input_smoothing_window:
+            self._breadth_history = self._breadth_history[-self._input_smoothing_window:]
+        if len(self._fred_signal_history) > self._input_smoothing_window:
+            self._fred_signal_history = self._fred_signal_history[-self._input_smoothing_window:]
+        
+        # Apply EMA smoothing to inputs
+        if len(self._breadth_history) > 1:
+            # Simple EMA: new = α * latest + (1-α) * previous_ema
+            alpha = 0.2  # 20% weight on new value
+            breadth = alpha * breadth_raw + (1 - alpha) * self._breadth_history[-2] if len(self._breadth_history) > 1 else breadth_raw
+        else:
+            breadth = breadth_raw
+        
+        if len(self._fred_signal_history) > 1:
+            alpha = 0.2
+            fred_signal = alpha * fred_signal_raw + (1 - alpha) * self._fred_signal_history[-2] if len(self._fred_signal_history) > 1 else fred_signal_raw
+        else:
+            fred_signal = fred_signal_raw
         
         # Compute base scaler
-        base_k = self._compute_base_scaler(realized_vol, breadth)
+        base_k = self._compute_base_scaler(realized_vol, breadth, fred_signal)
         
         # Apply smoothing
         smoothed_k = self._smooth_scaler(base_k)
@@ -419,7 +613,7 @@ class MacroRegimeFilter:
         logger.info(
             f"[MacroRegimeFilter] Rebalance at {date}: "
             f"vol={realized_vol:.3f}, breadth={breadth:.2f}, "
-            f"base_k={base_k:.3f}, smoothed_k={smoothed_k:.3f}"
+            f"fred_signal={fred_signal:.3f}, base_k={base_k:.3f}, smoothed_k={smoothed_k:.3f}"
         )
         
         return smoothed_k
@@ -473,6 +667,9 @@ class MacroRegimeFilter:
             'vol_lookback': self.vol_lookback,
             'breadth_lookback': self.breadth_lookback,
             'proxy_symbols': self.proxy_symbols,
+            'fred_series': self.fred_series,
+            'fred_lookback': self.fred_lookback,
+            'fred_weight': self.fred_weight,
             'outputs': ['scaler(market, date)', 'apply(signals, market, date)']
         }
 

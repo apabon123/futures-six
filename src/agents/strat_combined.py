@@ -1,0 +1,202 @@
+"""
+CombinedStrategy: Wrapper that combines multiple strategy sleeves.
+
+Combines signals from multiple strategies (TSMOM, SR3 carry/curve, etc.)
+with configurable weights before passing to overlays.
+"""
+
+import logging
+from typing import Dict, Optional, Union, List
+from datetime import datetime
+import pandas as pd
+
+logger = logging.getLogger(__name__)
+
+
+class CombinedStrategy:
+    """
+    Combines multiple strategy sleeves into a single signal.
+    
+    Each strategy generates signals independently, then signals are
+    combined with configurable weights before being passed to overlays.
+    """
+    
+    def __init__(
+        self,
+        strategies: Dict,
+        weights: Dict[str, float],
+        features: Optional[Dict] = None,
+        feature_service: Optional[object] = None
+    ):
+        """
+        Initialize CombinedStrategy.
+        
+        Args:
+            strategies: Dictionary of strategy instances keyed by name
+            weights: Dictionary of weights for each strategy (must sum to 1.0)
+            features: Optional dictionary of pre-computed features
+            feature_service: Optional FeatureService instance for on-demand feature computation
+        """
+        self.strategies = strategies
+        self.weights = weights
+        self.features = features or {}
+        self.feature_service = feature_service
+        
+        # Validate weights sum to 1.0
+        total_weight = sum(weights.values())
+        if abs(total_weight - 1.0) > 1e-6:
+            logger.warning(
+                f"[CombinedStrategy] Weights sum to {total_weight:.6f}, normalizing to 1.0"
+            )
+            self.weights = {k: v / total_weight for k, v in weights.items()}
+        
+        # Cache for last signals
+        self._last_signals = None
+        self._last_date = None
+    
+    def signals(
+        self,
+        market,
+        date: Union[str, datetime]
+    ) -> pd.Series:
+        """
+        Generate combined signals from all enabled strategies.
+        
+        Args:
+            market: MarketData instance
+            date: Current rebalance date
+            
+        Returns:
+            Combined signals as pd.Series
+        """
+        date_dt = pd.to_datetime(date)
+        
+        # Update features if feature_service is available
+        if self.feature_service:
+            # Get features up to current date (point-in-time)
+            updated_features = self.feature_service.get_features(end_date=date_dt)
+            # Merge with existing features
+            for key, value in updated_features.items():
+                self.features[key] = value
+        
+        # Collect signals from all strategies
+        all_signals = {}
+        
+        for strategy_name, strategy in self.strategies.items():
+            weight = self.weights.get(strategy_name, 0.0)
+            
+            if weight == 0.0:
+                continue  # Skip disabled strategies
+            
+            try:
+                # Generate signals (some strategies may need features)
+                if hasattr(strategy, 'signals'):
+                    # Check if strategy needs features
+                    import inspect
+                    sig = inspect.signature(strategy.signals)
+                    if 'features' in sig.parameters:
+                        # Pass features if available (SR3 uses SR3_CURVE, rates uses RATES_CURVE, tsmom uses LONG_MOMENTUM)
+                        if strategy_name == "sr3_carry_curve":
+                            features_dict = self.features.get("SR3_CURVE")
+                            strategy_sigs = strategy.signals(market, date_dt, features=features_dict)
+                        elif strategy_name == "rates_curve":
+                            features_dict = self.features.get("RATES_CURVE")
+                            strategy_sigs = strategy.signals(features_dict, date_dt)
+                        elif strategy_name == "fx_commod_carry":
+                            features_dict = self.features.get("CARRY_FX_COMMOD")
+                            strategy_sigs = strategy.signals(market, date_dt, features=features_dict)
+                        elif strategy_name == "tsmom":
+                            features_dict = self.features.get("LONG_MOMENTUM")
+                            strategy_sigs = strategy.signals(market, date_dt, features=features_dict)
+                        elif strategy_name == "tsmom_med" or strategy_name == "medium_momentum":
+                            features_dict = self.features.get("MEDIUM_MOMENTUM")
+                            strategy_sigs = strategy.signals(market, date_dt, features=features_dict)
+                        elif strategy_name == "tsmom_med_canonical" or strategy_name == "canonical_medium_momentum":
+                            features_dict = self.features.get("CANONICAL_MEDIUM_MOMENTUM")
+                            strategy_sigs = strategy.signals(market, date_dt, features=features_dict)
+                        elif strategy_name == "tsmom_short" or strategy_name == "short_momentum":
+                            features_dict = self.features.get("SHORT_MOMENTUM")
+                            strategy_sigs = strategy.signals(market, date_dt, features=features_dict)
+                        elif strategy_name == "tsmom_long" or strategy_name == "long_momentum":
+                            features_dict = self.features.get("LONG_MOMENTUM")
+                            strategy_sigs = strategy.signals(market, date_dt, features=features_dict)
+                        elif strategy_name == "tsmom_multihorizon":
+                            # Multi-horizon needs all three momentum feature types + residual trend (4th atomic sleeve)
+                            # + canonical medium-term (for medium_variant: "canonical")
+                            features_dict = {
+                                "LONG_MOMENTUM": self.features.get("LONG_MOMENTUM", pd.DataFrame()),
+                                "MEDIUM_MOMENTUM": self.features.get("MEDIUM_MOMENTUM", pd.DataFrame()),
+                                "CANONICAL_MEDIUM_MOMENTUM": self.features.get("CANONICAL_MEDIUM_MOMENTUM", pd.DataFrame()),
+                                "SHORT_MOMENTUM": self.features.get("SHORT_MOMENTUM", pd.DataFrame()),
+                                "RESIDUAL_TREND": self.features.get("RESIDUAL_TREND", pd.DataFrame())
+                            }
+                            strategy_sigs = strategy.signals(market, date_dt, features=features_dict)
+                        elif strategy_name == "csmom_meta" or strategy_name == "cross_sectional":
+                            # CSMOM doesn't need features, just market and date
+                            strategy_sigs = strategy.signals(market, date_dt)
+                        elif strategy_name == "residual_trend":
+                            # Residual trend uses RESIDUAL_TREND features
+                            features_dict = self.features.get("RESIDUAL_TREND")
+                            strategy_sigs = strategy.signals(market, date_dt, features=features_dict)
+                        elif strategy_name == "persistence":
+                            # Persistence uses PERSISTENCE features
+                            features_dict = self.features.get("PERSISTENCE")
+                            strategy_sigs = strategy.signals(market, date_dt, features=features_dict)
+                        else:
+                            # Generic: try to pass features
+                            features_dict = self.features.get("SR3_CURVE")
+                            strategy_sigs = strategy.signals(market, date_dt, features=features_dict)
+                    elif 'rates_features' in sig.parameters:
+                        # Rates curve strategy signature: signals(rates_features, date)
+                        features_dict = self.features.get("RATES_CURVE")
+                        strategy_sigs = strategy.signals(features_dict, date_dt)
+                    else:
+                        strategy_sigs = strategy.signals(market, date_dt)
+                    
+                    # Apply weight and add to combined signals
+                    for symbol, signal in strategy_sigs.items():
+                        if symbol not in all_signals:
+                            all_signals[symbol] = 0.0
+                        all_signals[symbol] += weight * signal
+                        
+            except Exception as e:
+                logger.warning(
+                    f"[CombinedStrategy] Error getting signals from {strategy_name}: {e}"
+                )
+                continue
+        
+        # Convert to Series
+        if not all_signals:
+            # Return zero signals for all symbols in universe
+            return pd.Series(0.0, index=market.universe)
+        
+        combined = pd.Series(all_signals)
+        
+        # Ensure all universe symbols are present (fill missing with 0)
+        for symbol in market.universe:
+            if symbol not in combined.index:
+                combined[symbol] = 0.0
+        
+        # Sort by universe order
+        combined = combined.reindex(market.universe, fill_value=0.0)
+        
+        # Cache for potential reuse
+        self._last_signals = combined
+        self._last_date = date_dt
+        
+        logger.debug(
+            f"[CombinedStrategy] Combined signals at {date_dt}: "
+            f"mean={combined.mean():.3f}, std={combined.std():.3f}, "
+            f"sum={combined.sum():.3f}"
+        )
+        
+        return combined
+    
+    def describe(self) -> dict:
+        """Return strategy description."""
+        return {
+            "type": "CombinedStrategy",
+            "strategies": list(self.strategies.keys()),
+            "weights": self.weights
+        }
+

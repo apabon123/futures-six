@@ -5,25 +5,26 @@ db:
   path: "C:/Users/alexp/OneDrive/Gdrive/Trading/GitHub Projects/databento-es-options/data/silver"
   engine: "auto"  # auto-detect: duckdb or sqlite
 
-# Phase-1 Universe: Six continuous futures
+# Universe: Thirteen continuous futures
 # Using calendar-based roll (2 days before expiry) or volume-weighted roll
 universe:
   # Equity Index
-  - "ES_FRONT_CALENDAR_2D"
-  - "NQ_FRONT_CALENDAR_2D"
-  - "RTY_FRONT_CALENDAR_2D"
+  ES:  { roll: calendar }
+  NQ:  { roll: calendar }
+  RTY: { roll: calendar }
   # Rates
-  - "ZN_FRONT_VOLUME"
-  - "ZF_FRONT_VOLUME"
-  - "ZT_FRONT_VOLUME"
-  - "UB_FRONT_VOLUME"
+  ZT:  { roll: volume }
+  ZF:  { roll: volume }
+  ZN:  { roll: volume }
+  UB:  { roll: volume }
+  SR3: { roll: calendar, roll_offset_bdays: -2 }  # SOFR (IMM, roll T-2)
   # Commodities
-  - "CL_FRONT_VOLUME"
-  - "GC_FRONT_VOLUME"
+  CL:  { roll: volume }
+  GC:  { roll: volume }
   # FX
-  - "6E_FRONT_CALENDAR_2D"
-  - "6B_FRONT_CALENDAR_2D"
-  - "6J_FRONT_CALENDAR_2D"
+  6E:  { roll: calendar }
+  6B:  { roll: calendar }
+  6J:  { roll: calendar }
 
 # Default parameters for data methods
 defaults:

@@ -1,0 +1,26 @@
+# DV01 (Dollar Value of 01) for Treasury Futures
+# Per $100 notional (as used in yield calculation)
+# These are approximate values; adjust based on current market conditions
+
+# 2-Year Treasury Note (ZT)
+ZT:
+  dv01: 0.0195  # Approximate DV01 per $100 notional
+
+# 5-Year Treasury Note (ZF)
+ZF:
+  dv01: 0.0445  # Approximate DV01 per $100 notional
+
+# 10-Year Treasury Note (ZN)
+ZN:
+  dv01: 0.0815  # Approximate DV01 per $100 notional
+
+# 30-Year Treasury Bond (UB)
+UB:
+  dv01: 0.1550  # Approximate DV01 per $100 notional
+
+# Notes:
+# - DV01 values are approximate and can vary with yield levels
+# - For more precision, could use duration * price / 100
+# - These values are reasonable for typical market conditions
+# - For backtests, constant DV01 is acceptable since we z-score in time
+

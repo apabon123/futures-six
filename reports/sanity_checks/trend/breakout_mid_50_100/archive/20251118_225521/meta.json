@@ -1,0 +1,32 @@
+{
+  "start_date": "2020-01-01",
+  "end_date": "2025-11-19",
+  "lookback_50": 50,
+  "lookback_100": 100,
+  "upper_threshold": 0.55,
+  "lower_threshold": 0.45,
+  "universe": [
+    "6B_FRONT_CALENDAR",
+    "6E_FRONT_CALENDAR",
+    "6J_FRONT_CALENDAR",
+    "CL_FRONT_VOLUME",
+    "ES_FRONT_CALENDAR_2D",
+    "GC_FRONT_VOLUME",
+    "NQ_FRONT_CALENDAR_2D",
+    "RTY_FRONT_CALENDAR_2D",
+    "SR3_FRONT_CALENDAR",
+    "UB_FRONT_VOLUME",
+    "ZF_FRONT_VOLUME",
+    "ZN_FRONT_VOLUME",
+    "ZT_FRONT_VOLUME"
+  ],
+  "metrics": {
+    "CAGR": 0.010054436295842795,
+    "Vol": 0.04481687540290131,
+    "Sharpe": 0.24563192749695983,
+    "MaxDD": -0.10700292530876265,
+    "HitRate": 0.2010928961748634,
+    "n_days": 1830,
+    "years": 7.261904761904762
+  }
+}

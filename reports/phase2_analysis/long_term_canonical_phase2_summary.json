@@ -1,0 +1,30 @@
+{
+  "phase": "Phase-2",
+  "sleeve": "Long-Term Canonical Trend (TSMOM-252)",
+  "date": "2025-11-19T10:35:03.005851",
+  "period": "2021-01-01 to 2025-10-31",
+  "n_days": 1509,
+  "canonical_run_id": "core_v3_trend_long_canonical_v1",
+  "baseline_run_id": "core_v3_no_macro_longterm_baseline",
+  "metrics": {
+    "sharpe_canonical": 0.12093658491546731,
+    "sharpe_baseline": 0.10750684016475967,
+    "sharpe_improvement": 0.013429744750707642,
+    "maxdd_canonical": -0.3106836539604889,
+    "maxdd_baseline": -0.3151813430217967,
+    "correlation": 0.9961663386426632,
+    "correlation_drift": -0.0052295542205632595,
+    "vol_stability_ratio": 0.9839266360401159,
+    "years_outperformed": 3,
+    "total_years": 5
+  },
+  "checks": {
+    "sharpe_ge_baseline": true,
+    "maxdd_le_baseline": true,
+    "improvements_persist": true,
+    "outperformance_across_years": true,
+    "no_hidden_degradation": true,
+    "all_passed": true
+  },
+  "recommendation": "PROMOTE"
+}

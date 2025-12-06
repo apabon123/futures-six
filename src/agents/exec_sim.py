@@ -18,6 +18,8 @@ import logging
 from typing import Dict, Optional, Union, Tuple
 from datetime import datetime
 from pathlib import Path
+import os
+import json
 
 import yaml
 import pandas as pd
@@ -42,7 +44,9 @@ class ExecSim:
         commission_per_contract: float = 0.0,
         cash_rate: float = 0.0,
         position_notional_scale: float = 1.0,
-        config_path: str = "configs/strategies.yaml"
+        config_path: str = "configs/strategies.yaml",
+        filter_roll_jumps: bool = True,
+        roll_jump_threshold_bp: float = 100.0
     ):
         """
         Initialize ExecSim orchestrator.
@@ -54,6 +58,8 @@ class ExecSim:
             cash_rate: Risk-free rate for cash (default: 0.0)
             position_notional_scale: Scale factor for positions (default: 1.0 = unit portfolio)
             config_path: Path to configuration YAML file
+            filter_roll_jumps: Whether to filter roll jumps from returns used for P&L (default: True)
+            roll_jump_threshold_bp: Threshold in basis points for detecting roll jumps (default: 100.0)
         """
         # Use explicit params (don't load from config for ExecSim tests)
         self.rebalance = rebalance
@@ -61,6 +67,8 @@ class ExecSim:
         self.commission_per_contract = commission_per_contract
         self.cash_rate = cash_rate
         self.position_notional_scale = position_notional_scale
+        self.filter_roll_jumps = filter_roll_jumps
+        self.roll_jump_threshold_bp = roll_jump_threshold_bp
         
         # Validate parameters
         if self.slippage_bps < 0:
@@ -72,7 +80,8 @@ class ExecSim:
         logger.info(
             f"[ExecSim] Initialized: rebalance={self.rebalance}, "
             f"slippage_bps={self.slippage_bps}, commission={self.commission_per_contract}, "
-            f"cash_rate={self.cash_rate}, scale={self.position_notional_scale}"
+            f"cash_rate={self.cash_rate}, scale={self.position_notional_scale}, "
+            f"filter_roll_jumps={self.filter_roll_jumps}, roll_jump_threshold_bp={self.roll_jump_threshold_bp}"
         )
     
     def _load_config(self, config_path: str) -> Optional[dict]:
@@ -129,6 +138,18 @@ class ExecSim:
         # Generate rebalance schedule
         if self.rebalance == "W-FRI":
             schedule = pd.date_range(start=start, end=end, freq='W-FRI')
+            # Handle holidays: if Friday is not a trading day, use previous business day
+            actual_schedule = []
+            date_range_list = list(date_range)  # Convert to list for easier indexing
+            for friday in schedule:
+                if friday in date_range_list:
+                    actual_schedule.append(friday)
+                else:
+                    # Find previous business day
+                    prev_days = [d for d in date_range_list if d <= friday]
+                    if len(prev_days) > 0:
+                        actual_schedule.append(prev_days[-1])
+            schedule = pd.DatetimeIndex(actual_schedule)
         elif self.rebalance == "M":
             # Month-end - use 'M' for backward compatibility, but snap to nearest business day
             schedule = pd.date_range(start=start, end=end, freq='M')
@@ -237,7 +258,9 @@ class ExecSim:
         market,
         start: Union[str, datetime],
         end: Union[str, datetime],
-        components: Dict
+        components: Dict,
+        run_id: Optional[str] = None,
+        out_dir: str = "reports/runs"
     ) -> Dict:
         """
         Run backtest over date range.
@@ -246,13 +269,15 @@ class ExecSim:
             market: MarketData instance
             start: Start date
             end: End date
-        components: Dict with required keys:
-                - 'strategy': Strategy agent (e.g., TSMOM)
-                - 'overlay': VolManagedOverlay agent
-                - 'risk_vol': RiskVol agent
-                - 'allocator': Allocator agent
-            Optional keys:
-                - 'macro_overlay': Regime-based overlay applied before vol overlay
+            components: Dict with required keys:
+                    - 'strategy': Strategy agent (e.g., TSMOM)
+                    - 'overlay': VolManagedOverlay agent
+                    - 'risk_vol': RiskVol agent
+                    - 'allocator': Allocator agent
+                Optional keys:
+                    - 'macro_overlay': Regime-based overlay applied before vol overlay
+            run_id: Optional run identifier for saving artifacts. If None, generates timestamp-based ID.
+            out_dir: Base directory for saving run artifacts (default: "reports/runs")
                 
         Returns:
             Dict with keys:
@@ -260,6 +285,7 @@ class ExecSim:
                 - 'weights_panel': pd.DataFrame [date x symbol]
                 - 'signals_panel': pd.DataFrame [date x symbol]
                 - 'report': dict of performance metrics
+                - 'run_id': run_id used (or generated)
         """
         logger.info(f"[ExecSim] Starting backtest from {start} to {end}")
         
@@ -292,17 +318,40 @@ class ExecSim:
         
         prev_weights = None
         
-        # Get returns for the full period (we'll slice by date as needed)
-        returns_df = market.get_returns(method="log", start=start, end=end)
+        # Get continuous returns for the full period (we'll slice by date as needed)
+        # Use continuous returns for P&L calculation (no roll jumps in back-adjusted series)
+        returns_cont = market.returns_cont
         
-        if returns_df.empty:
-            logger.error("[ExecSim] No returns data available")
+        if returns_cont.empty:
+            logger.error("[ExecSim] No continuous returns data available")
             return {
                 'equity_curve': pd.Series(dtype=float),
                 'weights_panel': pd.DataFrame(),
                 'signals_panel': pd.DataFrame(),
                 'report': {}
             }
+        
+        # Filter by date range
+        returns_df = returns_cont.copy()
+        if start:
+            start_dt = pd.to_datetime(start)
+            returns_df = returns_df[returns_df.index >= start_dt]
+        if end:
+            end_dt = pd.to_datetime(end)
+            returns_df = returns_df[returns_df.index <= end_dt]
+        
+        if returns_df.empty:
+            logger.error("[ExecSim] No returns data available after filtering")
+            return {
+                'equity_curve': pd.Series(dtype=float),
+                'weights_panel': pd.DataFrame(),
+                'signals_panel': pd.DataFrame(),
+                'report': {}
+            }
+        
+        # Note: We no longer filter roll jumps because continuous returns are back-adjusted
+        # and don't have roll jumps. The backward-panama adjustment removes price gaps
+        # at roll points, so P&L is computed correctly from continuous returns.
         
         # Loop over rebalance dates
         for i, date in enumerate(rebalance_dates):
@@ -324,8 +373,21 @@ class ExecSim:
                 if macro_overlay is not None:
                     scaled_signals = scaled_signals * macro_k
                 
-                # Step 3: Get covariance matrix for allocator
-                cov = risk_vol.covariance(market, date)
+                # Step 3: Get covariance matrix and validity mask for allocator
+                # Pass signals to ensure risk model uses same universe
+                cov = risk_vol.covariance(market, date, signals=scaled_signals)
+                mask = risk_vol.mask(market, date, signals=scaled_signals)
+                
+                # Step 3b: Zero out signals for assets failing validity mask
+                # This prevents allocator from wasting budget on NaNs that got imputed
+                valid_symbols = mask.intersection(scaled_signals.index)
+                if len(valid_symbols) < len(scaled_signals):
+                    invalid_symbols = scaled_signals.index.difference(valid_symbols)
+                    logger.debug(
+                        f"[ExecSim] Zeroing {len(invalid_symbols)} invalid signals: {list(invalid_symbols)[:5]}"
+                    )
+                    scaled_signals = scaled_signals.copy()
+                    scaled_signals.loc[invalid_symbols] = 0.0
                 
                 # Step 4: Allocate to final weights
                 weights = allocator.solve(scaled_signals, cov, weights_prev=prev_weights)
@@ -367,8 +429,20 @@ class ExecSim:
                             else:
                                 next_idx = date_idx
                         
-                        # Sum returns over holding period (log returns are additive)
-                        holding_returns = returns_df.iloc[date_idx + 1:next_idx + 1].sum()
+                        # Compute period returns (weights are fixed over [t, next_t))
+                        period_returns = returns_df.iloc[date_idx + 1:next_idx + 1]
+                        
+                        # For log returns: sum is correct (additive)
+                        # For simple returns: need to compound with prod
+                        # Since we use log returns by default, sum is correct
+                        # But handle both cases for robustness
+                        if len(period_returns) > 0:
+                            # Check if returns are log or simple by examining if they can be negative
+                            # Log returns can be negative, simple returns typically > -1
+                            # For safety, assume log returns (default) and use sum
+                            holding_returns = period_returns.sum()
+                        else:
+                            holding_returns = pd.Series(0.0, index=returns_df.columns)
                         
                         # Compute portfolio return
                         port_ret = self._compute_portfolio_return(
@@ -384,11 +458,22 @@ class ExecSim:
                         returns_history.append(port_ret_net)
                         dates_history.append(date)
                         
-                        logger.debug(
-                            f"[ExecSim] {date}: port_ret={port_ret:.4f}, "
-                            f"slippage={slippage_cost:.4f}, net_ret={port_ret_net:.4f}, "
-                            f"turnover={turnover_history[-1]:.3f}"
-                        )
+                        # Diagnostics: what-moved report
+                        if prev_weights is not None:
+                            weight_changes = (weights - prev_weights).abs().sort_values(ascending=False)
+                            top_movers = weight_changes.head(5)
+                            logger.info(
+                                f"[ExecSim] {date}: port_ret={port_ret:.4f}, "
+                                f"slippage={slippage_cost:.4f}, net_ret={port_ret_net:.4f}, "
+                                f"turnover={turnover_history[-1]:.3f}, "
+                                f"k={macro_k:.3f}, top_movers={dict(top_movers.head(3))}"
+                            )
+                        else:
+                            logger.info(
+                                f"[ExecSim] {date}: port_ret={port_ret:.4f}, "
+                                f"slippage={slippage_cost:.4f}, net_ret={port_ret_net:.4f}, "
+                                f"turnover={turnover_history[-1]:.3f}, k={macro_k:.3f}"
+                            )
                 
                 # Update previous weights
                 prev_weights = weights.copy()
@@ -400,7 +485,7 @@ class ExecSim:
         # Build results
         logger.info(f"[ExecSim] Completed {len(dates_history)} holding periods")
         
-        # Equity curve: cumulative sum of log returns
+        # Equity curve: cumulative sum of log returns (rebalance-frequency, for backward compatibility)
         if len(returns_history) > 0:
             equity_curve = pd.Series(returns_history, index=dates_history).cumsum()
             equity_curve = np.exp(equity_curve)  # Convert log to arithmetic
@@ -425,9 +510,40 @@ class ExecSim:
         else:
             macro_scaler_series = pd.Series(dtype=float)
         
-        # Compute metrics
+        # Compute daily equity curve for accurate metrics
+        # This ensures metrics use the same equity curve as the CSV output
+        equity_curve_for_metrics = equity_curve  # Default to rebalance-frequency
+        if not weights_panel.empty and not returns_df.empty:
+            # Forward-fill weights to daily dates
+            weights_daily = weights_panel.reindex(returns_df.index).ffill().fillna(0.0)
+            
+            # Align columns
+            common_symbols = weights_daily.columns.intersection(returns_df.columns)
+            if len(common_symbols) > 0:
+                weights_aligned = weights_daily[common_symbols]
+                returns_aligned = returns_df[common_symbols]
+                
+                # Compute daily portfolio returns (log returns)
+                portfolio_returns_log = (weights_aligned * returns_aligned).sum(axis=1)
+                portfolio_returns_daily = np.exp(portfolio_returns_log) - 1.0
+                
+                # Compute daily equity curve
+                equity_daily = (1 + portfolio_returns_daily).cumprod()
+                equity_daily.iloc[0] = 1.0
+                
+                # Filter to start from first rebalance date (actual trading start)
+                first_rebalance_date = weights_panel.index[0]
+                equity_daily_filtered = equity_daily[equity_daily.index >= first_rebalance_date].copy()
+                if len(equity_daily_filtered) > 0:
+                    # Recompute from first rebalance date to ensure clean start
+                    portfolio_returns_from_start = portfolio_returns_daily[portfolio_returns_daily.index >= first_rebalance_date]
+                    equity_daily_filtered = (1 + portfolio_returns_from_start).cumprod()
+                    equity_daily_filtered.iloc[0] = 1.0
+                    equity_curve_for_metrics = equity_daily_filtered
+        
+        # Compute metrics using daily equity curve (filtered from first rebalance date)
         report = self._compute_metrics(
-            equity_curve,
+            equity_curve_for_metrics,
             returns_history,
             weights_panel,
             turnover_history
@@ -440,12 +556,31 @@ class ExecSim:
             f"MaxDD={report.get('max_drawdown', 0):.2%}"
         )
         
+        # Save artifacts (always save, generate run_id if not provided)
+        if run_id is None:
+            # Generate default run_id from timestamp
+            run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+            logger.info(f"[ExecSim] Generated run_id: {run_id}")
+        
+        self._save_run_artifacts(
+            run_id=run_id,
+            out_dir=out_dir,
+            equity_curve=equity_curve_for_metrics,  # Use daily equity curve for CSV
+            weights_panel=weights_panel,
+            returns_df=returns_df,
+            start=start,
+            end=end,
+            components=components,
+            market=market
+        )
+        
         return {
-            'equity_curve': equity_curve,
+            'equity_curve': equity_curve_for_metrics,  # Return daily equity curve for consistency
             'weights_panel': weights_panel,
             'signals_panel': signals_panel,
             'report': report,
-            'macro_scaler': macro_scaler_series
+            'macro_scaler': macro_scaler_series,
+            'run_id': run_id
         }
     
     def _compute_metrics(
@@ -481,31 +616,34 @@ class ExecSim:
                 'n_periods': 0
             }
         
-        # Convert returns list to series for calculations
-        returns = pd.Series(returns_list)
+        # CRITICAL: Compute returns from equity_curve (daily), not returns_list (rebalance-frequency)
+        # This ensures Sharpe, vol, and drawdown use the same series as CAGR
+        returns_daily = equity_curve.pct_change().dropna()
         
-        # CAGR
-        total_ret = equity_curve.iloc[-1] - 1.0  # Minus initial value of 1.0
-        n_years = len(equity_curve) / 52  # Approximate (weekly rebalancing)
+        # CAGR - use actual time period, not number of periods
+        total_ret = equity_curve.iloc[-1] / equity_curve.iloc[0] - 1.0
+        # Calculate actual years from first to last date
+        n_days = (equity_curve.index[-1] - equity_curve.index[0]).days
+        n_years = n_days / 365.25
         if n_years > 0:
             cagr = (1 + total_ret) ** (1 / n_years) - 1
         else:
             cagr = 0.0
         
-        # Volatility (annualized)
-        vol = returns.std() * np.sqrt(52)  # Approximate weekly
+        # Volatility (annualized) - use daily returns
+        vol = returns_daily.std() * np.sqrt(252)  # Daily returns -> annualized
         
-        # Sharpe ratio
-        sharpe = (returns.mean() * 52) / vol if vol > 0 else 0.0
+        # Sharpe ratio (rf = 0 for now)
+        mean_ret = returns_daily.mean()
+        sharpe = (mean_ret * 252) / vol if vol > 0 else 0.0
         
-        # Maximum drawdown
-        cumulative = (1 + returns).cumprod()
-        running_max = cumulative.expanding().max()
-        drawdown = (cumulative - running_max) / running_max
+        # Maximum drawdown - use equity curve directly
+        running_max = equity_curve.expanding().max()
+        drawdown = (equity_curve - running_max) / running_max
         max_drawdown = drawdown.min()
         
-        # Hit rate
-        hit_rate = (returns > 0).mean()
+        # Hit rate - use daily returns
+        hit_rate = (returns_daily > 0).mean()
         
         # Average turnover
         avg_turnover = np.mean(turnover_history) if len(turnover_history) > 0 else 0.0
@@ -563,6 +701,158 @@ class ExecSim:
         with open(outpath / 'report.json', 'w') as f:
             json.dump(results['report'], f, indent=2)
         logger.info(f"[ExecSim] Saved report to {outpath / 'report.json'}")
+    
+    def _save_run_artifacts(
+        self,
+        run_id: str,
+        out_dir: str,
+        equity_curve: pd.Series,
+        weights_panel: pd.DataFrame,
+        returns_df: pd.DataFrame,
+        start: Union[str, datetime],
+        end: Union[str, datetime],
+        components: Dict,
+        market
+    ):
+        """
+        Save run artifacts to disk for diagnostics.
+        
+        Args:
+            run_id: Run identifier
+            out_dir: Base directory for saving
+            equity_curve: Equity curve Series
+            weights_panel: Weights DataFrame
+            returns_df: Daily asset returns DataFrame
+            start: Start date
+            end: End date
+            components: Components dict (for metadata)
+            market: MarketData instance (for universe)
+        """
+        run_dir = Path(out_dir) / run_id
+        os.makedirs(run_dir, exist_ok=True)
+        
+        logger.info(f"[ExecSim] Saving artifacts to {run_dir}")
+        
+        # Compute daily portfolio returns and equity curve
+        portfolio_returns_daily = None
+        equity_daily = None
+        
+        if not weights_panel.empty and not returns_df.empty:
+            # Forward-fill weights to daily dates
+            weights_daily = weights_panel.reindex(returns_df.index).ffill().fillna(0.0)
+            
+            # Align columns (ensure weights and returns have same symbols)
+            common_symbols = weights_daily.columns.intersection(returns_df.columns)
+            if len(common_symbols) > 0:
+                weights_aligned = weights_daily[common_symbols]
+                returns_aligned = returns_df[common_symbols]
+                
+                # Compute daily portfolio returns: sum(weight * return) for each day
+                # Note: returns_df contains log returns, so portfolio_returns is log returns
+                # Convert to simple returns for diagnostics: r_simple = exp(r_log) - 1
+                portfolio_returns_log = (weights_aligned * returns_aligned).sum(axis=1)
+                portfolio_returns_daily = np.exp(portfolio_returns_log) - 1.0
+                
+                # Compute equity curve: cumulative product (simple returns)
+                # Start at 1.0
+                equity_daily = (1 + portfolio_returns_daily).cumprod()
+                equity_daily.iloc[0] = 1.0  # Ensure starting value is 1.0
+        
+        # 1. Portfolio returns (daily)
+        if portfolio_returns_daily is not None:
+            portfolio_returns_daily.name = 'ret'
+            portfolio_returns_daily.to_csv(
+                run_dir / 'portfolio_returns.csv',
+                header=True
+            )
+        else:
+            # Create empty file if no data
+            pd.DataFrame(columns=['date', 'ret']).to_csv(
+                run_dir / 'portfolio_returns.csv',
+                index=False
+            )
+        
+        # 2. Equity curve (daily)
+        # CRITICAL: Only include dates from first rebalance date onwards
+        # This ensures consistency between CSV and metrics calculation
+        # Before first rebalance, weights are 0 so equity stays at 1.0
+        if equity_daily is not None:
+            # Get first rebalance date (actual start of trading)
+            if not weights_panel.empty:
+                first_rebalance_date = weights_panel.index[0]
+                # Filter equity_daily to start from first rebalance date
+                equity_daily_filtered = equity_daily[equity_daily.index >= first_rebalance_date].copy()
+                # Normalize to start at 1.0 at first rebalance date (should already be 1.0, but ensure it)
+                if len(equity_daily_filtered) > 0:
+                    equity_daily_filtered.iloc[0] = 1.0
+                    # Recompute from first rebalance date to ensure consistency
+                    portfolio_returns_from_start = portfolio_returns_daily[portfolio_returns_daily.index >= first_rebalance_date]
+                    if len(portfolio_returns_from_start) > 0:
+                        equity_daily_filtered = (1 + portfolio_returns_from_start).cumprod()
+                        equity_daily_filtered.iloc[0] = 1.0
+            else:
+                equity_daily_filtered = equity_daily
+            
+            equity_daily_filtered.name = 'equity'
+            equity_daily_filtered.to_csv(
+                run_dir / 'equity_curve.csv',
+                header=True
+            )
+        elif not equity_curve.empty:
+            # Fallback: use rebalance-frequency equity curve
+            equity_curve.name = 'equity'
+            equity_curve.to_csv(
+                run_dir / 'equity_curve.csv',
+                header=True
+            )
+        else:
+            pd.DataFrame(columns=['date', 'equity']).to_csv(
+                run_dir / 'equity_curve.csv',
+                index=False
+            )
+        
+        # 3. Asset returns (daily, all symbols in universe)
+        # Convert from log returns to simple returns for consistency
+        if not returns_df.empty:
+            # Convert log returns to simple returns: r_simple = exp(r_log) - 1
+            asset_returns_simple = np.exp(returns_df) - 1.0
+            asset_returns_simple.to_csv(run_dir / 'asset_returns.csv')
+        else:
+            pd.DataFrame().to_csv(run_dir / 'asset_returns.csv')
+        
+        # 4. Weights (rebalance dates only)
+        if not weights_panel.empty:
+            weights_panel.to_csv(run_dir / 'weights.csv')
+        else:
+            pd.DataFrame().to_csv(run_dir / 'weights.csv')
+        
+        # 5. Meta JSON
+        strategy_name = "unknown"
+        if 'strategy' in components:
+            strategy = components['strategy']
+            if hasattr(strategy, '__class__'):
+                strategy_name = strategy.__class__.__name__
+        
+        universe = []
+        if hasattr(market, 'universe'):
+            universe = list(market.universe) if market.universe else []
+        
+        meta = {
+            'run_id': run_id,
+            'start_date': str(start),
+            'end_date': str(end),
+            'strategy_config_name': strategy_name,
+            'universe': universe,
+            'rebalance': self.rebalance,
+            'slippage_bps': self.slippage_bps,
+            'n_rebalances': len(weights_panel) if not weights_panel.empty else 0,
+            'n_trading_days': len(returns_df) if not returns_df.empty else 0
+        }
+        
+        with open(run_dir / 'meta.json', 'w') as f:
+            json.dump(meta, f, indent=2)
+        
+        logger.info(f"[ExecSim] Saved artifacts to {run_dir}")
     
     def describe(self) -> dict:
         """

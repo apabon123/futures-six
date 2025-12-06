@@ -97,6 +97,14 @@ ZT:
   currency: USD
   fx_base: USD
 
+SR3:
+  root: SR3
+  multiplier: 2500
+  point_value: 25.00
+  tick_size: 0.0025
+  currency: USD
+  fx_base: USD
+
 # Aliases for database symbol mapping
 aliases:
   ES_FRONT_CALENDAR_2D: ES
@@ -111,4 +119,5 @@ aliases:
   ZT_FRONT_VOLUME: ZT
   6B_FRONT_CALENDAR_2D: 6B
   6J_FRONT_CALENDAR_2D: 6J
+  SR3_FRONT_CALENDAR_2D: SR3
 

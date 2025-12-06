@@ -1,0 +1,19 @@
+# Phase-2: Canonical Short-Term (21d) Integrated into Trend Meta-Sleeve
+# Registered: 2025-11-19 20:50:21
+
+variant_run_id: core_v3_shortcanon_v1
+baseline_run_id: core_v3_no_macro_correct_baseline
+start_date: 2018-01-01
+end_date: 2025-10-31
+
+# Results Summary:
+# Variant (Canonical Short-Term, 1/3, 1/3, 1/3):
+#   CAGR: 6.63%, Sharpe: 0.5735, MaxDD: -17.24%
+# Baseline (Legacy Short-Term, 0.5, 0.3, 0.2):
+#   CAGR: 6.83%, Sharpe: 0.5876, MaxDD: -16.72%
+# Delta:
+#   CAGR: -0.20%, Sharpe: -0.0141, MaxDD: -0.52%
+# 
+# Verdict: FAIL - Canonical short-term slightly underperforms legacy
+#          when integrated into full Trend Meta-Sleeve.
+#          Legacy weights (0.5, 0.3, 0.2) remain superior for production.

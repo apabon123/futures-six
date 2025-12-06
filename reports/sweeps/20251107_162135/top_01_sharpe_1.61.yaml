@@ -1,0 +1,42 @@
+tsmom:
+  lookbacks:
+  - 252
+  skip_recent: 21
+  standardize: vol
+  signal_cap: 3.0
+  rebalance: W-FRI
+vol_overlay:
+  target_vol: 0.15
+  lookback_vol: 63
+  leverage_mode: global
+  cap_leverage: 7.0
+  position_bounds:
+  - -3.0
+  - 3.0
+risk_vol:
+  cov_lookback: 252
+  vol_lookback: 63
+  shrinkage: lw
+  nan_policy: mask-asset
+allocator:
+  method: signal-beta
+  gross_cap: 7.0
+  net_cap: 2.0
+  w_bounds_per_asset:
+  - -1.5
+  - 1.5
+  turnover_cap: 0.5
+  lambda_turnover: 0.001
+exec:
+  rebalance: W-FRI
+  slippage_bps: 0.5
+  commission_per_contract: 0.0
+  position_notional_scale: 1.0
+_metadata:
+  rank: 1
+  sharpe: 1.6098196813701728
+  cagr: 0.32824197946803757
+  vol: 0.17632797709904657
+  max_drawdown: -0.0754553000872806
+  calmar: 4.350151402066571
+  seed: 0
