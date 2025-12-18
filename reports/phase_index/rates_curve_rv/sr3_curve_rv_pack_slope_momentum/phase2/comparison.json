@@ -1,0 +1,96 @@
+{
+  "baseline": {
+    "profile": "core_v8_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_no_macro",
+    "run_id": "core_v8_phase2_20251217_145345",
+    "stats": {
+      "cagr": 0.06808060639454627,
+      "vol": 0.12701107062125164,
+      "sharpe": 0.5820206720479744,
+      "max_drawdown": -0.17130795986411257,
+      "hit_rate": 0.5054884742041712,
+      "n_days": 1822
+    },
+    "crisis_periods": {
+      "COVID-19": {
+        "cagr": 0.08155235925650772,
+        "vol": 0.10728029056449206,
+        "sharpe": 0.7840349757984533,
+        "max_drawdown": -0.044460970598756866,
+        "hit_rate": 0.2987012987012987,
+        "n_days": 77
+      },
+      "2022 Rate Hikes": {
+        "cagr": -0.045780533577909344,
+        "vol": 0.15652477352310223,
+        "sharpe": -0.22540599212322718,
+        "max_drawdown": -0.15999895149208404,
+        "hit_rate": 0.4694533762057878,
+        "n_days": 311
+      },
+      "2023 Banking Crisis": {
+        "cagr": -0.11486265751460834,
+        "vol": 0.20150101152401265,
+        "sharpe": -0.5214535531396788,
+        "max_drawdown": -0.11969043036786424,
+        "hit_rate": 0.5189873417721519,
+        "n_days": 79
+      }
+    }
+  },
+  "variant": {
+    "profile": "core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_packslope_no_macro",
+    "run_id": "core_v9_packslope_phase2_20251217_145414",
+    "stats": {
+      "cagr": 0.06744951925212805,
+      "vol": 0.12347752018348122,
+      "sharpe": 0.5903147730152769,
+      "max_drawdown": -0.16235404628369463,
+      "hit_rate": 0.5071350164654226,
+      "n_days": 1822
+    },
+    "crisis_periods": {
+      "COVID-19": {
+        "cagr": 0.08053557050621918,
+        "vol": 0.10413775748716347,
+        "sharpe": 0.7954923736445154,
+        "max_drawdown": -0.04314185121617442,
+        "hit_rate": 0.2987012987012987,
+        "n_days": 77
+      },
+      "2022 Rate Hikes": {
+        "cagr": -0.038580950154920024,
+        "vol": 0.15136015307271045,
+        "sharpe": -0.1885670622065816,
+        "max_drawdown": -0.1546596967996454,
+        "hit_rate": 0.4630225080385852,
+        "n_days": 311
+      },
+      "2023 Banking Crisis": {
+        "cagr": -0.11146259296431826,
+        "vol": 0.19761686019930993,
+        "sharpe": -0.5149855556734506,
+        "max_drawdown": -0.11718472701740179,
+        "hit_rate": 0.5189873417721519,
+        "n_days": 79
+      }
+    }
+  },
+  "comparison": {
+    "correlation": 0.9996267393739123,
+    "sharpe_diff": 0.008294100967302542,
+    "cagr_diff": -0.0006310871424182185,
+    "maxdd_diff": 0.008953913580417944,
+    "pass_criteria": {
+      "sharpe_pass": true,
+      "maxdd_pass": true,
+      "overall_pass": true
+    }
+  },
+  "date_range": {
+    "start": "2020-01-01",
+    "end": "2025-10-31",
+    "effective_start": "2020-01-02",
+    "effective_end": "2025-10-31",
+    "n_days": 1822
+  }
+}

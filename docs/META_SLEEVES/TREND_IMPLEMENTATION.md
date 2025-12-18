@@ -5,9 +5,9 @@
 This document provides a detailed implementation reference for the **Trend Meta-Sleeve**, the current production baseline for the futures-six strategy. The Trend Meta-Sleeve combines multiple atomic sleeves (long-term, medium-term, short-term momentum) into a unified meta-signal.
 
 **Relationship to Other Documentation:**
-- **`STRATEGY.md`**: High-level architecture and execution flow
+- **`SOTs/STRATEGY.md`**: High-level architecture and execution flow
 - **`TREND_RESEARCH.md`**: Research notebook for experimental atomic sleeve ideas
-- **`DIAGNOSTICS.md`**: Performance diagnostics and Phase-0 sanity checks
+- **`SOTs/DIAGNOSTICS.md`**: Performance diagnostics and Phase-0 sanity checks
 
 ## Production Implementation
 

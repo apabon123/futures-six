@@ -1,0 +1,9 @@
+# Phase-0: VRP-Convergence Signal Test (Toy Rule: Long/Short VX1 when |VIX - VX1| > 1.0)
+# Registered: 2025-12-10 17:57:25
+threshold: 1.0
+start_date: 2020-01-01
+end_date: 2025-10-31
+sharpe: 0.0556
+cagr: -0.1525
+max_dd: -0.8659
+path: data\diagnostics\vrp_convergence_phase0\phase0_signal_test

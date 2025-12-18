@@ -1,0 +1,9 @@
+# Phase-0: VRP-Core Signal Test (Toy Rule: Short VX1 when VRP spread > 1.5)
+# Registered: 2025-12-09 21:47:16
+threshold: 1.5
+start_date: 2020-01-01
+end_date: 2025-10-31
+sharpe: 0.1764
+cagr: -0.2291
+max_dd: -0.8699
+path: data\diagnostics\vrp_phase0\phase0_signal_test

@@ -30,7 +30,7 @@ class ContractSpecs:
         if not self.config_path.exists():
             raise FileNotFoundError(f"Config file not found: {self.config_path}")
         
-        with open(self.config_path, 'r') as f:
+        with open(self.config_path, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
         
         if not config:

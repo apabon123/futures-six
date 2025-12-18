@@ -1,0 +1,42 @@
+{
+  "start_date": "2020-01-01",
+  "end_date": "2025-10-31",
+  "sleeve_name": "sr3_curve_rv_rank_fly_2_6_10_fade",
+  "meta_sleeve": "rates_curve_rv",
+  "strategy_type": "Phase-0 (sign-only, no vol targeting)",
+  "execution_lag": "signal.shift(1)",
+  "rate_space": "r_k = 100 - P_k",
+  "metrics": {
+    "CAGR": 3.5483374847910296,
+    "Vol": 6.142935528832545,
+    "Sharpe": 0.24732857644908474,
+    "MaxDD": -5.205128205135604,
+    "HitRate": 0.5148063781321185,
+    "n_days": 1756,
+    "years": 6.968253968253968
+  },
+  "subperiod_stats": {
+    "pre": {
+      "CAGR": 25.50191523122216,
+      "Vol": 10.738163810102803,
+      "Sharpe": 0.3071865510310709,
+      "MaxDD": -5.205128205135604,
+      "HitRate": 0.4825174825174825,
+      "n_days": 572,
+      "years": 2.2698412698412698,
+      "start_date": "2020-01-03 00:00:00",
+      "end_date": "2021-12-31 00:00:00"
+    },
+    "post": {
+      "CAGR": 0.9326055048399773,
+      "Vol": 0.5626134828843822,
+      "Sharpe": 1.172618845037355,
+      "MaxDD": -1.0,
+      "HitRate": 0.5304054054054054,
+      "n_days": 1184,
+      "years": 4.698412698412699,
+      "start_date": "2022-01-02 00:00:00",
+      "end_date": "2025-10-31 00:00:00"
+    }
+  }
+}

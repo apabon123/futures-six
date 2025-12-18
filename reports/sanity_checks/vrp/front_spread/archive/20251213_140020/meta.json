@@ -1,0 +1,37 @@
+{
+  "run_date": "2025-12-13 14:00:20",
+  "start_date": "2020-01-01",
+  "end_date": "2025-10-31",
+  "effective_start_date": "2020-01-06 00:00:00",
+  "description": "VRP Front-Spread Phase-0 signal test: Short VX1 when VX1 > VX2 (contango), else flat. Tests calendar carry/decay edge.",
+  "rule_type": "short_only",
+  "rationale": "When VX1 > VX2, front contract is rich vs next tenor \u2192 greater expected decay/roll-down pressure on VX1. Short VX1 in contango.",
+  "metrics": {
+    "CAGR": -0.3430522181395885,
+    "Vol": 0.5024877795845486,
+    "Sharpe": -0.5845685176026593,
+    "MaxDD": -0.9678320019008899,
+    "HitRate": 0.060503059143439834,
+    "n_days": 1471,
+    "years": 5.837301587301587
+  },
+  "signal_distribution": {
+    "pct_short": 15.682281059063136,
+    "pct_flat": 84.31771894093686
+  },
+  "spread_stats": {
+    "mean": -0.9778110129163832,
+    "median": -1.1500000000000004,
+    "std": 1.6464145648534656,
+    "min": -6.530000000000001,
+    "max": 13.479999999999997
+  },
+  "run_consistency": {
+    "requested_start": "2020-01-01",
+    "effective_start": "2020-01-06 00:00:00",
+    "warmup_rows_dropped": 0,
+    "rows_dropped_na": 2,
+    "final_row_count": 1471,
+    "pct_days_active": 15.682281059063136
+  }
+}

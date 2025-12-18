@@ -1,0 +1,39 @@
+{
+  "canonical_pair": "R2-R1",
+  "phase": "Phase-1",
+  "long_rank": 2,
+  "short_rank": 1,
+  "zscore_window": 90,
+  "clip": 2.0,
+  "target_vol": 0.1,
+  "vol_lookback": 60,
+  "dv01_method": "proxy",
+  "dv01_long": null,
+  "dv01_short": null,
+  "signal_description": "z-scored(R2 - R1) in rate space, clipped to \u00b12.0, spread returns from leg returns",
+  "normalization_method": "rolling z-score (90d window)",
+  "risk_target": "10.0% annualized volatility",
+  "effective_start_date": "2020-01-03",
+  "effective_end_date": "2025-10-31",
+  "n_days": 1152,
+  "rank_mapping_fix_applied": true,
+  "start_date": "2020-01-02",
+  "end_date": "2025-10-31",
+  "portfolio_metrics": {
+    "CAGR": 0.8803098056944654,
+    "Vol": 2.5220328249650987,
+    "Sharpe": 0.3490477193557731,
+    "MaxDD": -2.4167033524760484,
+    "HitRate": 0.42137271937445697,
+    "n_days": 1151,
+    "years": 4.567460317460317
+  },
+  "per_asset_stats": {
+    "SR3_SPREAD_R2_R1": {
+      "AnnRet": -0.0344631262575521,
+      "AnnVol": 2.5220328249650987,
+      "Sharpe": -0.013664820662288177
+    }
+  },
+  "phase0_sharpe_comparison": 0.6384081532786526
+}

@@ -1,0 +1,55 @@
+{
+  "variant": "vx_spread",
+  "baseline_metrics": {
+    "cagr": 0.0896164024159396,
+    "vol": 0.12814902837904205,
+    "sharpe": 0.6993139436911704,
+    "max_dd": -0.1371091558368943,
+    "worst_month": -0.06795404745222045,
+    "worst_quarter": -0.051112074584965916,
+    "worst_10d": -0.111996398551655,
+    "crisis_attribution": {
+      "2020_q1": 0.010900244017807648,
+      "2022_drawdown": -0.00954709530249509,
+      "2023_2024_vol": 0.09170933812376725
+    },
+    "n_days": 1469,
+    "total_return": 0.6492314578378073
+  },
+  "combined_metrics": {
+    "cagr": 0.08867702598883098,
+    "vol": 0.13036699710840985,
+    "sharpe": 0.6802106971528189,
+    "max_dd": -0.13606454107120897,
+    "worst_month": -0.06728174380174512,
+    "worst_quarter": -0.053366621944387016,
+    "worst_10d": -0.11325424168750942,
+    "crisis_attribution": {
+      "2020_q1": -0.001716300389909775,
+      "2022_drawdown": -0.013151352080384537,
+      "2023_2024_vol": 0.08984139304235628
+    },
+    "n_days": 1469,
+    "total_return": 0.6409603276391305
+  },
+  "differences": {
+    "maxdd_diff": 0.00104461476568532,
+    "worst_month_diff": 0.0006723036504753255,
+    "worst_quarter_diff": -0.0022545473594210996,
+    "worst_10d_diff": -0.0012578431358544195,
+    "cagr_diff": -0.000939376427108618,
+    "vol_diff": 0.002217968729367803
+  },
+  "pass_criteria": {
+    "tail_preservation": "False",
+    "cost_reduction": "False",
+    "stability": "True",
+    "auto_fail": "False",
+    "overall_pass": "False",
+    "required_maxdd_improvement": 0.0018112452539716826,
+    "vx2_maxdd_improvement": 0.002587493219959547
+  },
+  "start": "2020-01-06",
+  "end": "2025-10-31",
+  "sleeve_weight": 0.05
+}

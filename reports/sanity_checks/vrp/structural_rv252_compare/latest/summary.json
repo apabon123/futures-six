@@ -1,0 +1,34 @@
+{
+  "run_date": "2025-12-13 15:36:59",
+  "start_date": "2020-01-01",
+  "end_date": "2025-10-31",
+  "variants": {
+    "VX1": {
+      "sharpe": -0.1816629421493823,
+      "cagr": -0.389159003716543,
+      "maxdd": -0.929004183977115,
+      "active_pct": 74.96062992125985,
+      "effective_start": "2020-10-23 00:00:00",
+      "path": "reports\\sanity_checks\\vrp\\structural_rv252_vx1\\archive\\20251213_153656"
+    },
+    "VX2": {
+      "sharpe": -0.16631086479503573,
+      "cagr": -0.24139904256745515,
+      "maxdd": -0.782835412732037,
+      "active_pct": 74.94089834515366,
+      "effective_start": "2020-10-23 00:00:00",
+      "path": "reports\\sanity_checks\\vrp\\structural_rv252_vx2\\archive\\20251213_153657"
+    },
+    "VX3": {
+      "sharpe": -0.14812603502440558,
+      "cagr": -0.14812580374427253,
+      "maxdd": -0.6003537418898464,
+      "active_pct": 74.94089834515366,
+      "effective_start": "2020-10-23 00:00:00",
+      "path": "reports\\sanity_checks\\vrp\\structural_rv252_vx3\\archive\\20251213_153658"
+    }
+  },
+  "recommended_winner": "VX3",
+  "recommended_winner_sharpe": -0.14812603502440558,
+  "recommended_winner_maxdd": -0.6003537418898464
+}

@@ -58,7 +58,7 @@ def load_dv01_config(dv01_config_path: str = "configs/rates_dv01.yaml") -> Dict[
     if not config_path.exists():
         raise FileNotFoundError(f"DV01 config not found: {dv01_config_path}")
     
-    with open(config_path, 'r') as f:
+    with open(config_path, 'r', encoding='utf-8') as f:
         dv01_yaml = yaml.safe_load(f)
     
     return {

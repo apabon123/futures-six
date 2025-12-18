@@ -1,0 +1,19 @@
+Status: PARKED
+Reason: Borderline Phase-0 result (weak edge and catastrophic drawdown).
+
+Phase-0 Metrics (2020-01-01 to 2025-10-31):
+- Sharpe: 0.0235  (Phase-0 requires ≥ 0.10)
+- CAGR: -17.40%
+- MaxDD: -85.65%
+- HitRate: 30.23%
+- Short exposure: 74.5% of days (signal non-degenerate)
+
+Notes:
+- Data loading, signal calculation, and PnL mechanics match VRP-Core / VRP-Convergence.
+- The simple rule roll_yield = (VX1 - VIX) / days_to_expiry > 0 → short VX1 does not deliver a sufficiently strong economic edge.
+- This sleeve will not proceed to Phase-1 under the current specification.
+
+Revisit Conditions:
+- Consider a richer roll-down carry specification (e.g., multi-tenor basket, additional regime filters, or integration into a composite VRP signal).
+- Any new specification should be treated as a fresh Phase-0 idea, with separate scripts and documentation.
+

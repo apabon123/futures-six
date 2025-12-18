@@ -1,0 +1,20 @@
+PARKED — Phase-0 hard fail (all variants)
+
+Rationale:
+The VRP-Structural (RV252) Phase-0 tested three variants (VX1, VX2, VX3) with signal: short VX when VIX > RV252, else flat.
+
+All three variants failed Phase-0 criteria:
+- VX1: Sharpe -0.1817, MaxDD -92.9% (catastrophic)
+- VX2: Sharpe -0.1663, MaxDD -78.3%
+- VX3: Sharpe -0.1481, MaxDD -60.0% (least bad, but still negative Sharpe)
+
+The simple directional expression of long-horizon implied vs realized volatility (VIX - RV252) does not contain a tradable edge. VIX > RV252 occurs ~75% of the time, but shorting VX in these regimes is not profitable and exposes the strategy to crisis convexity risk.
+
+This is not an engine in simple form. Revisit only as:
+- Conditioning feature (regime input, not direct signal)
+- Different instrument (VIX options, vol ETFs)
+- Different expression (spread trade, not directional short)
+- With macro filters or z-scoring (new Phase-0 specification)
+
+See: reports/sanity_checks/vrp/structural_rv252/README.md for full details.
+

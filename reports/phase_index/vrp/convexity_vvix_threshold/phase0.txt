@@ -1,0 +1,15 @@
+# Phase-0: VRP-Convexity Threshold Signal Test (FAILED - PARKED)
+# Status: PARKED - Phase-0 economic failure (hard fail; not borderline)
+# Registered: 2025-12-13 14:52:01
+
+reports/sanity_checks/vrp/convexity_vvix/latest/
+
+# Phase-0 Results:
+# Sharpe: -0.1288 (FAIL - hard fail, not borderline)
+# CAGR: -35.35%
+# MaxDD: -97.73% (catastrophic)
+# Signal: 52.4% active (non-degenerate)
+
+# Rationale: Simple threshold rule (short VX1 when VVIX > 100) does not produce positive economic edge.
+# See status.txt for full details.
+

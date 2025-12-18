@@ -1,0 +1,96 @@
+{
+  "canonical_variant": "VX3-VX2_short",
+  "canonical_variant_dir": "3-2_short",
+  "selection_date": "2025-12-17 09:08:48",
+  "selection_criteria": "Highest Sharpe with min_bars >= 1200",
+  "metrics": {
+    "sharpe": 1.228377407680099,
+    "cagr": 0.3072302050652618,
+    "maxdd": -0.2704676228684304,
+    "hitrate": 0.44972826086956524,
+    "vol": 0.24118095218598923,
+    "n_days": 1472
+  },
+  "all_variants": [
+    {
+      "variant": "VX3-VX2_short",
+      "variant_dir": "3-2_short",
+      "spread_pair": [
+        3,
+        2
+      ],
+      "flip_sign": true,
+      "sharpe": 1.228377407680099,
+      "cagr": 0.3072302050652618,
+      "maxdd": -0.2704676228684304,
+      "hitrate": 0.44972826086956524,
+      "vol": 0.24118095218598923,
+      "n_days": 1472,
+      "years": 5.841269841269841,
+      "start_date": "2020-01-06",
+      "end_date": "2025-10-31",
+      "latest_path": "sanity_checks\\carry\\vx_calendar_carry_variants\\latest\\3-2_short",
+      "collision_days_dropped": 8
+    },
+    {
+      "variant": "VX2-VX1_short",
+      "variant_dir": "2-1_short",
+      "spread_pair": [
+        2,
+        1
+      ],
+      "flip_sign": true,
+      "sharpe": 1.055463780453704,
+      "cagr": 0.3782080286296081,
+      "maxdd": -0.2298436720667142,
+      "hitrate": 0.44021739130434784,
+      "vol": 0.3660273108514163,
+      "n_days": 1472,
+      "years": 5.841269841269841,
+      "start_date": "2020-01-06",
+      "end_date": "2025-10-31",
+      "latest_path": "sanity_checks\\carry\\vx_calendar_carry_variants\\latest\\2-1_short",
+      "collision_days_dropped": 4
+    },
+    {
+      "variant": "VX2-VX1_long",
+      "variant_dir": "2-1_long",
+      "spread_pair": [
+        2,
+        1
+      ],
+      "flip_sign": false,
+      "sharpe": -1.055463780453704,
+      "cagr": -0.36600808392946005,
+      "maxdd": -0.9355188844156442,
+      "hitrate": 0.5570652173913043,
+      "vol": 0.3660273108514163,
+      "n_days": 1472,
+      "years": 5.841269841269841,
+      "start_date": "2020-01-06",
+      "end_date": "2025-10-31",
+      "latest_path": "sanity_checks\\carry\\vx_calendar_carry_variants\\latest\\2-1_long",
+      "collision_days_dropped": 4
+    },
+    {
+      "variant": "VX3-VX2_long",
+      "variant_dir": "3-2_long",
+      "spread_pair": [
+        3,
+        2
+      ],
+      "flip_sign": false,
+      "sharpe": -1.228377407680099,
+      "cagr": -0.27864188704411874,
+      "maxdd": -0.8935365240731207,
+      "hitrate": 0.5421195652173914,
+      "vol": 0.24118095218598923,
+      "n_days": 1472,
+      "years": 5.841269841269841,
+      "start_date": "2020-01-06",
+      "end_date": "2025-10-31",
+      "latest_path": "sanity_checks\\carry\\vx_calendar_carry_variants\\latest\\3-2_long",
+      "collision_days_dropped": 8
+    }
+  ]
+}

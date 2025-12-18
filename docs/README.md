@@ -5,8 +5,10 @@ All project documentation lives in this `docs/` directory so it stays easy to di
 ## Essential Reading
 
 **Start here:**
-- **`STRATEGY.md`** ⭐ – **Complete step-by-step strategy execution flow and Core v1 baseline configuration**. This is the single source of truth for understanding exactly what happens at each stage of the backtest. Read this first to understand the full pipeline.
-- **`DIAGNOSTICS.md`** ⭐ – **Performance diagnostics framework**. How to analyze backtest runs, compute metrics, and perform ablation testing. Essential for evaluating strategy components.
+- **`SOTs/STRATEGY.md`** ⭐ – **Complete step-by-step strategy execution flow and Core v1 baseline configuration**. This is the single source of truth for understanding exactly what happens at each stage of the backtest. Read this first to understand the full pipeline.
+- **`SOTs/DIAGNOSTICS.md`** ⭐ – **Performance diagnostics framework**. How to analyze backtest runs, compute metrics, and perform ablation testing. Essential for evaluating strategy components.
+- **`SOTs/PROCEDURES.md`** ⭐ – **Step-by-step procedures** for adding/changing sleeves, assets, and parameters (when and how to run Phase-0 → Phase-3).
+- **`SOTs/ROADMAP.md`** ⭐ – **Strategic development roadmap** (2026–2028). Long-term sequencing, meta-sleeve expansion plans, production deployment planning, and Sharpe targets.
 - **`DUAL_PRICE_ARCHITECTURE.md`** ⭐ – **Dual-price architecture**: Raw vs continuous prices, back-adjustment logic, and which modules use which price source. Essential for understanding how roll jumps are handled.
 
 ## Component Documentation
@@ -41,4 +43,4 @@ All project documentation lives in this `docs/` directory so it stays easy to di
 - **`core_v1_no_macro`**: Baseline (Long-term TSMOM + FX/Commodity Carry)
 - **`core_v2_no_macro`**: Multi-Horizon TSMOM (v2) with EWMA normalization
 
-See `STRATEGY.md` for complete details.
+See `SOTs/STRATEGY.md` for complete details.

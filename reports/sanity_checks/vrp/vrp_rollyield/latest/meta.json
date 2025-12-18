@@ -1,0 +1,29 @@
+{
+  "run_date": "2025-12-13 10:47:13",
+  "start_date": "2020-01-01",
+  "end_date": "2025-10-31",
+  "effective_start_date": "2020-01-06 00:00:00",
+  "description": "VRP-RollYield Phase-0 signal test (SHORT-ONLY): Short VX1 when roll_yield > 0, else flat. Roll yield = (VX1 - VIX) / days_to_expiry.",
+  "rule_type": "short_only",
+  "rationale": "Positive roll yield (VX1 > VIX) indicates expected downward drift as VX1 converges to VIX \u2192 short-vol bias. Negative roll yield indicates volatility spike/crisis regime \u2192 flatten/neutralize exposure.",
+  "metrics": {
+    "CAGR": -0.17403867470069156,
+    "Vol": 0.6531215512564001,
+    "Sharpe": 0.023504144621397986,
+    "MaxDD": -0.8565019502743882,
+    "HitRate": 0.3023097826086957,
+    "n_days": 1472,
+    "years": 5.841269841269841
+  },
+  "signal_distribution": {
+    "pct_short": 74.49118046132972,
+    "pct_flat": 25.508819538670284
+  },
+  "run_consistency": {
+    "requested_start": "2020-01-01",
+    "effective_start": "2020-01-06 00:00:00",
+    "warmup_rows_dropped": 0,
+    "rows_dropped_na": 2,
+    "final_row_count": 1472
+  }
+}

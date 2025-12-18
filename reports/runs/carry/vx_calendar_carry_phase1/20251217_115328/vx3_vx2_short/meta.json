@@ -1,0 +1,42 @@
+{
+  "variant": "vx3_vx2_short",
+  "spread_pair": "VX3-VX2",
+  "long_leg": 3,
+  "short_leg": 2,
+  "phase": "Phase-1",
+  "zscore_window": 90,
+  "clip": 2.0,
+  "target_vol": 0.1,
+  "vol_lookback": 60,
+  "min_vol_floor": 0.01,
+  "max_leverage": 10.0,
+  "signal_description": "-z-scored(VX3 - VX2) / 2.0, clipped to \u00b12.0, spread returns from leg returns",
+  "normalization_method": "rolling z-score (90d window), then -z/2 for carry capture",
+  "risk_target": "10.0% annualized volatility",
+  "mode": "phase1",
+  "lag": 1,
+  "effective_start_date": "2020-01-03",
+  "effective_end_date": "2025-10-31",
+  "n_days": 1473,
+  "collision_days_dropped": "8",
+  "collision_rate_pct": 0.5431093007467752,
+  "start_date": "2020-01-02",
+  "end_date": "2025-10-31",
+  "portfolio_metrics": {
+    "CAGR": 0.08680954097833515,
+    "Vol": 0.10194387671017707,
+    "Sharpe": 0.851542473954877,
+    "MaxDD": -0.28181135258310414,
+    "HitRate": 0.4857336956521739,
+    "n_days": 1472,
+    "years": 5.841269841269841
+  },
+  "per_asset_stats": {
+    "VX_SPREAD_VX3_VX2_SHORT": {
+      "AnnRet": 0.08842517761257651,
+      "AnnVol": 0.10194387671017707,
+      "Sharpe": 0.8673907689813116
+    }
+  },
+  "phase0_sharpe_comparison": 1.228377407680099
+}

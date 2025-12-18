@@ -1,0 +1,29 @@
+{
+  "run_date": "2025-12-13 11:34:16",
+  "start_date": "2020-01-01",
+  "end_date": "2025-10-31",
+  "effective_start_date": "2020-01-08 00:00:00",
+  "description": "VRP-Alt Phase-0 signal test (SHORT-ONLY): Short VX1 when VIX - RV5 > 0, else flat. Alt-VRP = VIX - RV5 (short-term realized vol).",
+  "rule_type": "short_only",
+  "rationale": "Positive alt-VRP (VIX > RV5) indicates VIX rich vs short-term realized \u2192 short-vol bias. Negative alt-VRP indicates volatility spike/crisis regime \u2192 flatten/neutralize exposure.",
+  "metrics": {
+    "CAGR": -0.22759507856324124,
+    "Vol": 0.8425059563816198,
+    "Sharpe": 0.10079723493416395,
+    "MaxDD": -0.9424809248089953,
+    "HitRate": 0.36054421768707484,
+    "n_days": 1470,
+    "years": 5.833333333333333
+  },
+  "signal_distribution": {
+    "pct_short": 87.89938817131203,
+    "pct_flat": 12.100611828687967
+  },
+  "run_consistency": {
+    "requested_start": "2020-01-01",
+    "effective_start": "2020-01-08 00:00:00",
+    "warmup_rows_dropped": 0,
+    "rows_dropped_na": 1,
+    "final_row_count": 1470
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "start_date": "2020-01-02",
+  "end_date": "2025-10-31",
+  "n_days": 1769,
+  "ranks_used": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "tradeable_symbol": "SR3_FRONT_CALENDAR",
+  "variant": "spread",
+  "signal_definition": "sign(RANK_4 - RANK_3) -> trade spread (RANK_4 - RANK_3) directly",
+  "portfolio_metrics": {
+    "CAGR": 0.0029960489369613708,
+    "Vol": 0.004306919805910438,
+    "Sharpe": 0.6967497145176765,
+    "MaxDD": -0.003848149041559723,
+    "HitRate": 0.43301300169587337,
+    "n_days": 1769,
+    "years": 7.01984126984127
+  },
+  "per_asset_stats": {
+    "SR3_SPREAD_R4_R3": {
+      "AnnRet": 0.0030008451452186247,
+      "AnnVol": 0.004306919805910438,
+      "Sharpe": 0.6967497145176765
+    }
+  },
+  "subperiod_stats": {
+    "pre": {
+      "CAGR": 0.0006867710197022703,
+      "Vol": 0.0015407028200166329,
+      "Sharpe": 0.44636842183178066,
+      "MaxDD": -0.0022568087877385956,
+      "HitRate": 0.39625850340136054,
+      "n_days": 588,
+      "years": 2.3333333333333335
+    },
+    "post": {
+      "CAGR": 0.00414782176315609,
+      "Vol": 0.005157150564147534,
+      "Sharpe": 0.8051947652249878,
+      "MaxDD": -0.0033854708293298286,
+      "HitRate": 0.45131244707874685,
+      "n_days": 1181,
+      "years": 4.686507936507937
+    }
+  },
+  "data_integrity": {
+    "rank_mapping_fix_applied": true,
+    "fix_date": "2025-12-16",
+    "note": "Results generated after canonical rank parsing fix. Rank mapping uses parse_sr3_calendar_rank() instead of alphabetical sorting."
+  },
+  "rank_pair": [
+    4,
+    3
+  ],
+  "pair_label": "R4-R3"
+}

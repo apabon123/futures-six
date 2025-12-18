@@ -1,0 +1,19 @@
+PARKED — Phase-0 hard fail (both variants)
+
+Rationale:
+The VRP-Mid (RV126) Phase-0 tested two variants (VX2, VX3) with signal: short VX when VIX > RV126, else flat.
+
+Both variants failed Phase-0 criteria:
+- VX2: Sharpe -0.1704, MaxDD -85.68% (catastrophic)
+- VX3: Sharpe -0.1517, MaxDD -73.88% (least bad, but still negative Sharpe)
+
+The simple directional expression of mid-horizon implied vs realized volatility (VIX - RV126) does not contain a tradable edge. VIX > RV126 occurs ~82% of the time, but shorting VX in these regimes is not profitable and exposes the strategy to crisis convexity risk.
+
+This is not an engine in simple form. Revisit only as:
+- Conditioning feature (regime input, not direct signal)
+- Different instrument (VIX options, vol ETFs)
+- Different expression (spread trade, not directional short)
+- With macro filters or z-scoring (new Phase-0 specification)
+
+See: reports/sanity_checks/vrp/mid_rv126/README.md for full details.
+

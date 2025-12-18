@@ -92,7 +92,7 @@ class ExecSim:
             return None
         
         try:
-            with open(path, 'r') as f:
+            with open(path, 'r', encoding='utf-8') as f:
                 config = yaml.safe_load(f)
             return config
         except Exception as e:
@@ -482,6 +482,21 @@ class ExecSim:
                 logger.error(f"[ExecSim] Error on {date}: {e}")
                 continue
         
+        # Handle Curve RV returns if enabled
+        curve_rv_meta = components.get('curve_rv_meta')
+        curve_rv_weight = components.get('curve_rv_weight', 0.0)
+        curve_rv_returns = None
+        
+        if curve_rv_meta is not None and curve_rv_weight > 0:
+            logger.info(f"[ExecSim] Computing Curve RV returns (weight={curve_rv_weight:.1%})...")
+            try:
+                curve_rv_returns = curve_rv_meta.compute_returns(market, start, end)
+                logger.info(f"[ExecSim] Curve RV returns: n={len(curve_rv_returns)}, "
+                           f"mean={curve_rv_returns.mean():.6f}, std={curve_rv_returns.std():.6f}")
+            except Exception as e:
+                logger.error(f"[ExecSim] Failed to compute Curve RV returns: {e}")
+                curve_rv_returns = None
+        
         # Build results
         logger.info(f"[ExecSim] Completed {len(dates_history)} holding periods")
         
@@ -526,6 +541,21 @@ class ExecSim:
                 # Compute daily portfolio returns (log returns)
                 portfolio_returns_log = (weights_aligned * returns_aligned).sum(axis=1)
                 portfolio_returns_daily = np.exp(portfolio_returns_log) - 1.0
+                
+                # Add Curve RV returns if enabled
+                if curve_rv_returns is not None and curve_rv_weight > 0:
+                    # Align Curve RV returns to portfolio returns dates
+                    common_dates = portfolio_returns_daily.index.intersection(curve_rv_returns.index)
+                    if len(common_dates) > 0:
+                        # Scale Curve RV returns by weight and add to portfolio
+                        # Portfolio: (1 - w) * base + w * curve_rv
+                        base_weight = 1.0 - curve_rv_weight
+                        curve_rv_aligned = curve_rv_returns.loc[common_dates]
+                        portfolio_returns_daily.loc[common_dates] = (
+                            base_weight * portfolio_returns_daily.loc[common_dates] +
+                            curve_rv_weight * curve_rv_aligned
+                        )
+                        logger.info(f"[ExecSim] Added Curve RV returns to portfolio (weight={curve_rv_weight:.1%})")
                 
                 # Compute daily equity curve
                 equity_daily = (1 + portfolio_returns_daily).cumprod()
@@ -752,6 +782,25 @@ class ExecSim:
                 # Convert to simple returns for diagnostics: r_simple = exp(r_log) - 1
                 portfolio_returns_log = (weights_aligned * returns_aligned).sum(axis=1)
                 portfolio_returns_daily = np.exp(portfolio_returns_log) - 1.0
+                
+                # Add Curve RV returns if enabled (for artifact saving)
+                curve_rv_meta = components.get('curve_rv_meta')
+                curve_rv_weight = components.get('curve_rv_weight', 0.0)
+                if curve_rv_meta is not None and curve_rv_weight > 0:
+                    try:
+                        curve_rv_returns = curve_rv_meta.compute_returns(market, start, end)
+                        # Align Curve RV returns to portfolio returns dates
+                        common_dates = portfolio_returns_daily.index.intersection(curve_rv_returns.index)
+                        if len(common_dates) > 0:
+                            # Scale Curve RV returns by weight and add to portfolio
+                            base_weight = 1.0 - curve_rv_weight
+                            curve_rv_aligned = curve_rv_returns.loc[common_dates]
+                            portfolio_returns_daily.loc[common_dates] = (
+                                base_weight * portfolio_returns_daily.loc[common_dates] +
+                                curve_rv_weight * curve_rv_aligned
+                            )
+                    except Exception as e:
+                        logger.warning(f"[ExecSim] Failed to add Curve RV returns in artifact saving: {e}")
                 
                 # Compute equity curve: cumulative product (simple returns)
                 # Start at 1.0

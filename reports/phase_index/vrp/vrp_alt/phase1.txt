@@ -1,0 +1,8 @@
+# Phase-1: VRP Alt Z-Scored Strategy
+# Registered: 2025-12-13 12:34:20
+start_date: 2020-01-01
+end_date: 2025-10-31
+sharpe: 0.9142
+cagr: 0.0183
+max_dd: -0.0201
+path: data\diagnostics\vrp_alt_phase1\20251213_123417

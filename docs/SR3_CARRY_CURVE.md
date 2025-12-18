@@ -311,7 +311,7 @@ features = feature_service.get_features(end_date="2025-01-01")
 print(features["SR3_CURVE"].tail())
 ```
 
-**Note**: SR3 Carry/Curve is currently **disabled** in Core v1 baseline (see `docs/STRATEGY.md`). It will be redesigned in a future phase.
+**Note**: SR3 Carry/Curve is currently **disabled** in Core v1 baseline (see `docs/SOTs/STRATEGY.md`). It will be redesigned in a future phase.
 
 ## Future Enhancements
 

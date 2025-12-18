@@ -1,0 +1,42 @@
+{
+  "canonical_pair": "R2-R1",
+  "phase": "Phase-1",
+  "long_rank": 2,
+  "short_rank": 1,
+  "zscore_window": 90,
+  "clip": 2.0,
+  "target_vol": 0.1,
+  "vol_lookback": 60,
+  "dv01_method": "proxy",
+  "dv01_long": null,
+  "dv01_short": null,
+  "signal_description": "sign(R2 - R1) in rate space",
+  "normalization_method": "sign-only (phase0_equiv mode)",
+  "risk_target": "none (phase0_equiv mode)",
+  "mode": "phase0_equiv",
+  "flip_sign": true,
+  "lag": 1,
+  "effective_start_date": "2020-01-03",
+  "effective_end_date": "2025-10-31",
+  "n_days": 1019,
+  "rank_mapping_fix_applied": true,
+  "start_date": "2020-01-02",
+  "end_date": "2025-10-31",
+  "portfolio_metrics": {
+    "CAGR": -0.0016252361925525038,
+    "Vol": 0.004520320479407232,
+    "Sharpe": -0.35954003702977,
+    "MaxDD": -0.014317691348197433,
+    "HitRate": 0.412573673870334,
+    "n_days": 1018,
+    "years": 4.0396825396825395
+  },
+  "per_asset_stats": {
+    "SR3_SPREAD_R2_R1": {
+      "AnnRet": -0.0016037440956806102,
+      "AnnVol": 0.004520320479407232,
+      "Sharpe": -0.354785485451004
+    }
+  },
+  "phase0_sharpe_comparison": 0.6384081532786526
+}

@@ -310,7 +310,7 @@ def validate_comparison(current: RunData, baseline: RunData) -> None:
     Raises:
         ValueError: If runs cannot be compared fairly
         
-    See: docs/PROCEDURES.md § 2 "Run Consistency Contract"
+    See: docs/SOTs/PROCEDURES.md § 2 "Run Consistency Contract"
     """
     import logging
     logger = logging.getLogger(__name__)

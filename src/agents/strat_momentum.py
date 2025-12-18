@@ -103,7 +103,7 @@ class TSMOM:
             logger.warning(f"[TSMOM] Config not found: {config_path}, using defaults")
             return {}
         
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
         
         return config

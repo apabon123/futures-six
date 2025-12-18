@@ -1,0 +1,31 @@
+{
+  "run_date": "2025-12-11 14:29:16",
+  "start_date": "2020-01-01",
+  "end_date": "2025-10-31",
+  "effective_start_date": "2020-01-06 00:00:00",
+  "phase0_threshold": 0.5,
+  "threshold_description": "Fixed 0.5 vol-point term structure slope threshold for Phase-0 sanity test. Not used in Phase-1 or production.",
+  "description": "VRP-TermStructure Phase-0 signal test (SHORT-ONLY): Short VX1 when (VX2 - VX1) > 0.5, else flat. Backwardation indicates crisis regime, no entry.",
+  "rule_type": "short_only",
+  "rationale": "Contango (VX2 > VX1) indicates strong downward roll pressure \u2192 short-vol bias. Backwardation (VX1 > VX2) indicates crisis regime \u2192 flatten/neutralize exposure.",
+  "metrics": {
+    "CAGR": -0.5234559224753992,
+    "Vol": 0.7279269069079104,
+    "Sharpe": -0.6267475061778588,
+    "MaxDD": -0.9890390071387407,
+    "HitRate": 0.43167912984364376,
+    "n_days": 1471,
+    "years": 5.837301587301587
+  },
+  "signal_distribution": {
+    "pct_short": 74.27019687712152,
+    "pct_flat": 25.72980312287848
+  },
+  "run_consistency": {
+    "requested_start": "2020-01-01",
+    "effective_start": "2020-01-06 00:00:00",
+    "warmup_rows_dropped": 0,
+    "rows_dropped_na": 3,
+    "final_row_count": 1471
+  }
+}

@@ -1,0 +1,32 @@
+# Phase-2: SR3 Calendar Carry Portfolio Integration
+# Registered: 2025-12-16 15:00:32
+baseline_profile: core_v7_trend_csmom_vrp_core_convergence_vrp_alt_no_macro
+carry_weight: 0.05
+start_date: 2020-01-02
+end_date: 2025-10-31
+
+# Baseline Metrics (Core v7)
+baseline_sharpe: 0.6499
+baseline_cagr: 0.0807
+baseline_maxdd: -0.1688
+
+# Combined Metrics (Core v7 + Carry)
+combined_sharpe: 0.6501
+combined_cagr: 0.0770
+combined_maxdd: -0.1608
+
+# Differences
+sharpe_diff: 0.0002
+cagr_diff: -0.0037
+maxdd_diff: 0.0080
+
+# Correlation
+corr_core_v7_vs_carry: 0.0418
+
+path: reports\runs\carry\sr3_calendar_carry_phase2\20251216_150004
+
+# Phase-2 Pass Criteria
+sharpe_pass: PASS (combined >= baseline - 0.01)
+maxdd_pass: PASS (combined >= baseline)
+
+verdict: PASS

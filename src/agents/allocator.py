@@ -123,7 +123,7 @@ class Allocator:
             return None
         
         try:
-            with open(path, 'r') as f:
+            with open(path, 'r', encoding='utf-8') as f:
                 config = yaml.safe_load(f)
             return config
         except Exception as e:

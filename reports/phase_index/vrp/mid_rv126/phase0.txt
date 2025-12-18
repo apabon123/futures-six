@@ -1,0 +1,4 @@
+reports/sanity_checks/vrp/mid_rv126_compare/latest/summary.json
+
+Status: FAILED (both variants: VX2, VX3)
+

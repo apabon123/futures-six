@@ -352,7 +352,7 @@ Potential improvements for future versions:
 
 ## References
 
-- See `docs/STRATEGY.md` for overall system architecture
+- See `docs/SOTs/STRATEGY.md` for overall system architecture
 - See `docs/META_SLEEVES/TREND_IMPLEMENTATION.md` for Trend Meta-Sleeve implementation details
 - See `docs/legacy/TSMOM_IMPLEMENTATION.md` for legacy TSMOM class (not used in production)
 - See `docs/CROSS_SECTIONAL_MOMENTUM.md` for XSec sleeve details

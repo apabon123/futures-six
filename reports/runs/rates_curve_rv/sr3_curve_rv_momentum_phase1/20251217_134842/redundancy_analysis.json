@@ -1,0 +1,13 @@
+{
+  "corr_pack_slope_vs_curvature_returns": 0.21375477459048514,
+  "corr_pack_slope_vs_rank_fly_returns": 0.23496559018617502,
+  "corr_pack_curvature_vs_rank_fly_returns": 0.6418102044369435,
+  "corr_pack_slope_vs_curvature_signals": 0.18086089879145786,
+  "corr_pack_slope_vs_rank_fly_signals": 0.18397532746249134,
+  "corr_pack_curvature_vs_rank_fly_signals": 0.9082421226393087,
+  "interpretation": {
+    "high_correlation_threshold": 0.7,
+    "moderate_correlation_threshold": 0.4,
+    "note": "High correlation (>0.7) suggests redundancy. Moderate (0.4-0.7) suggests related but distinct signals. Low (<0.4) suggests orthogonal information."
+  }
+}

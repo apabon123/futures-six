@@ -1,0 +1,40 @@
+# Phase-2: VX Calendar Carry Portfolio Integration (vx3_vx2_short)
+# Registered: 2025-12-17 12:03:53
+variant: vx3_vx2_short
+baseline_profile: core_v7_trend_csmom_vrp_core_convergence_vrp_alt_no_macro
+carry_weight: 0.05
+start_date: 2020-01-02
+end_date: 2025-10-31
+
+# Baseline Metrics (Core v7)
+baseline_sharpe: 0.6577
+baseline_cagr: 0.0850
+baseline_maxdd: -0.1543
+
+# VX Carry Metrics (Phase-1)
+carry_sharpe: 0.8674
+carry_cagr: 0.0868
+carry_maxdd: -0.2818
+
+# Combined Metrics (Core v7 + VX Carry)
+combined_sharpe: 0.6909
+combined_cagr: 0.0858
+combined_maxdd: -0.1447
+
+# Differences
+sharpe_diff: 0.0333
+cagr_diff: 0.0009
+maxdd_diff: 0.0096
+vol_diff: -0.0069
+
+# Correlation
+corr_core_v7_vs_carry: -0.0075
+
+path: reports\runs\carry\vx_calendar_carry_phase2\vx3_vx2_short\20251217_120351
+
+# Phase-2 Pass Criteria (Carry-style)
+sharpe_pass: PASS (combined >= baseline - 0.01)
+maxdd_pass: PASS (combined >= baseline)
+vol_pass: PASS (combined <= baseline)
+
+verdict: PASS

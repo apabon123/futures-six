@@ -1,0 +1,23 @@
+{
+  "run_date": "2025-12-11 09:10:10",
+  "start_date": "2020-01-01",
+  "end_date": "2025-10-31",
+  "phase0_threshold": 2.0,
+  "threshold_description": "Fixed 2.0 vol-point convergence spread threshold for Phase-0 sanity test. Not used in Phase-1 or production.",
+  "description": "VRP-Convergence Phase-0 signal test (SHORT-ONLY): Short VX1 when (VIX - VX1) < -2.0, else flat. Positive spreads do NOT imply mean reversion.",
+  "rule_type": "short_only",
+  "rationale": "Negative spread (VX1 > VIX) indicates VX1 too rich vs spot, expect convergence down. Positive spreads indicate momentum/expansion, not mean-reverting.",
+  "metrics": {
+    "CAGR": -0.08583805937697275,
+    "Vol": 0.23296487903625707,
+    "Sharpe": -0.2621335274319879,
+    "MaxDD": -0.5403440976575085,
+    "HitRate": 0.08016304347826086,
+    "n_days": 1472,
+    "years": 5.841269841269841
+  },
+  "signal_distribution": {
+    "pct_short": 14.043419267299864,
+    "pct_flat": 85.95658073270013
+  }
+}

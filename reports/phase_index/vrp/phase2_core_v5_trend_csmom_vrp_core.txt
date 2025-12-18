@@ -1,0 +1,17 @@
+# Phase-2: VRP-Core Integration (core_v5_trend_csmom_vrp_core_no_macro)
+# Registered: 2025-12-09 22:06:56
+start_date: 2020-01-01
+end_date: 2025-10-31
+baseline_run_id: core_v4_baseline_phase2_20251209_220603
+vrp_run_id: core_v5_vrp_core_phase2_20251209_220603
+baseline_sharpe: 0.5700
+vrp_sharpe: 0.5774
+sharpe_diff: 0.0074
+baseline_cagr: 0.0663
+vrp_cagr: 0.0674
+cagr_diff: 0.0011
+baseline_maxdd: -0.1737
+vrp_maxdd: -0.1722
+maxdd_diff: 0.0015
+correlation: 1.0000
+path: data\diagnostics\phase2\core_v5_trend_csmom_vrp_core\20251209_220603

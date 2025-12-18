@@ -1,0 +1,25 @@
+{
+  "run_id": "core_v6_vrp_alt_10pct_scaling_20251213_133429",
+  "start_date": "2020-01-01",
+  "end_date": "2025-10-31",
+  "strategy_config_name": "CombinedStrategy",
+  "universe": [
+    "ES_FRONT_CALENDAR_2D",
+    "NQ_FRONT_CALENDAR_2D",
+    "RTY_FRONT_CALENDAR_2D",
+    "ZT_FRONT_VOLUME",
+    "ZF_FRONT_VOLUME",
+    "ZN_FRONT_VOLUME",
+    "UB_FRONT_VOLUME",
+    "SR3_FRONT_CALENDAR",
+    "CL_FRONT_VOLUME",
+    "GC_FRONT_VOLUME",
+    "6E_FRONT_CALENDAR",
+    "6B_FRONT_CALENDAR",
+    "6J_FRONT_CALENDAR"
+  ],
+  "rebalance": "W-FRI",
+  "slippage_bps": 0.5,
+  "n_rebalances": 263,
+  "n_trading_days": 1822
+}

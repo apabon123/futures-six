@@ -16,6 +16,44 @@ from datetime import datetime
 
 from .utils_db import open_readonly_connection, find_ohlcv_table, validate_readonly
 
+# Import rank mapping utilities
+try:
+    from ..data.contracts.rank_mapping import parse_sr3_calendar_rank, map_contracts_to_ranks
+except ImportError:
+    # Handle absolute import fallback
+    try:
+        from src.data.contracts.rank_mapping import parse_sr3_calendar_rank, map_contracts_to_ranks
+    except ImportError:
+        # Fallback: define minimal parser inline
+        import re
+        def parse_sr3_calendar_rank(series_name: str):
+            """Minimal inline parser for SR3 ranks."""
+            if not series_name or not isinstance(series_name, str):
+                return None
+            series_upper = series_name.upper()
+            if "_FRONT_" in series_upper or series_upper.endswith("_FRONT"):
+                return 0
+            rank_pattern = r"_RANK[_\s]*(\d+)"
+            match = re.search(rank_pattern, series_upper)
+            if match:
+                try:
+                    return int(match.group(1))
+                except (ValueError, IndexError):
+                    return None
+            return None
+        def map_contracts_to_ranks(series_names, root="SR3", parser_func=None):
+            """Minimal inline mapper."""
+            if parser_func is None:
+                parser_func = parse_sr3_calendar_rank
+            series_to_rank = {}
+            for series in series_names:
+                rank = parser_func(series)
+                if rank is not None:
+                    if rank in series_to_rank.values():
+                        raise ValueError(f"Duplicate rank {rank} found")
+                    series_to_rank[series] = rank
+            return series_to_rank
+
 logger = logging.getLogger(__name__)
 
 # Import ContinuousContractBuilder
@@ -138,7 +176,7 @@ class MarketData:
         if not path.exists():
             raise FileNotFoundError(f"Config file not found: {config_path}")
         
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
         
         return config
@@ -1000,25 +1038,149 @@ class MarketData:
         # Validate and clean
         df = self._validate_and_clean(df, fields)
         
-        # Get unique symbols and sort them (assumes they're in expiration order or have rank info)
+        # Get unique symbols
         unique_symbols = sorted(df['symbol'].unique())
         
-        # If ranks specified, map symbols to ranks
-        # Otherwise, assume symbols are already in rank order (0, 1, 2, ...)
+        # If ranks specified, use canonical rank parsing for SR3
+        # Otherwise, try to parse ranks from symbols, or fall back to alphabetical order
+        parsing_succeeded = False
         if ranks is not None:
-            if len(unique_symbols) < len(ranks):
-                logger.warning(
-                    f"[READ-ONLY] Only {len(unique_symbols)} contracts found for root {root}, "
-                    f"but {len(ranks)} ranks requested"
-                )
-            # Map first N symbols to requested ranks
-            symbol_to_rank = {sym: rank for sym, rank in zip(unique_symbols[:len(ranks)], ranks)}
-            df = df[df['symbol'].isin(symbol_to_rank.keys())].copy()
-            df['rank'] = df['symbol'].map(symbol_to_rank)
+            # For SR3, use canonical rank parsing to avoid alphabetical mapping issues
+            if root == "SR3":
+                try:
+                    # Parse ranks from symbol names
+                    symbol_to_rank = map_contracts_to_ranks(unique_symbols, root=root)
+                    # Filter to only requested ranks
+                    requested_ranks_set = set(ranks)
+                    symbol_to_rank = {sym: r for sym, r in symbol_to_rank.items() if r in requested_ranks_set}
+                    
+                    # Check if all requested ranks are found
+                    found_ranks = set(symbol_to_rank.values())
+                    missing_ranks = requested_ranks_set - found_ranks
+                    if missing_ranks:
+                        logger.warning(
+                            f"[READ-ONLY] Requested ranks {sorted(missing_ranks)} not found for root {root}. "
+                            f"Found ranks: {sorted(found_ranks)}"
+                        )
+                    
+                    if not symbol_to_rank:
+                        logger.warning(f"[READ-ONLY] No contracts found for requested ranks {ranks}")
+                        return pd.DataFrame()
+                    
+                    df = df[df['symbol'].isin(symbol_to_rank.keys())].copy()
+                    df['rank'] = df['symbol'].map(symbol_to_rank)
+                    parsing_succeeded = True
+                except (ValueError, Exception) as e:
+                    logger.error(f"[READ-ONLY] Rank parsing failed for {root}: {e}. Falling back to alphabetical mapping.")
+                    # Fallback to alphabetical mapping
+                    if len(unique_symbols) < len(ranks):
+                        logger.warning(
+                            f"[READ-ONLY] Only {len(unique_symbols)} contracts found for root {root}, "
+                            f"but {len(ranks)} ranks requested"
+                        )
+                    symbol_to_rank = {sym: rank for sym, rank in zip(unique_symbols[:len(ranks)], ranks)}
+                    df = df[df['symbol'].isin(symbol_to_rank.keys())].copy()
+                    df['rank'] = df['symbol'].map(symbol_to_rank)
+                    parsing_succeeded = False
+            else:
+                # For other roots, use alphabetical mapping (existing behavior)
+                if len(unique_symbols) < len(ranks):
+                    logger.warning(
+                        f"[READ-ONLY] Only {len(unique_symbols)} contracts found for root {root}, "
+                        f"but {len(ranks)} ranks requested"
+                    )
+                symbol_to_rank = {sym: rank for sym, rank in zip(unique_symbols[:len(ranks)], ranks)}
+                df = df[df['symbol'].isin(symbol_to_rank.keys())].copy()
+                df['rank'] = df['symbol'].map(symbol_to_rank)
         else:
-            # Assign ranks 0, 1, 2, ... based on symbol order
-            symbol_to_rank = {sym: i for i, sym in enumerate(unique_symbols)}
-            df['rank'] = df['symbol'].map(symbol_to_rank)
+            # No ranks specified: try to parse from symbols, or use alphabetical order
+            if root == "SR3":
+                try:
+                    symbol_to_rank = map_contracts_to_ranks(unique_symbols, root=root)
+                    df['rank'] = df['symbol'].map(symbol_to_rank)
+                    parsing_succeeded = True
+                except (ValueError, Exception) as e:
+                    logger.warning(f"[READ-ONLY] Rank parsing failed for {root}: {e}. Using alphabetical order.")
+                    # Fallback to alphabetical order
+                    symbol_to_rank = {sym: i for i, sym in enumerate(unique_symbols)}
+                    df['rank'] = df['symbol'].map(symbol_to_rank)
+                    parsing_succeeded = False
+            else:
+                # Assign ranks 0, 1, 2, ... based on symbol order
+                symbol_to_rank = {sym: i for i, sym in enumerate(unique_symbols)}
+                df['rank'] = df['symbol'].map(symbol_to_rank)
+                parsing_succeeded = False  # Not applicable for non-SR3
+        
+        # Runtime assertions for SR3 data integrity (tripwire, not audit)
+        if root == "SR3":
+            # Assertion 1: Rank parsing must succeed (no fallback to alphabetical)
+            if not parsing_succeeded:
+                raise RuntimeError(
+                    f"[DATA INTEGRITY] SR3 rank parsing failed and fell back to alphabetical mapping. "
+                    f"This indicates a data integrity issue. All SR3 rank-based results are suspect. "
+                    f"Root: {root}, Symbols: {unique_symbols[:10]}..."
+                )
+            
+            # Assertion 2: Rank 0 ≠ Rank 1 (verify via spread returns variance)
+            # This is more robust than % identical-days check, which can fail during
+            # low-rate periods (2020-2021) when prices are near 100 and rounding
+            # causes many identical values even though ranks are correctly separated.
+            if 0 in df['rank'].values and 1 in df['rank'].values:
+                # Get primary field for comparison (use first field, typically 'close')
+                primary_field = fields[0] if fields else 'close'
+                if primary_field in df.columns:
+                    # Pivot to compare rank 0 vs rank 1
+                    rank_comparison = df[df['rank'].isin([0, 1])].pivot_table(
+                        index='date',
+                        columns='rank',
+                        values=primary_field,
+                        aggfunc='first'
+                    )
+                    
+                    # Check that both ranks are present in pivot result
+                    if 0 not in rank_comparison.columns or 1 not in rank_comparison.columns:
+                        logger.warning(
+                            f"[DATA INTEGRITY] SR3 rank 0 or rank 1 missing in pivot result. "
+                            f"Cannot verify rank separation. Columns: {rank_comparison.columns.tolist()}"
+                        )
+                    else:
+                        # Find overlapping dates where both ranks have data
+                        overlap_mask = rank_comparison[0].notna() & rank_comparison[1].notna()
+                        n_overlap = overlap_mask.sum()
+                        
+                        if n_overlap > 1:
+                            # Compute spread (rank 1 - rank 0) and its returns
+                            spread = rank_comparison[1] - rank_comparison[0]
+                            spread_aligned = spread[overlap_mask].dropna()
+                            
+                            if len(spread_aligned) > 1:
+                                # Compute spread returns (daily change in spread)
+                                spread_returns = spread_aligned.diff().dropna()
+                                
+                                # Assertion: spread returns must have variance > 0
+                                # This guarantees ranks are not identical without false positives
+                                # from flat curves during low-rate periods
+                                spread_returns_std = spread_returns.std()
+                                
+                                if spread_returns_std <= 0 or np.isnan(spread_returns_std):
+                                    raise RuntimeError(
+                                        f"[DATA INTEGRITY] SR3 rank 0 and rank 1 spread returns have zero variance "
+                                        f"(std={spread_returns_std:.6f}). This indicates rank mapping failure. "
+                                        f"All SR3 rank-based results are suspect. "
+                                        f"Root: {root}, Field: {primary_field}, "
+                                        f"n_overlap={n_overlap}, spread_returns_n={len(spread_returns)}"
+                                    )
+                            else:
+                                logger.warning(
+                                    f"[DATA INTEGRITY] SR3 rank 0 and rank 1 have insufficient overlapping data "
+                                    f"for spread returns calculation (n={len(spread_aligned)}). "
+                                    f"Cannot verify rank separation."
+                                )
+                        else:
+                            logger.warning(
+                                f"[DATA INTEGRITY] SR3 rank 0 and rank 1 have insufficient overlapping dates "
+                                f"(n={n_overlap}). Cannot verify rank separation."
+                            )
         
         # Pivot to wide format with rank as columns
         if len(fields) == 1:

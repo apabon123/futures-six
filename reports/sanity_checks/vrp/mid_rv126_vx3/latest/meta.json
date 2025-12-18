@@ -1,0 +1,40 @@
+{
+  "run_date": "2025-12-13 15:45:38",
+  "start_date": "2020-01-01",
+  "end_date": "2025-10-31",
+  "effective_start_date": "2020-05-29 00:00:00",
+  "description": "VRP-Mid (RV126) Phase-0 signal test: Short VX3 when VIX > RV126, else flat. Tests mid-horizon implied vs realized volatility premium.",
+  "rule_type": "short_only",
+  "rationale": "Mid-horizon implied volatility (VIX) vs mid-horizon realized volatility (RV126) should contain a tradable volatility risk premium.",
+  "traded_instrument": "VX3",
+  "metrics": {
+    "CAGR": -0.14896584217761988,
+    "Vol": 0.4390953122486208,
+    "Sharpe": -0.15170218211153294,
+    "MaxDD": -0.7387663070257509,
+    "HitRate": 0.3450036469730124,
+    "n_days": 1371,
+    "years": 5.440476190476191
+  },
+  "signal_distribution": {
+    "pct_short": 81.85131195335276,
+    "pct_flat": 18.14868804664723
+  },
+  "spread_stats": {
+    "mean": 3.4520204718981478,
+    "median": 4.146422887140414,
+    "std": 6.762642049014069,
+    "min": -19.78174273924376,
+    "max": 33.31250549547528
+  },
+  "run_consistency": {
+    "requested_start": "2020-01-01",
+    "requested_end": "2025-10-31",
+    "effective_start": "2020-05-29 00:00:00",
+    "warmup_rows_dropped": 0,
+    "rows_dropped_na": 1,
+    "valid_rows": 1371,
+    "final_row_count": 1371,
+    "pct_days_active": 81.85131195335276
+  }
+}

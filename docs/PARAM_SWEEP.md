@@ -467,7 +467,7 @@ Planned features:
 - [Trend Meta-Sleeve Implementation](META_SLEEVES/TREND_IMPLEMENTATION.md): Current production implementation
 - [Legacy TSMOM](legacy/TSMOM_IMPLEMENTATION.md): Legacy single-horizon TSMOM class
 - [Macro Regime Filter](MACRO_REGIME_FILTER.md): Regime overlay
-- [Strategy Flow](STRATEGY.md): Full system overview
+- [Strategy Flow](SOTs/STRATEGY.md): Full system overview
 - [README](../README.md): Project overview
 
 ## Citation

@@ -1,0 +1,22 @@
+Status: PARKED
+Reason: Phase-0 economic failure (hard fail; not borderline).
+Sharpe: -0.1288
+CAGR: -35.35%
+MaxDD: -97.73%
+HitRate: 21.23%
+Signal Distribution: 52.4% active (non-degenerate)
+
+Notes:
+- Implementation and data diagnostics confirm correct behavior.
+- VVIX data loader works correctly (1467 rows, 2020-01-02 to 2025-10-31).
+- Simple threshold rule (short VX1 when VVIX > 100) does not produce positive economic edge.
+- Negative Sharpe (-0.1288) plus catastrophic MaxDD (-97.73%) indicates hard fail, not an "engineer it in Phase-1" situation.
+- Signal distribution is non-degenerate (52.4% active), but strategy fails economically.
+- Sleeve will not progress to Phase-1.
+
+Revisit Conditions:
+- Reframe as conditioning feature rather than directional VX1 trade.
+- Consider VVIX as regime filter or spread-style trade component.
+- Potential integration into Crisis Meta-Sleeve or as volatility regime indicator.
+- VVIX data infrastructure is now available for future research.
+

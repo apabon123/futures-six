@@ -1,0 +1,4 @@
+reports/sanity_checks/vrp/structural_rv252_compare/latest/summary.json
+
+Status: FAILED (all variants: VX1, VX2, VX3)
+

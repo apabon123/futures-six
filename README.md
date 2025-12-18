@@ -128,19 +128,20 @@ futures-six/
 All component-specific guides live in `docs/`. 
 
 **Essential reading:**
-- **`docs/STRATEGY.md`** ⭐ – Complete step-by-step strategy execution flow, two-layer sleeve architecture (Meta-Sleeves vs Atomic Sleeves), and current baseline (core_v3_no_macro - Trend Meta-Sleeve with 5 atomic sleeves) (read this first!)
-- **`docs/DIAGNOSTICS.md`** ⭐ – Performance diagnostics framework and Phase-0 sanity check process
-- **`docs/PROCEDURES.md`** ⭐ – Step-by-step procedures for adding/changing sleeves, assets, and parameters (when and how to run Phase-0 → Phase-3)
+- **`docs/SOTs/STRATEGY.md`** ⭐ – Complete step-by-step strategy execution flow, two-layer sleeve architecture (Meta-Sleeves vs Atomic Sleeves), and current baseline (core_v3_no_macro - Trend Meta-Sleeve with 5 atomic sleeves) (read this first!)
+- **`docs/SOTs/DIAGNOSTICS.md`** ⭐ – Performance diagnostics framework and Phase-0 sanity check process
+- **`docs/SOTs/PROCEDURES.md`** ⭐ – Step-by-step procedures for adding/changing sleeves, assets, and parameters (when and how to run Phase-0 → Phase-3)
+- **`docs/SOTs/ROADMAP.md`** ⭐ – Strategic development roadmap (2026–2028). Long-term sequencing, meta-sleeve expansion plans, production deployment planning, and Sharpe targets
 
 **Component docs:**
 - `docs/README.md` – Documentation index
-- `docs/STRATEGY.md` – Two-layer sleeve architecture, Sleeve Development Lifecycle (Phase-0 through Phase-3), current baseline
+- `docs/SOTs/STRATEGY.md` – Two-layer sleeve architecture, Sleeve Development Lifecycle (Phase-0 through Phase-3), current baseline
 - `docs/META_SLEEVES/TREND_IMPLEMENTATION.md` – Trend Meta-Sleeve implementation (current production)
 - `docs/META_SLEEVES/TREND_RESEARCH.md` – Trend Meta-Sleeve research notebook (structured research document with Phase-0/1/2 results for all tested sleeves)
 - `docs/REPORTS_STRUCTURE.md` – Reports directory structure and phase indexing system (canonical Phase-0/1/2 results)
 - `docs/legacy/TSMOM_IMPLEMENTATION.md` – Legacy TSMOM class (not used in production)
-- `docs/DIAGNOSTICS.md` – Performance diagnostics and Phase-0 sanity check workflow
-- `docs/PROCEDURES.md` – Procedures and checklists for adding/changing sleeves, assets, parameters, and overlays
+- `docs/SOTs/DIAGNOSTICS.md` – Performance diagnostics and Phase-0 sanity check workflow
+- `docs/SOTs/PROCEDURES.md` – Procedures and checklists for adding/changing sleeves, assets, parameters, and overlays
 - `src/agents/feature_long_momentum.py` – Long/Medium/Short momentum feature computation
 - `src/agents/strat_tsmom_multihorizon.py` – Trend Meta-Sleeve implementation (combines 3 atomic sleeves)
 - `src/agents/strat_momentum_medium.py` – Medium-term momentum atomic sleeve
@@ -678,7 +679,7 @@ python scripts/run_csmom_phase1.py --start 2020-01-01 --end 2025-10-31
 
 **Phase-0 Pass Criteria**: Sharpe ≥ 0.2+ over long window. Any sleeve that fails Phase-0 remains disabled until reworked.
 
-See `docs/STRATEGY.md` for the complete Sleeve Development Lifecycle (Phase-0 through Phase-3).
+See `docs/SOTs/STRATEGY.md` for the complete Sleeve Development Lifecycle (Phase-0 through Phase-3).
 
 ### Using FeatureStore (Caching)
 

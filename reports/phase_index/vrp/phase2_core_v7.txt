@@ -1,0 +1,57 @@
+# Phase-2: VRP-Alt Portfolio Integration → Core v7 Promotion
+# Registered: 2025-12-13
+
+Promotion: VRP-Alt → Core v7
+Weight: 15%
+Lifecycle: Phase-0 borderline → Phase-1 strong → Phase-2 inconclusive → scaling verification → PROMOTED
+
+## Lifecycle Summary
+
+Phase-0: Borderline pass
+- Sharpe: +0.10 (borderline threshold)
+- MaxDD: –94.25% (catastrophic, expected for raw short-vol signals)
+- Economic edge confirmed but requires engineering
+
+Phase-1: Strong pass
+- Sharpe: 0.91
+- MaxDD: –2.01%
+- Volatility: ~2% (very low volatility sleeve)
+- Engineering (z-scoring, vol targeting, short-only constraint) transformed sleeve
+
+Phase-2: Inconclusive at 5% weight
+- Portfolio Sharpe: +0.0024 vs baseline (inconclusive)
+- MaxDD: +0.05% vs baseline (acceptable)
+- Limited impact due to low sleeve volatility
+
+Scaling Analysis (Mandatory Verification):
+- Tested weights: 5%, 7.5%, 10%, 15%
+- Results: Monotonic Sharpe improvement, stable MaxDD, no crisis vulnerabilities
+- Optimal weight: 15% (Sharpe: 0.5874, MaxDD increase: +0.15%)
+
+## Promotion Decision
+
+VRP-Alt promoted at 15% weight, forming Core v7.
+
+Final Core v7 Composition:
+- Trend: 60%
+- CSMOM: 25%
+- VRP-Core: 7.5%
+- VRP-Convergence: 2.5%
+- VRP-Alt: 15%
+
+## Diagnostics Paths
+
+Phase-1 Diagnostics: data/diagnostics/vrp_alt_phase1/<latest_timestamp>/
+Phase-2 Diagnostics: data/diagnostics/phase2/core_v6_trend_csmom_vrp_core_convergence_vrp_alt/<latest_timestamp>/
+Scaling Analysis: data/diagnostics/phase2/vrp_alt_scaling/<latest_timestamp>/
+
+## Notes
+
+This promotion required a non-standard lifecycle due to:
+1. Borderline Phase-0 pass (catastrophic MaxDD expected for raw short-vol)
+2. Strong Phase-1 engineering result (very stable, low-volatility sleeve)
+3. Inconclusive Phase-2 at low weight (required scaling verification)
+4. Successful scaling analysis (monotonic improvement, controlled MaxDD)
+
+VRP-Alt is the canonical example of the "Borderline Phase-0 + Scaling Verification" promotion workflow.
+

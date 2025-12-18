@@ -1,0 +1,40 @@
+{
+  "run_date": "2025-12-13 15:35:26",
+  "start_date": "2020-01-01",
+  "end_date": "2025-10-31",
+  "effective_start_date": "2020-10-23 00:00:00",
+  "description": "VRP-Structural (RV252) Phase-0 signal test: Short VX1 when VIX > RV252, else flat. Tests long-horizon implied vs realized volatility premium.",
+  "rule_type": "short_only",
+  "rationale": "Long-horizon implied volatility (VIX) vs long-horizon realized volatility (RV252) should contain a tradable volatility risk premium.",
+  "traded_instrument": "VX1",
+  "metrics": {
+    "CAGR": -0.389159003716543,
+    "Vol": 0.836962970845845,
+    "Sharpe": -0.1816629421493823,
+    "MaxDD": -0.929004183977115,
+    "HitRate": 0.30023640661938533,
+    "n_days": 1269,
+    "years": 5.035714285714286
+  },
+  "signal_distribution": {
+    "pct_short": 74.96062992125985,
+    "pct_flat": 25.03937007874016
+  },
+  "spread_stats": {
+    "mean": 3.537692053826463,
+    "median": 3.260762223020638,
+    "std": 5.964224237871227,
+    "min": -12.709600704503998,
+    "max": 36.38388208332807
+  },
+  "run_consistency": {
+    "requested_start": "2020-01-01",
+    "requested_end": "2025-10-31",
+    "effective_start": "2020-10-23 00:00:00",
+    "warmup_rows_dropped": 0,
+    "rows_dropped_na": 1,
+    "valid_rows": 1269,
+    "final_row_count": 1269,
+    "pct_days_active": 74.96062992125985
+  }
+}

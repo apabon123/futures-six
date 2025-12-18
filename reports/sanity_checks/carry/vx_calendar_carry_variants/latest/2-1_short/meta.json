@@ -1,0 +1,49 @@
+{
+  "start_date": "2020-01-02",
+  "end_date": "2025-10-31",
+  "n_days": 1472,
+  "instrument": "VX Calendar Spread (VX2 - VX1)",
+  "signal_definition": "-sign(VX2 - VX1) -> trade spread SHORT (carry capture)",
+  "return_formula": "r_spread = (+1)*r_VX2 - (1)*r_VX1 (where r_k = pct_change(P_k))",
+  "execution_semantics": "signal.shift(1) - signals at close T, positions entered at close T, P&L accrues T\u2192T+1",
+  "portfolio_metrics": {
+    "CAGR": 0.3782080286296081,
+    "Vol": 0.3660273108514163,
+    "Sharpe": 1.055463780453704,
+    "MaxDD": -0.2298436720667142,
+    "HitRate": 0.44021739130434784,
+    "n_days": 1472,
+    "years": 5.841269841269841
+  },
+  "per_asset_stats": {
+    "VX_SPREAD_21_short": {
+      "AnnRet": 0.38632856926053893,
+      "AnnVol": 0.3660273108514163,
+      "Sharpe": 1.055463780453704
+    }
+  },
+  "subperiod_stats": {
+    "pre": {
+      "CAGR": 0.4667482297211294,
+      "Vol": 0.43364329008507263,
+      "Sharpe": 1.0932168610377013,
+      "MaxDD": -0.22460357199406944,
+      "HitRate": 0.44970414201183434,
+      "n_days": 507,
+      "years": 2.011904761904762
+    },
+    "post": {
+      "CAGR": 0.3393725769254732,
+      "Vol": 0.3251292909165957,
+      "Sharpe": 1.0464521364332127,
+      "MaxDD": -0.22984367206671408,
+      "HitRate": 0.43523316062176165,
+      "n_days": 965,
+      "years": 3.8293650793650795
+    }
+  },
+  "data_integrity": {
+    "rank_check_applied": true,
+    "note": "VX1 and VX2 rank integrity verified (no silent rank coercion)"
+  }
+}

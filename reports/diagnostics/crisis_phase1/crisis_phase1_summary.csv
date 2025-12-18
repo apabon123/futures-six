@@ -1,0 +1,5 @@
+variant,status,error
+vx2,ERROR,update_phase_index() got an unexpected keyword argument 'status'
+vx3,ERROR,update_phase_index() got an unexpected keyword argument 'status'
+vx_spread,ERROR,update_phase_index() got an unexpected keyword argument 'status'
+vx3_spread,ERROR,update_phase_index() got an unexpected keyword argument 'status'

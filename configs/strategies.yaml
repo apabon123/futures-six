@@ -794,6 +794,13 @@ strategy_profiles:
   core_v4_trend_csmom_no_macro:
     # Core v4: Trend Meta-Sleeve + CSMOM Meta-Sleeve, no macro overlay
     # Phase-2 integration: CSMOM added alongside Trend
+    # STATUS: Superseded by core_v5_trend_csmom_vrp_core_no_macro (Dec 2025)
+    # Kept for historical comparison; replaced after VRP-Core Phase-2 promotion
+    name: core_v4_trend_csmom_no_macro
+    description: "Trend + CSMOM baseline WITHOUT VRP (superseded by core_v5)."
+    is_baseline: false
+    status: "superseded"
+    notes: "Kept for historical comparison; replaced by core_v5_trend_csmom_vrp_core_no_macro after VRP-Core Phase-2 promotion."
     strategies:
       tsmom_multihorizon:
         enabled: true
@@ -855,7 +862,1233 @@ strategy_profiles:
         weight: 0.0
     macro_regime:
       enabled: false  # Disable macro overlay for baseline
+
+  core_v5_trend_csmom_vrp_core_no_macro:
+    # Core v5: Trend Meta-Sleeve + CSMOM Meta-Sleeve + VRP-Core Meta-Sleeve, no macro overlay
+    # Phase-2 integration: VRP-Core added alongside Trend + CSMOM
+    # STATUS: Historical reference baseline (superseded by Core v6, Dec 2025)
+    name: core_v5_trend_csmom_vrp_core_no_macro
+    display_name: "Core v5"
+    description: "Trend + CSMOM + VRP-Core; no macro overlays"
+    is_baseline: false
+    status: "historical_reference"
+    components:
+      trend_meta: true
+      csmom_meta: true
+      vrp_core: true
+      vrp_convergence: false
+    overlays:
+      macro: false
+    notes: "Promoted to baseline on Phase-2 pass: Sharpe +0.0074, small CAGR +0.11%, MaxDD slightly improved vs core_v4."
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 0.65  # Trend backbone (reduced from 0.75 to make room for VRP)
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      csmom_meta:
+        enabled: true
+        weight: 0.25  # CSMOM spice (unchanged)
+        params:
+          lookbacks: [63, 126, 252]
+          horizon_weights: [0.4, 0.35, 0.25]
+          vol_lookback: 63
+          rebalance: "D"
+          neutralize_cross_section: true
+          clip: 3.0
+      vrp_core_meta:
+        enabled: true
+        weight: 0.10  # VRP-Core modest allocation (10% of sleeve-level risk)
+        params:
+          rv_lookback: 21
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
   
+  core_v6_trend_csmom_vrp_core_convergence_no_macro:
+    # Core v6: Trend Meta-Sleeve + CSMOM Meta-Sleeve + VRP-Core Meta-Sleeve + VRP-Convergence Meta-Sleeve, no macro overlay
+    # Phase-2 integration: VRP-Convergence added alongside existing sleeves
+    # STATUS: Current canonical baseline (promoted Dec 2025)
+    name: core_v6_trend_csmom_vrp_core_convergence_no_macro
+    display_name: "Core v6"
+    description: "Trend + CSMOM + VRP-Core + VRP-Convergence; no macro overlays"
+    is_baseline: true
+    status: "baseline"
+    components:
+      trend_meta: true
+      csmom_meta: true
+      vrp_core: true
+      vrp_convergence: true
+    overlays:
+      macro: false
+    notes: "Phase-2 test: Adding VRP-Convergence (5%) to core_v5 baseline. VRP-Core reduced to 7.5% to make room."
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 0.625  # Trend backbone (reduced from 0.65 to make room for VRP-Convergence)
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      csmom_meta:
+        enabled: true
+        weight: 0.25  # CSMOM spice (unchanged)
+        params:
+          lookbacks: [63, 126, 252]
+          horizon_weights: [0.4, 0.35, 0.25]
+          vol_lookback: 63
+          rebalance: "D"
+          neutralize_cross_section: true
+          clip: 3.0
+      vrp_core_meta:
+        enabled: true
+        weight: 0.075  # VRP-Core reduced from 0.10 to make room for VRP-Convergence
+        params:
+          rv_lookback: 21
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+      vrp_convergence_meta:
+        enabled: true
+        weight: 0.05  # VRP-Convergence modest allocation (5% of sleeve-level risk)
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  core_v6_trend_csmom_vrp_core_convergence_vrp_alt_no_macro:
+    # Core v6 + VRP-Alt: Trend Meta-Sleeve + CSMOM Meta-Sleeve + VRP-Core Meta-Sleeve + VRP-Convergence Meta-Sleeve + VRP-Alt Meta-Sleeve, no macro overlay
+    # Phase-2 integration: VRP-Alt added alongside existing sleeves
+    # STATUS: Phase-2 experimental variant
+    name: core_v6_trend_csmom_vrp_core_convergence_vrp_alt_no_macro
+    display_name: "Core v6 + VRP-Alt"
+    description: "Trend + CSMOM + VRP-Core + VRP-Convergence + VRP-Alt; no macro overlays"
+    is_baseline: false
+    status: "phase2_experimental"
+    components:
+      trend_meta: true
+      csmom_meta: true
+      vrp_core: true
+      vrp_convergence: true
+      vrp_alt: true
+    overlays:
+      macro: false
+    notes: "Phase-2 test: Adding VRP-Alt (5%) to core_v6 baseline. Trend reduced by 2.5%, VRP-Convergence reduced from 5% to 2.5% to make room."
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 0.60  # Trend backbone (reduced by 2.5% to help fund VRP-Alt)
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      csmom_meta:
+        enabled: true
+        weight: 0.25  # CSMOM spice (unchanged)
+        params:
+          lookbacks: [63, 126, 252]
+          horizon_weights: [0.4, 0.35, 0.25]
+          vol_lookback: 63
+          rebalance: "D"
+          neutralize_cross_section: true
+          clip: 3.0
+      vrp_core_meta:
+        enabled: true
+        weight: 0.075  # VRP-Core unchanged (keeps VRP-Core at prior allocation)
+        params:
+          rv_lookback: 21
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+      vrp_convergence_meta:
+        enabled: true
+        weight: 0.025  # VRP-Convergence reduced from 5% to 2.5%
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      vrp_alt_meta:
+        enabled: true
+        weight: 0.05  # NEW: VRP-Alt receives 5% risk budget
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  core_v8_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_no_macro:
+    # Core v8: Core v7 + VX Calendar Carry (5%)
+    # STATUS: ✅ PRODUCTION BASELINE (Dec 2025)
+    # VX Carry promoted at 5% weight after Phase-2 validation
+    # All Core v7 sleeve weights scaled by 0.95 to accommodate VX Carry
+    name: core_v8_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_no_macro
+    display_name: "Core v8"
+    description: "Core v7 + VX Calendar Carry (5%); no macro overlays"
+    is_baseline: true
+    status: "production_baseline"
+    components:
+      trend_meta: true
+      csmom_meta: true
+      vrp_core: true
+      vrp_convergence: true
+      vrp_alt: true
+      vx_carry: true
+    overlays:
+      macro: false
+    notes: "Core v8: VX Calendar Carry promoted at 5% weight. Canonical atomic: vx2_vx1_short. Final composition: Trend 57%, CSMOM 23.75%, VRP-Core 7.125%, VRP-Convergence 2.375%, VRP-Alt 14.25%, VX Carry 5%."
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 0.57  # Trend backbone (scaled from 0.60 by 0.95)
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      csmom_meta:
+        enabled: true
+        weight: 0.2375  # CSMOM spice (scaled from 0.25 by 0.95)
+        params:
+          lookbacks: [63, 126, 252]
+          horizon_weights: [0.4, 0.35, 0.25]
+          vol_lookback: 63
+          rebalance: "D"
+          neutralize_cross_section: true
+          clip: 3.0
+      vrp_core_meta:
+        enabled: true
+        weight: 0.07125  # VRP-Core (scaled from 0.075 by 0.95)
+        params:
+          rv_lookback: 21
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+      vrp_convergence_meta:
+        enabled: true
+        weight: 0.02375  # VRP-Convergence (scaled from 0.025 by 0.95)
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      vrp_alt_meta:
+        enabled: true
+        weight: 0.1425  # VRP-Alt (scaled from 0.15 by 0.95)
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      vx_calendar_carry:
+        enabled: true
+        weight: 0.05  # VX Calendar Carry (canonical: vx2_vx1_short)
+        params:
+          variant: "vx2_vx1_short"  # Canonical atomic sleeve
+          zscore_window: 90
+          clip: 2.0
+          target_vol: 0.10
+          vol_lookback: 60
+          min_vol_floor: 0.01
+          max_leverage: 10.0
+          lag: 1
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro:
+    # Core v9: Core v8 + Curve RV Meta-Sleeve (8% total)
+    # STATUS: ✅ PRODUCTION BASELINE (Dec 2025)
+    # Curve RV: Rank Fly Momentum (5%) + Pack Slope Momentum (3%)
+    # All Core v8 sleeve weights scaled by 0.92 to accommodate Curve RV 8%
+    name: core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro
+    display_name: "Core v9"
+    description: "Core v8 + SR3 Curve RV Meta-Sleeve (Rank Fly 5% + Pack Slope 3%); no macro overlays"
+    is_baseline: true
+    status: "production_baseline"
+    components:
+      trend_meta: true
+      csmom_meta: true
+      vrp_core: true
+      vrp_convergence: true
+      vrp_alt: true
+      vx_carry: true
+      curve_rv: true
+    overlays:
+      macro: false
+    notes: "Core v9: Curve RV Meta-Sleeve promoted at 8% total (Rank Fly 5% + Pack Slope 3%). All Core v8 sleeves scaled by 0.92. Final composition: Trend 52.4%, CSMOM 21.85%, VRP-Core 6.555%, VRP-Convergence 2.185%, VRP-Alt 13.11%, VX Carry 4.6%, Curve RV 8%."
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 0.5244  # Trend backbone (scaled from 0.57 by 0.92)
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      csmom_meta:
+        enabled: true
+        weight: 0.2185  # CSMOM spice (scaled from 0.2375 by 0.92)
+        params:
+          lookbacks: [63, 126, 252]
+          horizon_weights: [0.4, 0.35, 0.25]
+          vol_lookback: 63
+          rebalance: "D"
+          neutralize_cross_section: true
+          clip: 3.0
+      vrp_core_meta:
+        enabled: true
+        weight: 0.06555  # VRP-Core (scaled from 0.07125 by 0.92)
+        params:
+          rv_lookback: 21
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+      vrp_convergence_meta:
+        enabled: true
+        weight: 0.02185  # VRP-Convergence (scaled from 0.02375 by 0.92)
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      vrp_alt_meta:
+        enabled: true
+        weight: 0.1311  # VRP-Alt (scaled from 0.1425 by 0.92)
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      vx_calendar_carry:
+        enabled: true
+        weight: 0.046  # VX Calendar Carry (scaled from 0.05 by 0.92)
+        params:
+          variant: "vx2_vx1_short"
+          zscore_window: 90
+          clip: 2.0
+          target_vol: 0.10
+          vol_lookback: 60
+          min_vol_floor: 0.01
+          max_leverage: 10.0
+          lag: 1
+      sr3_curve_rv_meta:
+        enabled: true
+        weight: 0.08  # Curve RV Meta-Sleeve (8% total: Rank Fly 5% + Pack Slope 3%)
+        params:
+          enabled_atomics: ["rank_fly", "pack_slope"]
+          atomic_weights:
+            rank_fly: 0.625
+            pack_slope: 0.375
+          zscore_window: 252
+          clip: 3.0
+          target_vol: 0.10
+          vol_lookback: 63
+          min_vol_floor: 0.01
+          max_leverage: 10.0
+          lag: 1
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_rankfly_no_macro:
+    # Core v9: Core v8 + Curve RV Rank Fly (5%)
+    # STATUS: Phase-2 test variant
+    # All Core v8 sleeve weights scaled by 0.95 to accommodate Curve RV Rank Fly (5%)
+    name: core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_rankfly_no_macro
+    display_name: "Core v9 + Rank Fly (5%)"
+    description: "Core v8 + SR3 Curve RV Rank Fly Momentum (5%); no macro overlays"
+    is_baseline: false
+    status: "phase2_test"
+    components:
+      trend_meta: true
+      csmom_meta: true
+      vrp_core: true
+      vrp_convergence: true
+      vrp_alt: true
+      vx_carry: true
+      curve_rv: true
+    overlays:
+      macro: false
+    notes: "Core v9 Phase-2: Rank Fly Momentum at 5% weight. All Core v8 sleeves scaled by 0.95."
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 0.5415  # Trend backbone (scaled from 0.57 by 0.95)
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      csmom_meta:
+        enabled: true
+        weight: 0.225625  # CSMOM spice (scaled from 0.2375 by 0.95)
+        params:
+          lookbacks: [63, 126, 252]
+          horizon_weights: [0.4, 0.35, 0.25]
+          vol_lookback: 63
+          rebalance: "D"
+          neutralize_cross_section: true
+          clip: 3.0
+      vrp_core_meta:
+        enabled: true
+        weight: 0.0676875  # VRP-Core (scaled from 0.07125 by 0.95)
+        params:
+          rv_lookback: 21
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+      vrp_convergence_meta:
+        enabled: true
+        weight: 0.0225625  # VRP-Convergence (scaled from 0.02375 by 0.95)
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      vrp_alt_meta:
+        enabled: true
+        weight: 0.135375  # VRP-Alt (scaled from 0.1425 by 0.95)
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      vx_calendar_carry:
+        enabled: true
+        weight: 0.0475  # VX Calendar Carry (scaled from 0.05 by 0.95)
+        params:
+          variant: "vx2_vx1_short"
+          zscore_window: 90
+          clip: 2.0
+          target_vol: 0.10
+          vol_lookback: 60
+          min_vol_floor: 0.01
+          max_leverage: 10.0
+          lag: 1
+      sr3_curve_rv_meta:
+        enabled: true
+        weight: 0.05  # Curve RV Rank Fly (5%)
+        params:
+          enabled_atomics: ["rank_fly"]
+          atomic_weights:
+            rank_fly: 1.0
+          zscore_window: 252
+          clip: 3.0
+          target_vol: 0.10
+          vol_lookback: 63
+          min_vol_floor: 0.01
+          max_leverage: 10.0
+          lag: 1
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false
+
+  core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_packslope_no_macro:
+    # Core v9: Core v8 + Curve RV Pack Slope (3%)
+    # STATUS: Phase-2 test variant
+    # All Core v8 sleeve weights scaled by 0.97 to accommodate Curve RV Pack Slope (3%)
+    name: core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_packslope_no_macro
+    display_name: "Core v9 + Pack Slope (3%)"
+    description: "Core v8 + SR3 Curve RV Pack Slope Momentum (3%); no macro overlays"
+    is_baseline: false
+    status: "phase2_test"
+    components:
+      trend_meta: true
+      csmom_meta: true
+      vrp_core: true
+      vrp_convergence: true
+      vrp_alt: true
+      vx_carry: true
+      curve_rv: true
+    overlays:
+      macro: false
+    notes: "Core v9 Phase-2: Pack Slope Momentum at 3% weight. All Core v8 sleeves scaled by 0.97."
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 0.5529  # Trend backbone (scaled from 0.57 by 0.97)
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      csmom_meta:
+        enabled: true
+        weight: 0.230375  # CSMOM spice (scaled from 0.2375 by 0.97)
+        params:
+          lookbacks: [63, 126, 252]
+          horizon_weights: [0.4, 0.35, 0.25]
+          vol_lookback: 63
+          rebalance: "D"
+          neutralize_cross_section: true
+          clip: 3.0
+      vrp_core_meta:
+        enabled: true
+        weight: 0.0691125  # VRP-Core (scaled from 0.07125 by 0.97)
+        params:
+          rv_lookback: 21
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+      vrp_convergence_meta:
+        enabled: true
+        weight: 0.0230375  # VRP-Convergence (scaled from 0.02375 by 0.97)
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      vrp_alt_meta:
+        enabled: true
+        weight: 0.138225  # VRP-Alt (scaled from 0.1425 by 0.97)
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      vx_calendar_carry:
+        enabled: true
+        weight: 0.0485  # VX Calendar Carry (scaled from 0.05 by 0.97)
+        params:
+          variant: "vx2_vx1_short"
+          zscore_window: 90
+          clip: 2.0
+          target_vol: 0.10
+          vol_lookback: 60
+          min_vol_floor: 0.01
+          max_leverage: 10.0
+          lag: 1
+      sr3_curve_rv_meta:
+        enabled: true
+        weight: 0.03  # Curve RV Pack Slope (3%)
+        params:
+          enabled_atomics: ["pack_slope"]
+          atomic_weights:
+            pack_slope: 1.0
+          zscore_window: 252
+          clip: 3.0
+          target_vol: 0.10
+          vol_lookback: 63
+          min_vol_floor: 0.01
+          max_leverage: 10.0
+          lag: 1
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false
+
+  core_v7_trend_csmom_vrp_core_convergence_vrp_alt_no_macro:
+    # Core v7: Trend Meta-Sleeve + CSMOM Meta-Sleeve + VRP-Core Meta-Sleeve + VRP-Convergence Meta-Sleeve + VRP-Alt Meta-Sleeve, no macro overlay
+    # STATUS: ⚠️ SUPERSEDED by Core v8 (Dec 2025)
+    # VRP-Alt promoted at 15% weight after scaling analysis
+    name: core_v7_trend_csmom_vrp_core_convergence_vrp_alt_no_macro
+    display_name: "Core v7"
+    description: "Trend + CSMOM + VRP-Core + VRP-Convergence + VRP-Alt; no macro overlays (Superseded by Core v8)"
+    is_baseline: false
+    status: "superseded"
+    components:
+      trend_meta: true
+      csmom_meta: true
+      vrp_core: true
+      vrp_convergence: true
+      vrp_alt: true
+    overlays:
+      macro: false
+    notes: "Core v7: VRP-Alt promoted at 15% weight. Final composition: Trend 60%, CSMOM 25%, VRP-Core 7.5%, VRP-Convergence 2.5%, VRP-Alt 15%."
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 0.60  # Trend backbone (unchanged from Core v6)
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      csmom_meta:
+        enabled: true
+        weight: 0.25  # CSMOM spice (unchanged)
+        params:
+          lookbacks: [63, 126, 252]
+          horizon_weights: [0.4, 0.35, 0.25]
+          vol_lookback: 63
+          rebalance: "D"
+          neutralize_cross_section: true
+          clip: 3.0
+      vrp_core_meta:
+        enabled: true
+        weight: 0.075  # VRP-Core (unchanged from Core v6)
+        params:
+          rv_lookback: 21
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+      vrp_convergence_meta:
+        enabled: true
+        weight: 0.025  # VRP-Convergence (kept but de-emphasized)
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      vrp_alt_meta:
+        enabled: true
+        weight: 0.15  # VRP-Alt promoted at 15% weight (optimal from scaling analysis)
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false  # Disable macro overlay for baseline
+
+  core_v6_trend_csmom_vrp_core_convergence_vrp_alt_7p5_no_macro:
+    # Core v6 + VRP-Alt (7.5%): Phase-2 scaling test
+    # VRP-Alt weight: 7.5%
+    name: core_v6_trend_csmom_vrp_core_convergence_vrp_alt_7p5_no_macro
+    display_name: "Core v6 + VRP-Alt (7.5%)"
+    description: "Trend + CSMOM + VRP-Core + VRP-Convergence + VRP-Alt (7.5%); no macro overlays"
+    is_baseline: false
+    status: "phase2_scaling_test"
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 0.5875  # Reduced by 3.75% to fund VRP-Alt
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      csmom_meta:
+        enabled: true
+        weight: 0.25  # Unchanged
+        params:
+          lookbacks: [63, 126, 252]
+          horizon_weights: [0.4, 0.35, 0.25]
+          vol_lookback: 63
+          rebalance: "D"
+          neutralize_cross_section: true
+          clip: 3.0
+      vrp_core_meta:
+        enabled: true
+        weight: 0.075  # Unchanged
+        params:
+          rv_lookback: 21
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+      vrp_convergence_meta:
+        enabled: true
+        weight: 0.0125  # Reduced from 2.5% to 1.25%
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      vrp_alt_meta:
+        enabled: true
+        weight: 0.075  # 7.5% weight
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false
+
+  core_v6_trend_csmom_vrp_core_convergence_vrp_alt_10_no_macro:
+    # Core v6 + VRP-Alt (10%): Phase-2 scaling test
+    # VRP-Alt weight: 10%
+    name: core_v6_trend_csmom_vrp_core_convergence_vrp_alt_10_no_macro
+    display_name: "Core v6 + VRP-Alt (10%)"
+    description: "Trend + CSMOM + VRP-Core + VRP-Convergence + VRP-Alt (10%); no macro overlays"
+    is_baseline: false
+    status: "phase2_scaling_test"
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 0.575  # Reduced by 5% to fund VRP-Alt
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      csmom_meta:
+        enabled: true
+        weight: 0.25  # Unchanged
+        params:
+          lookbacks: [63, 126, 252]
+          horizon_weights: [0.4, 0.35, 0.25]
+          vol_lookback: 63
+          rebalance: "D"
+          neutralize_cross_section: true
+          clip: 3.0
+      vrp_core_meta:
+        enabled: true
+        weight: 0.075  # Unchanged
+        params:
+          rv_lookback: 21
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+      vrp_convergence_meta:
+        enabled: true
+        weight: 0.0  # Disabled to fund VRP-Alt
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      vrp_alt_meta:
+        enabled: true
+        weight: 0.10  # 10% weight
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false
+
+  core_v6_trend_csmom_vrp_core_convergence_vrp_alt_15_no_macro:
+    # Core v6 + VRP-Alt (15%): Phase-2 scaling test
+    # VRP-Alt weight: 15%
+    name: core_v6_trend_csmom_vrp_core_convergence_vrp_alt_15_no_macro
+    display_name: "Core v6 + VRP-Alt (15%)"
+    description: "Trend + CSMOM + VRP-Core + VRP-Convergence + VRP-Alt (15%); no macro overlays"
+    is_baseline: false
+    status: "phase2_scaling_test"
+    strategies:
+      tsmom_multihorizon:
+        enabled: true
+        weight: 0.55  # Reduced by 7.5% to fund VRP-Alt
+        params:
+          horizon_weights:
+            long_252: 0.50
+            med_84: 0.30
+            short_21: 0.20
+          feature_weights:
+            long:
+              ret_252: 0.5
+              breakout_252: 0.3
+              slope_slow: 0.2
+            med:
+              ret_84: 0.4
+              breakout_126: 0.3
+              slope_med: 0.2
+              persistence: 0.1
+            short:
+              ret_21: 0.5
+              breakout_21: 0.3
+              slope_fast: 0.2
+              reversal: 0.0
+          signal_cap: 3.0
+          rebalance: "W-FRI"
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            sigma_floor_annual: 0.05
+            risk_scale: 0.2
+      csmom_meta:
+        enabled: true
+        weight: 0.25  # Unchanged
+        params:
+          lookbacks: [63, 126, 252]
+          horizon_weights: [0.4, 0.35, 0.25]
+          vol_lookback: 63
+          rebalance: "D"
+          neutralize_cross_section: true
+          clip: 3.0
+      vrp_core_meta:
+        enabled: true
+        weight: 0.075  # Unchanged
+        params:
+          rv_lookback: 21
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+      vrp_convergence_meta:
+        enabled: true
+        weight: 0.0  # Disabled to fund VRP-Alt
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      vrp_alt_meta:
+        enabled: true
+        weight: 0.15  # 15% weight
+        params:
+          zscore_window: 252
+          clip: 3.0
+          signal_mode: "zscore"
+          target_vol: 0.10
+          vol_lookback: 63
+          vol_floor: 0.05
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+    macro_regime:
+      enabled: false
+
   core_v3_trend_breakout:
     # Experimental: Trend Meta-Sleeve with Breakout Mid (50-100d) as 5th atomic sleeve
     # Phase-1 integration: Breakout Mid added as internal atomic sleeve

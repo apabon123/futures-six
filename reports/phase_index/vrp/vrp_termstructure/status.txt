@@ -1,0 +1,17 @@
+Status: PARKED
+Reason: Phase-0 economic failure.
+Sharpe: -0.63
+CAGR: -52.4%
+MaxDD: -98.9%
+HitRate: 43.2%
+
+Notes:
+- Implementation and data diagnostics confirm correct behavior.
+- The economic mapping of (VX2 - VX1 > 0.5) → short VX1 does not produce a positive edge.
+- Losses occur in spike regimes where contango persists.
+- Sleeve will not progress to Phase-1.
+
+Revisit Conditions:
+- Consider using term-structure slope as a regime filter rather than a directional VRP sleeve.
+- Potential integration into Crisis Meta-Sleeve or calendar-spread-based research.
+

@@ -1,0 +1,48 @@
+{
+  "start_date": "2020-01-01",
+  "end_date": "2025-10-31",
+  "sleeve_name": "sr3_curve_rv_pack_curvature_fade",
+  "meta_sleeve": "rates_curve_rv",
+  "strategy_type": "Phase-0 (sign-only, no vol targeting)",
+  "execution_lag": "signal.shift(1)",
+  "rate_space": "r_k = 100 - P_k (for signals only)",
+  "return_primitive": "price pct_change (leg returns, not rate returns)",
+  "metrics": {
+    "CAGR": -0.0029052559468676353,
+    "Vol": 0.0056964503177975604,
+    "Sharpe": -0.5107509829184882,
+    "MaxDD": -0.020802549997000153,
+    "HitRate": 0.486562150055991,
+    "n_days": 1786,
+    "years": 7.087301587301587
+  },
+  "subperiod_stats": {
+    "pre": {
+      "CAGR": -0.004392934637042933,
+      "Vol": 0.002930647048045547,
+      "Sharpe": -1.502253050494759,
+      "MaxDD": -0.011814754551656814,
+      "HitRate": 0.4634551495016611,
+      "n_days": 602,
+      "years": 2.388888888888889,
+      "start_date": "2020-01-03 00:00:00",
+      "end_date": "2021-12-31 00:00:00"
+    },
+    "post": {
+      "CAGR": -0.0021480028802310924,
+      "Vol": 0.006677741031139975,
+      "Sharpe": -0.3220106864027229,
+      "MaxDD": -0.019367323812359866,
+      "HitRate": 0.4983108108108108,
+      "n_days": 1184,
+      "years": 4.698412698412699,
+      "start_date": "2022-01-02 00:00:00",
+      "end_date": "2025-10-31 00:00:00"
+    }
+  },
+  "phase0_validity": {
+    "leg_return_primitive": "price pct_change (\u2713 correct)",
+    "max_daily_return": 0.005937036893813988,
+    "gross_exposure": "sensible (pack slope: 2, pack curvature: 2, rank fly: 4)"
+  }
+}

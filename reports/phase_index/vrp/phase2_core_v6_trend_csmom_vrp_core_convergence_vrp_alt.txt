@@ -1,0 +1,33 @@
+# Phase-2: VRP-Alt Portfolio Integration
+# Registered: 2025-12-13 12:45:11
+baseline_profile: core_v6_trend_csmom_vrp_core_convergence_no_macro
+variant_profile: core_v6_trend_csmom_vrp_core_convergence_vrp_alt_no_macro
+start_date: 2020-01-01
+end_date: 2025-10-31
+
+# Baseline Metrics
+baseline_sharpe: 0.5796
+baseline_cagr: 0.0677
+baseline_maxdd: -0.1718
+
+# Variant Metrics
+variant_sharpe: 0.5820
+variant_cagr: 0.0681
+variant_maxdd: -0.1713
+
+# Differences
+sharpe_diff: 0.0024
+cagr_diff: 0.0004
+maxdd_diff: 0.0005
+
+# Sleeve Correlations
+
+# Phase-2 Pass Criteria
+sharpe_pass: PASS (variant >= baseline - 0.02)
+maxdd_pass: PASS (variant <= baseline + 0.01)
+corr_pass: FAIL (corr(VRP-Alt, VRP-Core) < 0.95)
+
+verdict: INCONCLUSIVE
+reason: Marginal pass
+
+path: data\diagnostics\phase2\core_v6_trend_csmom_vrp_core_convergence_vrp_alt\20251213_124343

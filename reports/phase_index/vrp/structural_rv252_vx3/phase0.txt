@@ -1,0 +1,1 @@
+reports/sanity_checks/vrp/structural_rv252_vx3/latest/

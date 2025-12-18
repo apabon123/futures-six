@@ -1,0 +1,87 @@
+{
+  "baseline": {
+    "profile": "core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro",
+    "run_id": "core_v9_baseline_phase2_20251217_203028",
+    "metrics": {
+      "cagr": 0.0896164024159396,
+      "vol": 0.12814902837904205,
+      "sharpe": 0.733803380503296,
+      "max_drawdown": -0.1371091558368943,
+      "worst_month": -0.06795404745222045,
+      "worst_quarter": -0.051112074584965916,
+      "n_days": 1469,
+      "n_years": 5.829365079365079
+    },
+    "crisis_periods": {
+      "2020_Q1": {
+        "total_return": 0.010900244017807648,
+        "max_drawdown": -0.020610664930276856,
+        "vol": 0.0695197886091821,
+        "n_days": 59
+      },
+      "2022_Drawdown": {
+        "total_return": -0.00954709530249509,
+        "max_drawdown": -0.1292430574535589,
+        "vol": 0.15826114708585823,
+        "n_days": 252
+      }
+    }
+  },
+  "variant": {
+    "sleeve": "Long VX3",
+    "weight": 0.05,
+    "metrics": {
+      "cagr": 0.08703827462296698,
+      "vol": 0.12121648031453498,
+      "sharpe": 0.748868973942616,
+      "max_drawdown": -0.12643868830751004,
+      "worst_month": -0.0622942095072232,
+      "worst_quarter": -0.047614532646615415,
+      "n_days": 1469,
+      "n_years": 5.829365079365079
+    },
+    "crisis_periods": {
+      "2020_Q1": {
+        "total_return": 0.05113504293919835,
+        "max_drawdown": -0.027880109675823897,
+        "vol": 0.07416126052462808,
+        "n_days": 59
+      },
+      "2022_Drawdown": {
+        "total_return": -0.0035734384891358273,
+        "max_drawdown": -0.12131759733205066,
+        "vol": 0.14835941082174076,
+        "n_days": 252
+      }
+    }
+  },
+  "comparison": {
+    "maxdd_diff": 0.010670467529384248,
+    "worst_month_diff": 0.005659837944997248,
+    "worst_quarter_diff": 0.0034975419383505013,
+    "cagr_diff": -0.0025781277929726176,
+    "sharpe_diff": 0.015065593439320013,
+    "vol_diff": -0.006932548064507063,
+    "vol_amplification": {
+      "calm_days": 703,
+      "baseline_calm_vol": 0.09786884666981784,
+      "variant_calm_vol": 0.097768395804924,
+      "vol_ratio": 0.9989736175676747,
+      "vol_amplification": false
+    },
+    "pass_criteria": {
+      "maxdd_pass": true,
+      "worst_month_pass": true,
+      "worst_quarter_pass": true,
+      "crisis_2020_q1_pass": false,
+      "crisis_2022_pass": true,
+      "vol_amplification_pass": true,
+      "overall_pass": false
+    }
+  },
+  "date_range": {
+    "start": "2020-01-06",
+    "end": "2025-10-31",
+    "n_days": 1469
+  }
+}

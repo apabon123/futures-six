@@ -1,0 +1,41 @@
+{
+  "run_date": "2025-12-13 14:51:59",
+  "start_date": "2020-01-01",
+  "end_date": "2025-10-31",
+  "effective_start_date": "2020-01-06 00:00:00",
+  "description": "VRP-Convexity (VVIX) Phase-0 signal test: Short VX1 when VVIX > 100.0, else flat. Tests convexity premium.",
+  "rule_type": "short_only",
+  "rationale": "Vol-of-vol (VVIX) is structurally overpriced relative to VIX. Elevated VVIX indicates expensive convexity insurance \u2192 favorable short-vol carry once shocks stabilize.",
+  "phase0_threshold": 100.0,
+  "threshold_description": "Fixed 100.0 VVIX threshold for Phase-0 sanity test. Not used in Phase-1 or production.",
+  "metrics": {
+    "CAGR": -0.3534851462845534,
+    "Vol": 0.8261944961787789,
+    "Sharpe": -0.1288060267852792,
+    "MaxDD": -0.9773063619614528,
+    "HitRate": 0.21228668941979523,
+    "n_days": 1465,
+    "years": 5.813492063492063
+  },
+  "signal_distribution": {
+    "pct_short": 52.3517382413088,
+    "pct_flat": 47.648261758691206
+  },
+  "vvix_stats": {
+    "mean": 103.52866211604095,
+    "median": 101.88,
+    "std": 18.048925962508147,
+    "min": 73.26,
+    "max": 207.59
+  },
+  "run_consistency": {
+    "requested_start": "2020-01-01",
+    "requested_end": "2025-10-31",
+    "effective_start": "2020-01-06 00:00:00",
+    "warmup_rows_dropped": 0,
+    "rows_dropped_na": 2,
+    "valid_rows": 1465,
+    "final_row_count": 1465,
+    "pct_days_active": 52.3517382413088
+  }
+}

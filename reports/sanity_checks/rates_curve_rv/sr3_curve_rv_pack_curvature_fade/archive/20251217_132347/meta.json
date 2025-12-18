@@ -1,0 +1,42 @@
+{
+  "start_date": "2020-01-01",
+  "end_date": "2025-10-31",
+  "sleeve_name": "sr3_curve_rv_pack_curvature_fade",
+  "meta_sleeve": "rates_curve_rv",
+  "strategy_type": "Phase-0 (sign-only, no vol targeting)",
+  "execution_lag": "signal.shift(1)",
+  "rate_space": "r_k = 100 - P_k",
+  "metrics": {
+    "CAGR": -0.27956673434566837,
+    "Vol": 1.852787845767201,
+    "Sharpe": -0.17686280160577303,
+    "MaxDD": -1.274771055693196,
+    "HitRate": 0.5019897669130188,
+    "n_days": 1759,
+    "years": 6.98015873015873
+  },
+  "subperiod_stats": {
+    "pre": {
+      "CAGR": -0.8425654565384276,
+      "Vol": 3.1060980636793194,
+      "Sharpe": -0.593020745485885,
+      "MaxDD": -1.274771055693196,
+      "HitRate": 0.5008695652173913,
+      "n_days": 575,
+      "years": 2.2817460317460316,
+      "start_date": "2020-01-03 00:00:00",
+      "end_date": "2021-12-31 00:00:00"
+    },
+    "post": {
+      "CAGR": 0.5028819946529348,
+      "Vol": 0.6431025169531311,
+      "Sharpe": 0.6339798886589049,
+      "MaxDD": -14439.633607654618,
+      "HitRate": 0.5025337837837838,
+      "n_days": 1184,
+      "years": 4.698412698412699,
+      "start_date": "2022-01-02 00:00:00",
+      "end_date": "2025-10-31 00:00:00"
+    }
+  }
+}

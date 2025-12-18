@@ -946,9 +946,9 @@ Persistence will be automatically re-tested when any of the following occur:
 
 ### 5.1 Related Documentation
 
-- **`STRATEGY.md`**: Describes the architecture and execution flow of the production Trend Meta-Sleeve
-- **`DIAGNOSTICS.md`**: Documents the diagnostics framework and Phase-0 sanity check methodology
-- **`PROCEDURES.md`**: Outlines the sleeve lifecycle (Phase-0 → Phase-3) and development procedures
+- **`SOTs/STRATEGY.md`**: Describes the architecture and execution flow of the production Trend Meta-Sleeve
+- **`SOTs/DIAGNOSTICS.md`**: Documents the diagnostics framework and Phase-0 sanity check methodology
+- **`SOTs/PROCEDURES.md`**: Outlines the sleeve lifecycle (Phase-0 → Phase-3) and development procedures
 - **`TREND_IMPLEMENTATION.md`**: Detailed implementation reference for the Trend Meta-Sleeve
 
 ### 5.2 Implementation Files

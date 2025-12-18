@@ -206,7 +206,7 @@ pnl = qty_prev * ret_cont * (price_cont_prev * multiplier)
 
 ## References
 
-- **Strategy Execution Flow**: See `docs/STRATEGY.md` for how continuous prices are used in the execution pipeline
+- **Strategy Execution Flow**: See `docs/SOTs/STRATEGY.md` for how continuous prices are used in the execution pipeline
 - **Implementation Details**: See `src/services/continuous_contract_builder.py` for back-adjustment algorithm
 - **Validation**: See `src/diagnostics/continuous_price_validation.py` for validation logic
 

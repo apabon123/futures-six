@@ -1,0 +1,33 @@
+# VX Calendar Carry Status
+# Updated: 2025-12-17
+
+## Promotion Decision
+
+PROMOTED: vx2_vx1_short (canonical)
+- Status: Integrated into Core v8 baseline (5% research weight)
+- Rationale: Slightly stronger Phase-2 improvements (+0.0377 Sharpe vs +0.0333) and liquidity-favored
+- Phase-2 Results: Sharpe +0.0377, MaxDD +1.02%, Vol -0.71%, correlation -0.0508
+
+VALID: vx3_vx2_short (secondary PASS, non-default)
+- Status: Phase-2 PASS (secondary), validated backup
+- Rationale: Excellent diversification (correlation -0.0075); retained as ready alternative
+- Phase-2 Results: Sharpe +0.0333, MaxDD +0.96%, Vol -0.69%, correlation -0.0075
+- Note: Keep as fallback if/when trading reality forces a switch
+
+## Frozen Rules
+
+Going forward, VX Carry should only come up again for:
+- Allocator design / production execution workflow differences for spreads
+- Interaction with other carry sleeves
+- Future architecture changes (e.g., when adding real execution simulation)
+
+Otherwise: expression + direction are frozen (short spread carry capture).
+
+## Phase Index References
+
+- Phase-0: reports/phase_index/carry/vx_calendar_carry_variants/phase0.txt
+- Phase-1 (vx2_vx1_short): reports/phase_index/carry/vx_calendar_carry/vx2_vx1_short/phase1.txt
+- Phase-1 (vx3_vx2_short): reports/phase_index/carry/vx_calendar_carry/vx3_vx2_short/phase1.txt
+- Phase-2 (vx2_vx1_short): reports/phase_index/carry/vx_calendar_carry/vx2_vx1_short/phase2.txt
+- Phase-2 (vx3_vx2_short): reports/phase_index/carry/vx_calendar_carry/vx3_vx2_short/phase2.txt
+

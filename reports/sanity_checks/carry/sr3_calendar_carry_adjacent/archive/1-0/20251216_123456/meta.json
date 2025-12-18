@@ -1,0 +1,50 @@
+{
+  "start_date": "2020-01-02",
+  "end_date": "2025-10-31",
+  "n_days": 1269,
+  "ranks_used": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "tradeable_symbol": "SR3_FRONT_CALENDAR",
+  "variant": "spread",
+  "signal_definition": "sign(RANK_1 - RANK_0) -> trade spread (RANK_1 - RANK_0) directly",
+  "portfolio_metrics": {
+    "CAGR": 0.007594141635957952,
+    "Vol": 0.02089634940015135,
+    "Sharpe": 0.37246550166204506,
+    "MaxDD": -0.02862289674789853,
+    "HitRate": 0.45390070921985815,
+    "n_days": 1269,
+    "years": 5.035714285714286
+  },
+  "per_asset_stats": {
+    "SR3_SPREAD_R1_R0": {
+      "AnnRet": 0.007783169262232746,
+      "AnnVol": 0.02089634940015135,
+      "Sharpe": 0.372465501662045
+    }
+  },
+  "subperiod_stats": {
+    "pre": {
+      "CAGR": 0.0020224253546528015,
+      "Vol": 0.012053984447785542,
+      "Sharpe": 0.1735838240119578,
+      "MaxDD": -0.014738296172707388,
+      "HitRate": 0.38752783964365256,
+      "n_days": 449,
+      "years": 1.7817460317460319
+    },
+    "post": {
+      "CAGR": 0.01065811160950636,
+      "Vol": 0.02442247614925146,
+      "Sharpe": 0.44627846557267936,
+      "MaxDD": -0.024215128767298144,
+      "HitRate": 0.4902439024390244,
+      "n_days": 820,
+      "years": 3.253968253968254
+    }
+  }
+}

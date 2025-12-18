@@ -1,0 +1,47 @@
+# VRP-Convergence Promotion Summary
+# Registered: 2025-12-11
+
+## Phase-0: Signal Sanity Test
+- **Status**: PASSED
+- **Rule**: Short-only convergence on VIX–VX1 with T=1.0 vol points
+- **Results (2020-2025, threshold=1.0)**:
+  - Sharpe: 0.43 (well above 0.10 threshold)
+  - CAGR: 9.35%
+  - MaxDD: -45.29%
+  - Signal distribution: 37.7% short, 62.3% flat
+- **Key Finding**: Only negative spreads (VX1 > VIX) produce stable convergence. Positive spreads do not imply mean reversion.
+
+## Phase-1: Engineered VRP-Convergence Sleeve
+- **Status**: PASSED
+- **Implementation**: Short-only engineered sleeve with z-scored convergence spread
+- **Results (2020-2025, canonical window)**:
+  - Sharpe: 0.27 (above 0.20 threshold)
+  - CAGR: 0.33% (positive, though low due to vol targeting)
+  - MaxDD: -2.08% (very reasonable)
+  - Signal distribution: 0.0% long, 40.1% short, 59.9% flat
+- **Key Features**: 
+  - Short-only constraint verified (0% long signals)
+  - Vol-targeted at 10% sleeve vol
+  - Continuous z-scored signal replaces Phase-0 threshold
+
+## Phase-2: Portfolio Integration
+- **Status**: PASSED
+- **Baseline**: Core v5 (Trend 65% + CSMOM 25% + VRP-Core 10%)
+- **Variant**: Core v6 (Trend 62.5% + CSMOM 25% + VRP-Core 7.5% + VRP-Convergence 5%)
+- **Results (2020-2025, canonical window)**:
+  - Sharpe: 0.5774 → 0.5796 (+0.0022)
+  - CAGR: 6.74% → 6.77% (+0.03%)
+  - MaxDD: -17.22% → -17.18% (+0.04%, less negative)
+- **Pass Criteria**:
+  - Sharpe: PASS (variant >= baseline - 0.01)
+  - MaxDD: PASS (variant >= baseline, less negative)
+  - Sleeve correlations: Minor bug in VolManagedOverlay diagnostics (does not affect main conclusion)
+
+## Decision
+- **VRP-Convergence promoted** as the 2nd canonical VRP atomic sleeve alongside VRP-Core
+- **Core v6 is now the canonical baseline** for Phase-2 comparisons
+- **Core v5 is retained** as a historical reference baseline
+
+## Promotion Date
+2025-12-11
+

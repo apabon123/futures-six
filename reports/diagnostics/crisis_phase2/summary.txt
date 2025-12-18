@@ -1,0 +1,51 @@
+
+================================================================================
+Crisis Meta-Sleeve Phase-2 Diagnostics: Long VX3 Integration
+
+Evaluation Period: 2020-01-06 to 2025-10-31
+Sleeve Weight: 5.0%
+
+Baseline (Core v9) Metrics:
+  MaxDD: -0.1371
+  Worst Month: -0.0680
+  Worst Quarter: -0.0511
+  CAGR: 0.0896 (informational)
+  Sharpe: 0.7338 (informational)
+  Vol: 0.1281
+
+Variant (Core v9 + Long VX3) Metrics:
+  MaxDD: -0.1264 (diff: +0.0107)
+  Worst Month: -0.0623 (diff: +0.0057)
+  Worst Quarter: -0.0476 (diff: +0.0035)
+  CAGR: 0.0870 (diff: -0.0026) (informational)
+  Sharpe: 0.7489 (diff: +0.0151) (informational)
+  Vol: 0.1212 (diff: -0.0069)
+
+Crisis Period Analysis:
+  2020 Q1:
+    Baseline MaxDD: -0.0206
+    Variant MaxDD: -0.0279
+    Status: ✗ Worsened
+  
+  2022 Drawdown:
+    Baseline MaxDD: -0.1292
+    Variant MaxDD: -0.1213
+    Status: ✓ Neutral or Improved
+
+Volatility Amplification Check:
+  Calm Regime Days: 703
+  Baseline Calm Vol: 0.0979
+  Variant Calm Vol: 0.0978
+  Vol Ratio: 0.9990
+  Status: ✓ No Amplification
+
+Phase-2 Pass Criteria (Crisis-specific):
+  MaxDD ≥ Baseline (less negative): ✓ PASS (-0.1264 vs -0.1371)
+  Worst Month ≥ Baseline (less negative): ✓ PASS (-0.0623 vs -0.0680)
+  Worst Quarter ≥ Baseline (less negative): ✓ PASS (-0.0476 vs -0.0511)
+  2020 Q1 Neutral/Improved: ✗ FAIL
+  2022 Neutral/Improved: ✓ PASS
+  No Vol Amplification: ✓ PASS
+  
+  Overall Pass: ✗ FAIL
+================================================================================

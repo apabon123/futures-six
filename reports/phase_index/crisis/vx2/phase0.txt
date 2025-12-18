@@ -1,0 +1,10 @@
+# Phase-0: Crisis Sleeve vx2
+# Registered: 2025-12-17 19:47:22
+start_date: 2020-01-06
+end_date: 2025-10-31
+crisis_weight: 0.05
+maxdd_diff: 0.0091
+worst_month_diff: 0.0049
+cagr_diff: -0.0032
+overall_pass: True
+path: reports\diagnostics\crisis_phase0\core_v9_crisis_vx2_phase0

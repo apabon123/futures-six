@@ -1,0 +1,10 @@
+# Phase-0: VRP-Convergence Signal Test (SHORT-ONLY: Short VX1 when (VIX - VX1) < -1.0)
+# Registered: 2025-12-11 09:10:09
+threshold: 1.0
+rule_type: short_only
+start_date: 2020-01-01
+end_date: 2025-10-31
+sharpe: 0.4338
+cagr: 0.0935
+max_dd: -0.4529
+path: data\diagnostics\vrp_convergence_phase0\threshold_1.0\phase0_signal_test

@@ -206,7 +206,8 @@ class TSMOMMultiHorizonStrategy:
             logger.warning(f"[TSMOMMultiHorizon] Config not found: {config_path}, using defaults")
             return {}
         
-        with open(path, 'r') as f:
+        # Explicitly use UTF-8 encoding to avoid Windows cp1252 default
+        with open(path, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
         
         return config

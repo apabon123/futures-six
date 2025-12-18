@@ -1,0 +1,20 @@
+Crisis Meta-Sleeve Phase-1: vx2
+
+Evaluation Period: 2020-01-06 to 2025-10-31
+Sleeve Weight: 5.0%
+
+Baseline (Core v9) Metrics:
+  MaxDD: -0.1371
+  Worst Month: -0.0680
+  CAGR: 0.0896
+
+Combined (Core v9 + vx2) Metrics:
+  MaxDD: -0.1345 (diff: +0.0026)
+  Worst Month: -0.0664 (diff: +0.0015)
+  CAGR: 0.0907 (diff: +0.0011)
+
+Phase-1 Pass Criteria:
+  Tail Preservation: True (required: 0.0018, achieved: 0.0026)
+  Cost Reduction: False (CAGR diff: +0.0011 vs VX2: +0.0011)
+  Stability: True
+  Overall Pass: True

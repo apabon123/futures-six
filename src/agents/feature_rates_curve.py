@@ -80,7 +80,7 @@ class RatesCurveFeatures:
             config_path = Path(dv01_config_path)
             if not config_path.exists():
                 raise FileNotFoundError(f"DV01 config not found: {dv01_config_path}")
-            with open(config_path, 'r') as f:
+            with open(config_path, 'r', encoding='utf-8') as f:
                 dv01_yaml = yaml.safe_load(f)
             self.dv01 = {
                 "ZT": dv01_yaml["ZT"]["dv01"],

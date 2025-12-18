@@ -1,0 +1,87 @@
+{
+  "run_id": "core_v9_crisis_vx_spread_phase0",
+  "sleeve_name": "vx_spread",
+  "sleeve_type": "vx_spread",
+  "crisis_weight": 0.05,
+  "start_date": "2020-01-06",
+  "end_date": "2025-10-31",
+  "baseline_metrics": {
+    "cagr": 0.0896164024159396,
+    "sharpe": 0.733803380503296,
+    "volatility": 0.12814902837904205,
+    "max_drawdown": -0.1371091558368943,
+    "worst_month": -0.06795404745222045,
+    "worst_quarter": -0.051112074584965916,
+    "worst_10d": -0.111996398551655,
+    "crisis_attribution": {
+      "2020_Q1": {
+        "total_return": 0.010900244017807648,
+        "max_drawdown": -0.020610664930276856,
+        "n_days": 59
+      },
+      "2022_drawdown": {
+        "total_return": -0.00954709530249509,
+        "max_drawdown": -0.1292430574535589,
+        "n_days": 252
+      },
+      "2023_vol_spike": {
+        "total_return": 0.09861967298298557,
+        "max_drawdown": -0.1371091558368941,
+        "n_days": 251
+      },
+      "2024_vol_spike": {
+        "total_return": -0.015735316118359877,
+        "max_drawdown": -0.10040957038895759,
+        "n_days": 252
+      }
+    },
+    "n_days": 1469,
+    "n_years": 5.829365079365079
+  },
+  "combined_metrics": {
+    "cagr": 0.0844451789200178,
+    "sharpe": 0.7160146353154153,
+    "volatility": 0.1240190575224668,
+    "max_drawdown": -0.1294639166941847,
+    "worst_month": -0.06385311801416027,
+    "worst_quarter": -0.05084093320186256,
+    "worst_10d": -0.10788011493893768,
+    "crisis_attribution": {
+      "2020_Q1": {
+        "total_return": -0.0022379204175277945,
+        "max_drawdown": -0.032192725084263296,
+        "n_days": 59
+      },
+      "2022_drawdown": {
+        "total_return": -0.012085624238983073,
+        "max_drawdown": -0.12679008972100458,
+        "n_days": 252
+      },
+      "2023_vol_spike": {
+        "total_return": 0.0958412334261487,
+        "max_drawdown": -0.12874268556077129,
+        "n_days": 251
+      },
+      "2024_vol_spike": {
+        "total_return": -0.017534644258010545,
+        "max_drawdown": -0.09373443411088056,
+        "n_days": 252
+      }
+    },
+    "n_days": 1469,
+    "n_years": 5.829365079365079
+  },
+  "differences": {
+    "maxdd_diff": 0.007645239142709592,
+    "worst_month_diff": 0.004100929438060175,
+    "worst_quarter_diff": 0.0002711413831033571,
+    "worst_10d_diff": 0.00411628361271732,
+    "cagr_diff": -0.005171223495921806
+  },
+  "pass_criteria": {
+    "maxdd_pass": false,
+    "worst_month_pass": true,
+    "no_catastrophic_bleed": true,
+    "overall_pass": true
+  }
+}

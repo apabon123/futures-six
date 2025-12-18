@@ -184,6 +184,6 @@ python scripts/update_phase_index.py trend persistence status "PARKED after Phas
 ## Related Documentation
 
 - **`TREND_RESEARCH.md`**: Research notebook with Phase-0/1/2 results
-- **`DIAGNOSTICS.md`**: Diagnostics framework documentation
-- **`PROCEDURES.md`**: Sleeve lifecycle procedures
+- **`SOTs/DIAGNOSTICS.md`**: Diagnostics framework documentation
+- **`SOTs/PROCEDURES.md`**: Sleeve lifecycle procedures
 

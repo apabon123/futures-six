@@ -1,0 +1,42 @@
+{
+  "variant": "vx2_vx1_short",
+  "spread_pair": "VX2-VX1",
+  "long_leg": 2,
+  "short_leg": 1,
+  "phase": "Phase-1",
+  "zscore_window": 90,
+  "clip": 2.0,
+  "target_vol": 0.1,
+  "vol_lookback": 60,
+  "min_vol_floor": 0.01,
+  "max_leverage": 10.0,
+  "signal_description": "-sign(VX2 - VX1)",
+  "normalization_method": "sign-only (phase0_equiv mode)",
+  "risk_target": "none (phase0_equiv mode)",
+  "mode": "phase0_equiv",
+  "lag": 1,
+  "effective_start_date": "2020-01-03",
+  "effective_end_date": "2025-10-31",
+  "n_days": 1473,
+  "collision_days_dropped": "4",
+  "collision_rate_pct": 0.2715546503733876,
+  "start_date": "2020-01-02",
+  "end_date": "2025-10-31",
+  "portfolio_metrics": {
+    "CAGR": 0.37986438926609534,
+    "Vol": 0.3660273108514163,
+    "Sharpe": 1.037803404293774,
+    "MaxDD": -0.2298436720667142,
+    "HitRate": 0.44021739130434784,
+    "n_days": 1472,
+    "years": 5.841269841269841
+  },
+  "per_asset_stats": {
+    "VX_SPREAD_VX2_VX1_SHORT": {
+      "AnnRet": 0.38632856926053893,
+      "AnnVol": 0.3660273108514163,
+      "Sharpe": 1.055463780453704
+    }
+  },
+  "phase0_sharpe_comparison": 1.055463780453704
+}

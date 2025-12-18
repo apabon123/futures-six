@@ -1,0 +1,32 @@
+# Phase-2: VRP-Convergence Portfolio Integration
+# Registered: 2025-12-11 09:47:37
+baseline_profile: core_v5_trend_csmom_vrp_core_no_macro
+variant_profile: core_v6_trend_csmom_vrp_core_convergence_no_macro
+start_date: 2020-01-01
+end_date: 2025-10-31
+
+# Baseline Metrics
+baseline_sharpe: 0.5774
+baseline_cagr: 0.0674
+baseline_maxdd: -0.1722
+
+# Variant Metrics
+variant_sharpe: 0.5796
+variant_cagr: 0.0677
+variant_maxdd: -0.1718
+
+# Differences
+sharpe_diff: 0.0022
+cagr_diff: 0.0003
+maxdd_diff: 0.0004
+
+# Sleeve Correlations
+
+path: data\diagnostics\phase2\core_v6_trend_csmom_vrp_core_convergence\20251211_094649
+
+# Phase-2 Pass Criteria
+sharpe_pass: PASS (variant >= baseline - 0.01)
+maxdd_pass: PASS (variant >= baseline)
+corr_pass: FAIL (corr(VRP-Conv, VRP-Core) < 0.9)
+
+verdict: FAIL

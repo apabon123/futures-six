@@ -43,6 +43,9 @@ from src.agents.strat_tsmom_multihorizon import TSMOMMultiHorizonStrategy
 from src.agents.strat_cross_sectional import CSMOMMeta
 from src.agents.strat_residual_trend import ResidualTrendStrategy
 from src.agents.strat_momentum_persistence import MomentumPersistence
+from src.agents.strat_vrp_core import VRPCoreMeta
+from src.agents.strat_vrp_convergence import VRPConvergenceMeta
+from src.agents.strat_vrp_alt import VRPAltMeta
 from src.agents.strat_combined import CombinedStrategy
 from src.agents.feature_service import FeatureService
 from src.agents.overlay_volmanaged import VolManagedOverlay
@@ -377,6 +380,131 @@ def main():
         else:
             logger.info("  CSMOM Meta-Sleeve disabled in config")
         
+        # VRP-Core Meta-Sleeve
+        vrp_core_cfg = strategies_cfg.get("vrp_core_meta", {})
+        if vrp_core_cfg.get("enabled", False):
+            logger.info("  Initializing VRP-Core Meta-Sleeve...")
+            vrp_core_params = vrp_core_cfg.get("params", {})
+            # Determine DB path from config
+            import yaml
+            config_path = Path("configs/data.yaml")
+            db_path = None
+            if config_path.exists():
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    data_config = yaml.safe_load(f)
+                db_path = data_config.get('db', {}).get('path')
+            
+            vrp_core_strategy = VRPCoreMeta(
+                rv_lookback=vrp_core_params.get("rv_lookback", 21),
+                zscore_window=vrp_core_params.get("zscore_window", 252),
+                clip=vrp_core_params.get("clip", 3.0),
+                signal_mode=vrp_core_params.get("signal_mode", "zscore"),
+                db_path=db_path
+            )
+            strategy_instances["vrp_core_meta"] = vrp_core_strategy
+            strategy_weights["vrp_core_meta"] = vrp_core_cfg.get("weight", 0.10)
+            logger.info(f"    Config: rv_lookback={vrp_core_params.get('rv_lookback')}, "
+                       f"zscore_window={vrp_core_params.get('zscore_window')}, "
+                       f"clip={vrp_core_params.get('clip')}, "
+                       f"signal_mode={vrp_core_params.get('signal_mode')}")
+            logger.info(f"    Weight: {strategy_weights['vrp_core_meta']}")
+        else:
+            logger.info("  VRP-Core Meta-Sleeve disabled in config")
+        
+        # VRP-Convergence Meta-Sleeve
+        vrp_conv_cfg = strategies_cfg.get("vrp_convergence_meta", {})
+        if vrp_conv_cfg.get("enabled", False):
+            logger.info("  Initializing VRP-Convergence Meta-Sleeve...")
+            vrp_conv_params = vrp_conv_cfg.get("params", {})
+            # Determine DB path from config
+            import yaml
+            config_path = Path("configs/data.yaml")
+            db_path = None
+            if config_path.exists():
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    data_config = yaml.safe_load(f)
+                db_path = data_config.get('db', {}).get('path')
+            
+            vrp_conv_strategy = VRPConvergenceMeta(
+                zscore_window=vrp_conv_params.get("zscore_window", 252),
+                clip=vrp_conv_params.get("clip", 3.0),
+                signal_mode=vrp_conv_params.get("signal_mode", "zscore"),
+                target_vol=vrp_conv_params.get("target_vol", 0.10),
+                vol_lookback=vrp_conv_params.get("vol_lookback", 63),
+                vol_floor=vrp_conv_params.get("vol_floor", 0.05),
+                db_path=db_path
+            )
+            strategy_instances["vrp_convergence_meta"] = vrp_conv_strategy
+            strategy_weights["vrp_convergence_meta"] = vrp_conv_cfg.get("weight", 0.05)
+            logger.info(f"    Config: zscore_window={vrp_conv_params.get('zscore_window')}, "
+                       f"clip={vrp_conv_params.get('clip')}, "
+                       f"signal_mode={vrp_conv_params.get('signal_mode')}, "
+                       f"target_vol={vrp_conv_params.get('target_vol')}")
+            logger.info(f"    Weight: {strategy_weights['vrp_convergence_meta']}")
+        else:
+            logger.info("  VRP-Convergence Meta-Sleeve disabled in config")
+        
+        # VRP-Alt Meta-Sleeve
+        vrp_alt_cfg = strategies_cfg.get("vrp_alt_meta", {})
+        if vrp_alt_cfg.get("enabled", False):
+            logger.info("  Initializing VRP-Alt Meta-Sleeve...")
+            vrp_alt_params = vrp_alt_cfg.get("params", {})
+            # Determine DB path from config
+            import yaml
+            config_path = Path("configs/data.yaml")
+            db_path = None
+            if config_path.exists():
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    data_config = yaml.safe_load(f)
+                db_path = data_config.get('db', {}).get('path')
+            
+            vrp_alt_strategy = VRPAltMeta(
+                zscore_window=vrp_alt_params.get("zscore_window", 252),
+                clip=vrp_alt_params.get("clip", 3.0),
+                signal_mode=vrp_alt_params.get("signal_mode", "zscore"),
+                target_vol=vrp_alt_params.get("target_vol", 0.10),
+                vol_lookback=vrp_alt_params.get("vol_lookback", 63),
+                vol_floor=vrp_alt_params.get("vol_floor", 0.05),
+                db_path=db_path
+            )
+            strategy_instances["vrp_alt_meta"] = vrp_alt_strategy
+            strategy_weights["vrp_alt_meta"] = vrp_alt_cfg.get("weight", 0.05)
+            logger.info(f"    Config: zscore_window={vrp_alt_params.get('zscore_window')}, "
+                       f"clip={vrp_alt_params.get('clip')}, "
+                       f"signal_mode={vrp_alt_params.get('signal_mode')}, "
+                       f"target_vol={vrp_alt_params.get('target_vol')}")
+            logger.info(f"    Weight: {strategy_weights['vrp_alt_meta']}")
+        else:
+            logger.info("  VRP-Alt Meta-Sleeve disabled in config")
+        
+        # SR3 Curve RV Meta-Sleeve
+        curve_rv_cfg = strategies_cfg.get("sr3_curve_rv_meta", {})
+        curve_rv_meta = None
+        curve_rv_weight = 0.0
+        if curve_rv_cfg.get("enabled", False):
+            logger.info("  Initializing SR3 Curve RV Meta-Sleeve...")
+            from src.agents.strat_curve_rv_meta import SR3CurveRVMeta
+            curve_rv_params = curve_rv_cfg.get("params", {})
+            curve_rv_meta = SR3CurveRVMeta(
+                enabled_atomics=curve_rv_params.get("enabled_atomics", ["rank_fly"]),
+                atomic_weights=curve_rv_params.get("atomic_weights"),
+                zscore_window=curve_rv_params.get("zscore_window", 252),
+                clip=curve_rv_params.get("clip", 3.0),
+                target_vol=curve_rv_params.get("target_vol", 0.10),
+                vol_lookback=curve_rv_params.get("vol_lookback", 63),
+                min_vol_floor=curve_rv_params.get("min_vol_floor", 0.01),
+                max_leverage=curve_rv_params.get("max_leverage", 10.0),
+                lag=curve_rv_params.get("lag", 1)
+            )
+            curve_rv_weight = curve_rv_cfg.get("weight", 0.05)
+            logger.info(f"    Config: enabled_atomics={curve_rv_params.get('enabled_atomics')}, "
+                       f"zscore_window={curve_rv_params.get('zscore_window')}, "
+                       f"clip={curve_rv_params.get('clip')}, "
+                       f"target_vol={curve_rv_params.get('target_vol')}")
+            logger.info(f"    Weight: {curve_rv_weight}")
+        else:
+            logger.info("  SR3 Curve RV Meta-Sleeve disabled in config")
+        
         # Residual Trend strategy
         residual_trend_cfg = strategies_cfg.get("residual_trend", {})
         if residual_trend_cfg.get("enabled", False):
@@ -531,7 +659,9 @@ def main():
             'macro_overlay': macro_overlay,
             'overlay': vol_overlay,
             'risk_vol': risk,
-            'allocator': allocator
+            'allocator': allocator,
+            'curve_rv_meta': curve_rv_meta,  # Add Curve RV meta-sleeve if enabled
+            'curve_rv_weight': curve_rv_weight  # Add Curve RV weight
         }
         
         results = exec_sim.run(

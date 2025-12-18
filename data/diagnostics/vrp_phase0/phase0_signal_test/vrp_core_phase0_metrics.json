@@ -1,0 +1,17 @@
+{
+  "run_date": "2025-12-09 21:47:15",
+  "start_date": "2020-01-01",
+  "end_date": "2025-10-31",
+  "phase0_threshold": 1.5,
+  "threshold_description": "Fixed 1.5 vol-point VRP spread threshold for Phase-0 sanity test. Not used in Phase-1 or production.",
+  "description": "VRP-Core Phase-0 signal test: short VX1 when (VIX - RV_21) > 1.5, else flat",
+  "metrics": {
+    "CAGR": -0.22906950356086064,
+    "Vol": 0.8626295712226332,
+    "Sharpe": 0.17641954690816597,
+    "MaxDD": -0.8698575338244958,
+    "HitRate": 0.49612403100775193,
+    "n_days": 1161,
+    "years": 4.607142857142857
+  }
+}

@@ -1,0 +1,15 @@
+# Phase-0: VRP Front-Spread Directional Signal Test (FAILED)
+# Status: PARKED - Phase-0 economic failure
+# Registered: 2025-12-13 14:00:54
+
+reports/sanity_checks/vrp/front_spread/latest/
+
+# Phase-0 Results:
+# Sharpe: -0.5846 (FAIL - hard fail, not borderline)
+# CAGR: -34.31%
+# MaxDD: -96.78% (catastrophic)
+# Signal: 15.7% active (non-degenerate)
+
+# Rationale: Calendar-richness does not map to profitable outright VX1 short.
+# See status.txt for full details.
+
