@@ -1202,6 +1202,200 @@ Allocator logic is subject to the same promotion discipline as sleeves. The allo
 
 ---
 
+## 9.1.1 Allocator v1 Production Procedures (December 2024)
+
+**Status**: Phase-D Complete (Production-Ready)
+
+Allocator v1 has completed Phases A-D and is production-ready. The following procedures govern how to use and validate Allocator v1.
+
+### Running Allocator v1 in Research Mode
+
+**Default: Artifacts Only (No Weight Scaling)**
+
+By default, Allocator v1 computes and saves all artifacts but does NOT scale portfolio weights. This allows for research and validation without affecting backtest results.
+
+**Command:**
+```bash
+python run_strategy.py --strategy_profile core_v9 --start 2024-01-01 --end 2024-12-15
+```
+
+**Configuration (default):**
+```yaml
+allocator_v1:
+  enabled: false  # Artifacts computed but not applied
+```
+
+**Artifacts Generated:**
+- `allocator_state_v1.csv` - 10 daily state features
+- `allocator_regime_v1.csv` - Daily regime labels
+- `allocator_risk_v1.csv` - Daily risk scalars (computed)
+- `allocator_risk_v1_applied.csv` - Lagged risk scalars (ready for application)
+- Metadata JSON files for each layer
+
+### Two-Pass Audit Workflow (Recommended Validation)
+
+The two-pass audit is the canonical way to validate Allocator v1 behavior before enabling it for weight scaling.
+
+**Purpose:**
+- Compare baseline (allocator off) vs scaled (allocator applied)
+- Validate that allocator reduces MaxDD without destroying returns
+- Audit regime transitions and de-risking events
+- Ensure deterministic, reproducible behavior
+
+**Command:**
+```bash
+python scripts/diagnostics/run_allocator_two_pass.py \
+  --strategy_profile core_v9 \
+  --start 2024-01-01 \
+  --end 2024-12-15
+```
+
+**What It Does:**
+1. **Pass 1 (Baseline)**: Runs backtest with `allocator_v1.enabled=false`
+   - Generates portfolio returns without allocator
+   - Computes and saves all allocator artifacts
+   - Produces `allocator_risk_v1_applied.csv`
+
+2. **Pass 2 (Scaled)**: Re-runs backtest with `mode="precomputed"`
+   - Loads `allocator_risk_v1_applied.csv` from Pass 1
+   - Applies scalars with 1-rebalance lag
+   - Generates scaled portfolio returns
+
+3. **Comparison Report**: Generates `two_pass_comparison.md` and `.json`
+   - Performance metrics (CAGR, vol, Sharpe, MaxDD, worst month/quarter)
+   - Allocator usage statistics (% rebalances scaled, mean/min/max scalar)
+   - Top 10 de-risking events
+   - Regime distribution and transition counts
+
+**Outputs:**
+- `reports/runs/{baseline_run_id}/` - Baseline artifacts
+- `reports/runs/{scaled_run_id}/` - Scaled artifacts
+- `reports/runs/{scaled_run_id}/two_pass_comparison.md` - Human-readable comparison
+- `reports/runs/{scaled_run_id}/two_pass_comparison.json` - Machine-readable comparison
+
+### Running Individual Allocator Diagnostics
+
+If you have an existing run and want to re-compute or inspect specific allocator layers:
+
+**Recompute State Features:**
+```bash
+python scripts/diagnostics/run_allocator_state_v1.py --run_id <run_id>
+```
+
+**Recompute Regime Classification:**
+```bash
+python scripts/diagnostics/run_allocator_regime_v1.py --run_id <run_id>
+```
+
+**Recompute Risk Scalars:**
+```bash
+python scripts/diagnostics/run_allocator_risk_v1.py --run_id <run_id>
+```
+
+These scripts load existing run artifacts and recompute the respective allocator layer, saving updated artifacts back to the run directory.
+
+### Enabling Allocator v1 for Production
+
+**⚠️ WARNING**: Do not enable allocator in production until two-pass audit validates expected behavior.
+
+**Configuration (production):**
+```yaml
+allocator_v1:
+  enabled: true
+  mode: "precomputed"
+  precomputed_run_id: "<baseline_run_id>"
+  precomputed_scalar_filename: "allocator_risk_v1_applied.csv"
+  apply_missing_scalar_as: 1.0
+```
+
+**Behavior:**
+- Loads precomputed scalars from baseline run
+- Applies scalars with 1-rebalance lag at each rebalance date
+- Scales raw weights: `weights_scaled = weights_raw * risk_scalar_applied[t-1]`
+- Saves both `weights_raw.csv` and `weights_scaled.csv`
+
+### Allocator v1 Validation Checklist
+
+Before enabling allocator in production:
+
+- [ ] Two-pass audit completed with expected MaxDD reduction
+- [ ] Regime classifications are sticky (transitions <20 over multi-year period)
+- [ ] Top de-risk events align with known stress periods (2020 Q1, 2022, etc.)
+- [ ] Feature coverage is 100% (all 10 features present if optional data available)
+- [ ] Row drop rate <5% (no major data quality issues)
+- [ ] Comparison report shows allocator acts as risk governor (not return enhancer)
+- [ ] Worst month/quarter metrics improved vs baseline
+- [ ] No unexpected regime thrashing during normal periods
+
+### Allocator v1 Known Limitations
+
+**Warmup Period:**
+- State features require 60-day rolling windows
+- Early dates (first ~60 days) will have insufficient data
+- Two-pass audit sidesteps this by using precomputed scalars
+- Future Stage 9 will implement incremental state computation
+
+**Optional Features:**
+- `trend_breadth_20d` requires `trend_unit_returns.csv` (Trend sleeve must be active)
+- `sleeve_concentration_60d` requires `sleeve_returns.csv` (multi-sleeve portfolio)
+- These features are excluded (not set to NaN) if inputs unavailable
+- Regime classifier still works with 8 core features
+
+**Mode Recommendations:**
+- Use `mode: "off"` for initial research and artifact generation
+- Use `mode: "precomputed"` for two-pass audit and production
+- Avoid `mode: "compute"` until warmup period is resolved
+
+### Stage 6: Production Mode (LOCKED)
+
+**Decision:** `mode="precomputed"` is the production-safe default for Allocator v1.
+
+**Rationale:**
+- ✅ No warmup period issues (baseline has full history)
+- ✅ No circular dependency (scalars from baseline portfolio)
+- ✅ Fully deterministic (same baseline → same results)
+- ✅ Complete audit trail (baseline vs scaled comparison)
+- ✅ Institutional standard (compute from history, apply to forward)
+
+**Mode Status:**
+- **`precomputed`**: Production-ready ✅
+- **`compute`**: Research-only (has warmup issues, not production-safe)
+- **`off`**: Always safe (baseline generation)
+
+**See:** `docs/ALLOCATOR_V1_PRODUCTION_MODE.md` for complete production mode specification.
+
+### Stage 6.5: Stability & Sanity Review
+
+**Purpose:** Qualitative validation before production deployment (NOT tuning or optimization)
+
+**Validation Questions:**
+1. **Does the allocator reduce MaxDD meaningfully?** (Target: 2-5% reduction)
+2. **Does it avoid killing returns in NORMAL regimes?** (Target: CAGR reduced <1%)
+3. **Are regime transitions sparse and intuitive?** (Target: <20 per year)
+4. **Does it correctly flag known stress windows?** (2020 Q1, 2022 must appear in top de-risk events)
+
+**Decision Criteria:**
+- **PASS**: All questions "mostly yes" → Lock v1 and deploy
+- **FAIL**: Any critical issue → Review thresholds and retry
+
+**Workflow:**
+1. Run two-pass audit on canonical window (2020-2025)
+2. Review `two_pass_comparison.md` for metrics
+3. Complete Stage 6.5 validation checklist
+4. Make go/no-go decision
+
+**See:** `docs/ALLOCATOR_V1_STAGE_6_5_VALIDATION.md` for detailed validation checklist and sign-off template.
+
+**Key Principle:** "Mostly yes" is good enough. Do not over-optimize before going live. Stage 7 (threshold tuning) is post-deployment.
+
+### Future Enhancements (Phase-E)
+
+**Stage 7**: Threshold tuning against historical stress events (post-deployment)  
+**Stage 8**: Convexity overlays (VIX calls) gated by regime (post-deployment)  
+**Stage 9**: True incremental state computation (resolve warmup period, enables `compute` mode)
+
+---
+
 ## 9.2 Post-Production Sleeve Additions
 
 **Formal Institutional Rule**: Once a system is live, new sleeves are developed in parallel and never injected directly into production.

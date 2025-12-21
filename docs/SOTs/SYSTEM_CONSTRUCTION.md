@@ -102,7 +102,262 @@ The allocator does not:
 
 ---
 
-## 4. Allocator Architectural Decomposition
+## 4. Canonical System Architecture (Frozen Conceptual Stack)
+
+**Futures-Six is constructed as a layered, single-responsibility system.**
+
+Each layer answers one and only one question, and no layer is allowed to subsume the responsibilities of another.
+
+### The Canonical Execution Stack (Authoritative Order)
+
+The canonical execution stack is:
+
+1. **Engine Signals** (alpha)
+2. **Engine Policy** (gates / throttles)
+3. **Portfolio Construction** (static weights)
+4. **Discretionary Overlay** (bounded tilts)
+5. **Risk Targeting** (vol → leverage)
+6. **Allocator** (risk brake)
+7. **Margin & Execution Constraints**
+
+**This ordering is authoritative. All future development must preserve these boundaries.**
+
+---
+
+### 1️⃣ Engine Signals (Alpha Generation)
+
+**Purpose:** Generate directional or convex return streams.
+
+**Allowed:**
+- Signal construction
+- Lookbacks
+- Feature transforms
+- Entry / exit logic
+- Holding period definitions
+
+**Not Allowed:**
+- Risk scaling
+- Volatility targeting
+- Regime logic
+- Portfolio awareness
+- Discretionary overrides
+
+**Examples:**
+- Trend signals
+- Cross-sectional momentum
+- Carry
+- VRP
+- Intraday / micro-alpha (e.g., RSV, dealer flow)
+
+**Key Principle:** Engines express belief, not permission.
+
+---
+
+### 2️⃣ Engine Policy (Validity & Selectivity)
+
+**Purpose:** Determine whether and how much an engine should participate given context.
+
+**Key Principle:** Engine Policy is a validity filter, not an optimizer.
+
+**Allowed:**
+- Binary gates (ON / OFF)
+- Continuous throttles (0–100%)
+- Contextual conditioning:
+  - gamma imbalance
+  - skew
+  - dispersion
+  - vol-of-vol
+  - event risk (CPI, NFP, FOMC)
+- Slow-moving, explainable rules
+
+**Not Allowed:**
+- Directional signals
+- Sharpe optimization
+- Fast PnL feedback
+- Weight optimization
+- Portfolio-level leverage control
+
+**PnL Usage (Strictly Limited):**
+- Allowed only for impairment detection
+- Used asymmetrically (to reduce or disable, not to add)
+
+**Engine Policy answers:** "Is this engine structurally valid in this environment?"
+
+---
+
+### 3️⃣ Portfolio Construction (Static Weights)
+
+**Purpose:** Define the baseline composition of the system.
+
+**Allowed:**
+- Static engine weights
+- Long-term conviction weights
+- Transparent aggregation rules
+
+**Not Allowed:**
+- Dynamic optimization
+- Regime-dependent reweighting
+- PnL-driven allocation
+- Allocator logic
+
+**Key Principle:** These weights are base weights, later modified by policy, discretion, and risk controls.
+
+---
+
+### 4️⃣ Discretionary Overlay (Bounded Tilts)
+
+**Purpose:** Provide a controlled outlet for high-level discretionary conviction without breaking systematic discipline.
+
+**Placement:** After portfolio construction, before risk targeting.
+
+**Allowed:**
+- Bounded multipliers on:
+  - asset classes
+  - regions
+  - sleeves / themes
+- Slow frequency (weekly / rebalance)
+- Explicit intent logging
+
+**Not Allowed:**
+- Signal overrides
+- Individual trade control
+- Bypassing policy or allocator
+- Unbounded leverage changes
+
+**Hierarchy Rule:** If an engine is gated OFF by policy, discretion cannot turn it back on. Discretion may tilt exposure, never bypass risk.
+
+---
+
+### 5️⃣ Risk Targeting (Volatility → Leverage)
+
+**Purpose:** Define how large the portfolio is by design.
+
+**Key Principle:** This layer encodes risk appetite, not risk control.
+
+**Allowed:**
+- Target portfolio volatility
+- Equivalent leverage choice (e.g., 7×)
+- Static or very slow updates
+
+**Not Allowed:**
+- Regime logic
+- Stress detection
+- Engine selection
+- Dynamic brakes
+
+**Key Principle:** This layer is always on and upstream of the allocator.
+
+**Risk targeting answers:** "How big do I trade in normal conditions?"
+
+---
+
+### 6️⃣ Allocator (Risk Brake)
+
+**Purpose:** Enforce survivability constraints during stress.
+
+**Key Principle:** Allocator is a temporary brake, not a steering wheel.
+
+**Allowed:**
+- Portfolio-level scalars
+- Coarse regimes (e.g., NORMAL / CRISIS)
+- Stress & tail indicators:
+  - drawdown cascades
+  - correlation spikes
+  - extreme volatility
+- Rare intervention (especially in high-risk profiles)
+
+**Not Allowed:**
+- Engine-level weighting
+- Signal awareness
+- Alpha optimization
+- Discretionary overrides
+
+**Allocator Profiles:** Multiple allocator profiles may exist (H / M / L), differing only in risk tolerance, not architecture.
+
+**Allocator answers:** "Is it safe to remain fully levered right now?"
+
+---
+
+### 7️⃣ Margin & Execution Constraints
+
+**Purpose:** Enforce hard, external constraints.
+
+**Allowed:**
+- Margin checks
+- Contract sizing limits
+- Liquidity constraints
+- Execution mechanics
+
+**Not Allowed:**
+- Strategy logic
+- Risk decisions
+- Feedback into allocator or policy
+
+**Key Principle:** Margin is a post-construction constraint, not a decision signal.
+
+---
+
+### Candidate Variable Classification (Authoritative)
+
+| Variable | Correct Layer |
+|----------|---------------|
+| Gamma imbalance | Engine Policy (primary), Allocator (tail only) |
+| Skew | Engine Policy |
+| Dispersion | Engine Policy |
+| Vol-of-vol | Engine Policy |
+| Event calendar | Engine Policy |
+| Portfolio drawdown | Allocator |
+| Cross-asset correlation | Allocator |
+| RSV / order flow | Engine Signal |
+| PnL (short-term) | ❌ Not allowed |
+| PnL (impairment) | Engine Policy (defensive only) |
+
+---
+
+### Explicit Anti-Patterns (Do Not Implement)
+
+- ❌ Allocator weighting sleeves
+- ❌ Engine policy optimizing Sharpe
+- ❌ Discretion bypassing gates or brakes
+- ❌ Margin logic inside allocator
+- ❌ Regime-dependent leverage inside risk targeting
+- ❌ Fast feedback loops
+
+**Violations of these rules break auditability and production safety.**
+
+---
+
+### Current System Status (As of December 2024)
+
+- **Engines:** v1 COMPLETE
+- **Engine Policy:** NOT YET IMPLEMENTED
+- **Portfolio Construction:** Static v1
+- **Discretionary Overlay:** Defined, optional
+- **Risk Targeting:** Identified as missing layer
+- **Allocator v1:** Institutional / Low-Risk Reference (Production-Ready)
+- **Allocator v2 (H/M/L):** Planned
+
+**Next development steps:**
+1. Implement Risk Targeting layer
+2. Implement Allocator-H (high risk tolerance)
+3. Build Engine Policy v1
+4. Paper-live deployment
+
+---
+
+### Final Canonical Statement
+
+**Engines express belief.**  
+**Policy enforces validity.**  
+**Discretion expresses conviction.**  
+**Risk targeting sizes the book.**  
+**Allocator enforces survival.**
+
+**This hierarchy is non-negotiable.**
+
+---
+
+## 5. Allocator Architectural Decomposition
 
 The allocator is composed of four strictly ordered subsystems.
 
@@ -209,7 +464,7 @@ This layer executes allocator decisions.
 
 ---
 
-## 5. Common Misclassifications
+## 6. Common Misclassifications
 
 This section defines frequent boundary errors.
 
@@ -236,7 +491,7 @@ This section defines frequent boundary errors.
 
 ---
 
-## 6. Lifecycle: How Ideas Move Through the System
+## 7. Lifecycle: How Ideas Move Through the System
 
 1. Engines are researched and validated in isolation
 2. Engines are integrated into the baseline portfolio
@@ -249,7 +504,7 @@ This section defines frequent boundary errors.
 
 ---
 
-## 7. Why This Separation Matters
+## 8. Why This Separation Matters
 
 This architecture:
 
@@ -261,6 +516,187 @@ This architecture:
 - Scales from small to large capital
 
 **Futures-Six prioritizes survivability and clarity over cleverness.**
+
+---
+
+## 9. Allocator v1 Implementation (Stages 4A-5.5)
+
+**Status:** Production-ready (December 2024)
+
+### Overview
+
+Allocator v1 is the first production implementation of the allocator architecture defined above. It follows the four-layer decomposition exactly:
+
+**A. State Estimation** → `AllocatorStateV1` (10 features)  
+**B. Regime Interpretation** → `RegimeClassifierV1` (4 regimes)  
+**C. Risk Transformation** → `RiskTransformerV1` (risk scalars)  
+**D. Exposure Application** → ExecSim integration (weight scaling)
+
+### Implementation Layers
+
+#### A. State Estimation (`AllocatorStateV1`)
+
+**Purpose:** Measure observable portfolio and market conditions
+
+**10 Canonical Features:**
+- **Vol / Acceleration:** `port_rvol_20d`, `port_rvol_60d`, `vol_accel`
+- **Drawdown / Path:** `dd_level`, `dd_slope_10d`
+- **Cross-Asset Correlation:** `corr_20d`, `corr_60d`, `corr_shock`
+- **Engine Health:** `trend_breadth_20d`, `sleeve_concentration_60d`
+
+**Properties:**
+- Descriptive only (no decisions)
+- Continuous outputs (daily)
+- Deterministic computation
+- 8 required + 2 optional features
+
+**Artifact:** `allocator_state_v1.csv` (saved with every run)
+
+#### B. Regime Interpretation (`RegimeClassifierV1`)
+
+**Purpose:** Map state to discrete risk regimes
+
+**4 Risk Regimes:**
+- **NORMAL:** Typical market conditions
+- **ELEVATED:** Increased volatility or correlation
+- **STRESS:** Significant drawdown or volatility spike  
+- **CRISIS:** Extreme conditions requiring defensive positioning
+
+**Logic:**
+- Rule-based classification (no ML)
+- Uses 4 stress condition signals (vol acceleration, correlation shock, drawdown depth, drawdown slope)
+- Hysteresis (separate enter/exit thresholds)
+- Anti-thrash (minimum 5 days in regime)
+- Sticky by design (prevents regime flapping)
+
+**Artifact:** `allocator_regime_v1.csv` (daily regime series)
+
+#### C. Risk Transformation (`RiskTransformerV1`)
+
+**Purpose:** Convert regime to portfolio-level risk scalar
+
+**Canonical Mapping:**
+- NORMAL → 1.00 (no adjustment)
+- ELEVATED → 0.85 (15% reduction)
+- STRESS → 0.55 (45% reduction)
+- CRISIS → 0.30 (70% reduction)
+
+**Properties:**
+- Deterministic mapping
+- Monotonic (worse regime → lower scalar)
+- Bounded [0.25, 1.0]
+- EWMA smoothed (alpha=0.25, ~5d half-life)
+
+**Artifact:** `allocator_risk_v1.csv` (daily risk scalars)
+
+#### D. Exposure Application (ExecSim Integration)
+
+**Purpose:** Apply risk scalars to portfolio weights
+
+**Implementation Modes:**
+1. **`mode: "off"`** - Compute artifacts only, no weight scaling (default)
+2. **`mode: "precomputed"`** - Load scalars from prior run, apply with lag (Stage 5.5)
+3. **`mode: "compute"`** - On-the-fly computation (has warmup issues, not recommended)
+
+**Application Convention:**
+- 1-rebalance lag: `risk_scalar[t-1]` applied to `weights[t]`
+- No lookahead bias
+- Preserves engine direction (scales uniformly)
+
+**Artifacts:** `weights_raw.csv`, `weights_scaled.csv`, `allocator_risk_v1_applied_used.csv`
+
+### Key Design Principles
+
+**1. Separation of Concerns**
+- Each layer has a single responsibility
+- No cross-layer logic leakage
+- Testable in isolation
+
+**2. Determinism**
+- No ML or optimization (rule-based only)
+- Fully reproducible
+- Auditable at every step
+
+**3. Stickiness**
+- Hysteresis prevents thrashing
+- Anti-thrash rules enforce minimum regime duration
+- Smoothing prevents jerk
+
+**4. Artifact-First**
+- All computations saved automatically
+- Complete audit trail
+- Offline analysis without re-running backtests
+
+**5. Mode Flexibility**
+- Can run in "off" mode for research
+- Two-pass audit for validation
+- Precomputed mode for production
+
+### Two-Pass Audit Framework (Stage 5.5)
+
+**Purpose:** Validate allocator impact before live deployment
+
+**Workflow:**
+1. **Pass 1 (Baseline):** Run with `allocator_v1.enabled=false`
+   - Generates portfolio returns
+   - Computes state/regime/risk artifacts
+   - Saves `allocator_risk_v1_applied.csv`
+
+2. **Pass 2 (Scaled):** Run with `mode="precomputed"`
+   - Loads scalars from Pass 1
+   - Applies them with proper lag
+   - Generates scaled portfolio
+
+3. **Comparison Report:**
+   - CAGR, vol, Sharpe, MaxDD
+   - Worst month/quarter
+   - Scalar usage statistics
+
+**Scripts:**
+- `scripts/diagnostics/run_allocator_two_pass.py` (orchestration)
+- `scripts/diagnostics/compare_two_runs.py` (comparison report)
+
+### Configuration
+
+In `configs/strategies.yaml`:
+
+```yaml
+allocator_v1:
+  enabled: false              # Master switch
+  mode: "off"                 # "off" | "compute" | "precomputed"
+  precomputed_run_id: null    # Required if mode="precomputed"
+  precomputed_scalar_filename: "allocator_risk_v1_applied.csv"
+  apply_missing_scalar_as: 1.0
+  state_version: "v1.0"
+  regime_version: "v1.0"
+  risk_version: "v1.0"
+```
+
+### Validation Status
+
+**Acceptance Criteria Met:**
+- ✅ All 10 state features computed correctly
+- ✅ Regime classification is sticky (no thrashing)
+- ✅ Risk scalars are bounded and deterministic
+- ✅ Two-pass audit produces different results (scalars applied)
+- ✅ Complete artifact trail
+- ✅ Comparison reports generated
+
+**Production-Ready:** December 2024
+
+### Future Enhancements
+
+**Stage 6:** Sleeve-level risk scalars (differential scaling by engine type)  
+**Stage 7:** Threshold tuning against historical stress events  
+**Stage 8:** Convexity overlays (VIX calls) gated by regime  
+**Stage 9:** True incremental state computation (resolve warmup period)
+
+### References
+
+- **Implementation Docs:** `docs/ALLOCATOR_V1_STAGE_4_COMPLETE.md`, `docs/ALLOCATOR_V1_QUICK_START.md`
+- **Source Code:** `src/allocator/` (state_v1, regime_v1, risk_v1, scalar_loader)
+- **Diagnostics:** `scripts/diagnostics/run_allocator_*.py`
+- **Tests:** Two-pass audit validates allocator reduces MaxDD without destroying returns
 
 ---
 

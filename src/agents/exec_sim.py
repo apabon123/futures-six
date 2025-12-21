@@ -24,6 +24,7 @@ import json
 import yaml
 import pandas as pd
 import numpy as np
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -296,6 +297,67 @@ class ExecSim:
         risk_vol = components['risk_vol']
         allocator = components['allocator']
         
+        # Stage 5.5: Check allocator_v1 config and mode
+        allocator_v1_config = components.get('allocator_v1_config', {})
+        allocator_v1_enabled = allocator_v1_config.get('enabled', False)
+        allocator_v1_mode = allocator_v1_config.get('mode', 'off')
+        
+        # Precomputed mode: load scalars from prior run
+        precomputed_scalars = None
+        if allocator_v1_enabled and allocator_v1_mode == 'precomputed':
+            try:
+                from src.allocator.scalar_loader import load_precomputed_applied_scalars
+                
+                precomputed_run_id = allocator_v1_config.get('precomputed_run_id')
+                if not precomputed_run_id:
+                    raise ValueError(
+                        "allocator_v1.mode='precomputed' requires precomputed_run_id to be set"
+                    )
+                
+                scalar_filename = allocator_v1_config.get(
+                    'precomputed_scalar_filename',
+                    'allocator_risk_v1_applied.csv'
+                )
+                
+                # Load scalars from baseline run
+                baseline_run_dir = Path(out_dir) / precomputed_run_id
+                precomputed_scalars = load_precomputed_applied_scalars(
+                    baseline_run_dir,
+                    scalar_filename
+                )
+                
+                logger.info(
+                    f"[ExecSim] ✅ Allocator v1 ENABLED (mode='precomputed'). "
+                    f"Loaded {len(precomputed_scalars)} precomputed scalars from run: {precomputed_run_id}"
+                )
+                logger.info(
+                    f"[ExecSim] Precomputed scalar range: "
+                    f"{precomputed_scalars.index[0].strftime('%Y-%m-%d')} to "
+                    f"{precomputed_scalars.index[-1].strftime('%Y-%m-%d')}"
+                )
+            except Exception as e:
+                logger.error(f"[ExecSim] Failed to load precomputed scalars: {e}")
+                logger.error("[ExecSim] Disabling allocator and continuing with baseline run")
+                allocator_v1_enabled = False
+                allocator_v1_mode = 'off'
+        elif allocator_v1_enabled and allocator_v1_mode == 'compute':
+            logger.info(
+                "[ExecSim] ⚠️  Allocator v1 ENABLED (mode='compute'). "
+                "Risk scalars will be computed on-the-fly (may be empty early due to warmup). "
+                "Recommendation: Use mode='precomputed' for production."
+            )
+        elif allocator_v1_enabled:
+            logger.warning(
+                f"[ExecSim] ⚠️  Allocator v1 enabled=true but mode='{allocator_v1_mode}'. "
+                f"Treating as 'off' (artifacts only, no scaling)."
+            )
+            allocator_v1_mode = 'off'
+        else:
+            logger.info(
+                "[ExecSim] Allocator v1 is DISABLED (mode='off'). "
+                "State/regime/risk artifacts will be computed and saved for analysis only."
+            )
+        
         # Build rebalance schedule
         rebalance_dates = self._build_rebalance_dates(market, risk_vol, start, end)
         
@@ -316,7 +378,17 @@ class ExecSim:
         turnover_history = []
         macro_scaler_history = [] if macro_overlay is not None else None
         
+        # Stage 4A: Tracking for optional allocator state features
+        sleeve_signals_history = {}  # Track per-sleeve signals before blending
+        
+        # Stage 5: Tracking for risk scalar application
+        risk_scalar_applied_history = []  # Track applied scalars at each rebalance
+        risk_scalar_computed_history = []  # Track computed scalars (for diagnostics)
+        weights_raw_history = []  # Track pre-scaling weights (for diagnostics)
+        rebalance_dates_history = []  # Track dates when rebalances occurred
+        
         prev_weights = None
+        prev_risk_scalar = None  # Track previous scalar for lag
         
         # Get continuous returns for the full period (we'll slice by date as needed)
         # Use continuous returns for P&L calculation (no roll jumps in back-adjusted series)
@@ -361,6 +433,61 @@ class ExecSim:
                 # Step 1: Get strategy signals
                 signals = strategy.signals(market, date)
                 
+                # Stage 4A: Capture per-sleeve signals if CombinedStrategy
+                if hasattr(strategy, 'strategies') and hasattr(strategy, 'weights'):
+                    # This is a CombinedStrategy, capture individual sleeve signals
+                    for sleeve_name, sleeve_strategy in strategy.strategies.items():
+                        sleeve_weight = strategy.weights.get(sleeve_name, 0.0)
+                        if sleeve_weight > 0:
+                            try:
+                                # Get individual sleeve signals (before blending)
+                                import inspect
+                                sig = inspect.signature(sleeve_strategy.signals)
+                                if 'features' in sig.parameters:
+                                    # Replicate the feature routing logic from CombinedStrategy
+                                    features_dict = None
+                                    if sleeve_name in ["tsmom", "tsmom_long", "long_momentum"]:
+                                        features_dict = strategy.features.get("LONG_MOMENTUM")
+                                    elif sleeve_name in ["tsmom_med", "medium_momentum"]:
+                                        features_dict = strategy.features.get("MEDIUM_MOMENTUM")
+                                    elif sleeve_name in ["tsmom_med_canonical", "canonical_medium_momentum"]:
+                                        features_dict = strategy.features.get("CANONICAL_MEDIUM_MOMENTUM")
+                                    elif sleeve_name in ["tsmom_short", "short_momentum"]:
+                                        features_dict = strategy.features.get("SHORT_MOMENTUM")
+                                    elif sleeve_name == "tsmom_multihorizon":
+                                        features_dict = {
+                                            "LONG_MOMENTUM": strategy.features.get("LONG_MOMENTUM", pd.DataFrame()),
+                                            "MEDIUM_MOMENTUM": strategy.features.get("MEDIUM_MOMENTUM", pd.DataFrame()),
+                                            "CANONICAL_MEDIUM_MOMENTUM": strategy.features.get("CANONICAL_MEDIUM_MOMENTUM", pd.DataFrame()),
+                                            "SHORT_MOMENTUM": strategy.features.get("SHORT_MOMENTUM", pd.DataFrame()),
+                                            "RESIDUAL_TREND": strategy.features.get("RESIDUAL_TREND", pd.DataFrame())
+                                        }
+                                    elif sleeve_name == "sr3_carry_curve":
+                                        features_dict = strategy.features.get("SR3_CURVE")
+                                    elif sleeve_name == "rates_curve":
+                                        features_dict = strategy.features.get("RATES_CURVE")
+                                    elif sleeve_name == "fx_commod_carry":
+                                        features_dict = strategy.features.get("CARRY_FX_COMMOD")
+                                    elif sleeve_name == "residual_trend":
+                                        features_dict = strategy.features.get("RESIDUAL_TREND")
+                                    elif sleeve_name == "persistence":
+                                        features_dict = strategy.features.get("PERSISTENCE")
+                                    
+                                    if 'rates_features' in sig.parameters:
+                                        sleeve_sigs = sleeve_strategy.signals(features_dict, date)
+                                    else:
+                                        sleeve_sigs = sleeve_strategy.signals(market, date, features=features_dict)
+                                else:
+                                    sleeve_sigs = sleeve_strategy.signals(market, date)
+                                
+                                # Store weighted sleeve signals
+                                if sleeve_name not in sleeve_signals_history:
+                                    sleeve_signals_history[sleeve_name] = []
+                                sleeve_signals_history[sleeve_name].append((date, sleeve_sigs * sleeve_weight))
+                            except Exception as e:
+                                logger.debug(f"[ExecSim] Could not capture {sleeve_name} signals: {e}")
+                                continue
+                
                 macro_k = 1.0
                 if macro_overlay is not None:
                     macro_k = macro_overlay.scaler(market, date)
@@ -390,9 +517,99 @@ class ExecSim:
                     scaled_signals.loc[invalid_symbols] = 0.0
                 
                 # Step 4: Allocate to final weights
-                weights = allocator.solve(scaled_signals, cov, weights_prev=prev_weights)
+                weights_raw = allocator.solve(scaled_signals, cov, weights_prev=prev_weights)
                 
-                # Record signals and weights
+                # Stage 5.5: Apply risk scalar (mode-dependent)
+                current_risk_scalar = 1.0  # Default: no scaling
+                risk_scalar_applied = 1.0
+                
+                if allocator_v1_enabled and allocator_v1_mode == 'precomputed' and precomputed_scalars is not None:
+                    # Precomputed mode: lookup scalar from loaded series
+                    try:
+                        # Reindex to current date with forward fill
+                        scalar_at_date = precomputed_scalars.reindex([date], method='ffill')
+                        
+                        if scalar_at_date.isna().iloc[0]:
+                            # Date before scalar series starts, use default
+                            apply_missing_as = allocator_v1_config.get('apply_missing_scalar_as', 1.0)
+                            risk_scalar_applied = apply_missing_as
+                            logger.debug(
+                                f"[ExecSim] {date}: No precomputed scalar available (pre-start), "
+                                f"using default {apply_missing_as:.3f}"
+                            )
+                        else:
+                            risk_scalar_applied = float(scalar_at_date.iloc[0])
+                        
+                        # In precomputed mode, computed=applied (no lag within Pass 2)
+                        current_risk_scalar = risk_scalar_applied
+                    except Exception as e:
+                        logger.warning(f"[ExecSim] Failed to lookup precomputed scalar at {date}: {e}")
+                        risk_scalar_applied = 1.0
+                        current_risk_scalar = 1.0
+                
+                elif allocator_v1_enabled and allocator_v1_mode == 'compute':
+                    # Compute mode: on-the-fly state/regime/risk computation
+                    if len(returns_history) > 0 and len(dates_history) > 0:
+                        try:
+                            from src.allocator.state_v1 import AllocatorStateV1
+                            from src.allocator.regime_v1 import RegimeClassifierV1
+                            from src.allocator.risk_v1 import RiskTransformerV1
+                            
+                            # Build portfolio returns Series from history
+                            portfolio_returns_so_far = pd.Series(returns_history, index=dates_history)
+                            equity_so_far = (1 + portfolio_returns_so_far).cumprod()
+                            
+                            # Get asset returns through previous rebalance
+                            asset_returns_up_to_date = returns_df.loc[:dates_history[-1]]
+                            asset_returns_simple = np.exp(asset_returns_up_to_date) - 1.0
+                            
+                            # Compute allocator state
+                            state_computer = AllocatorStateV1()
+                            state_df = state_computer.compute(
+                                portfolio_returns=portfolio_returns_so_far,
+                                equity_curve=equity_so_far,
+                                asset_returns=asset_returns_simple,
+                                trend_unit_returns=None,
+                                sleeve_returns=None
+                            )
+                            
+                            if not state_df.empty:
+                                # Compute regime and risk
+                                classifier = RegimeClassifierV1()
+                                regime = classifier.classify(state_df)
+                                
+                                if not regime.empty:
+                                    transformer = RiskTransformerV1()
+                                    risk_scalars = transformer.transform(state_df, regime)
+                                    
+                                    if not risk_scalars.empty:
+                                        current_risk_scalar = float(risk_scalars['risk_scalar'].iloc[-1])
+                        except Exception as e:
+                            logger.warning(f"[ExecSim] Failed to compute risk scalar at {date}: {e}")
+                            current_risk_scalar = 1.0
+                    
+                    # Apply with 1-rebalance lag
+                    risk_scalar_applied = prev_risk_scalar if prev_risk_scalar is not None else 1.0
+                    prev_risk_scalar = current_risk_scalar
+                
+                # Store computed and applied scalars
+                risk_scalar_computed_history.append(current_risk_scalar)
+                risk_scalar_applied_history.append(risk_scalar_applied)
+                weights_raw_history.append(weights_raw.copy())
+                rebalance_dates_history.append(date)
+                
+                # Apply scalar to weights
+                if allocator_v1_enabled and allocator_v1_mode in ['precomputed', 'compute'] and risk_scalar_applied < 1.0:
+                    logger.info(
+                        f"[ExecSim] {date}: Applying risk_scalar={risk_scalar_applied:.3f} "
+                        f"(mode={allocator_v1_mode}, gross before: {weights_raw.abs().sum():.2f}x)"
+                    )
+                    weights = weights_raw * risk_scalar_applied
+                    logger.info(f"[ExecSim] {date}: After scaling: {weights.abs().sum():.2f}x")
+                else:
+                    weights = weights_raw.copy()
+                
+                # Record signals and weights (weights are now scaled if enabled)
                 signals_history.append(scaled_signals)
                 weights_history.append(weights)
                 
@@ -601,8 +818,42 @@ class ExecSim:
             start=start,
             end=end,
             components=components,
-            market=market
+            market=market,
+            sleeve_signals_history=sleeve_signals_history,  # Stage 4A
+            risk_scalar_applied_history=risk_scalar_applied_history,  # Stage 5
+            risk_scalar_computed_history=risk_scalar_computed_history,  # Stage 5
+            weights_raw_history=weights_raw_history,  # Stage 5
+            allocator_v1_enabled=allocator_v1_enabled,  # Stage 5
+            allocator_v1_mode=allocator_v1_mode,  # Stage 5.5
+            precomputed_scalars=precomputed_scalars  # Stage 5.5
         )
+        
+        # Stage 5: Print allocator summary
+        if allocator_v1_enabled and len(risk_scalar_applied_history) > 0:
+            scalars = pd.Series(risk_scalar_applied_history)
+            n_scaled = (scalars < 1.0).sum()
+            pct_scaled = n_scaled / len(scalars) * 100
+            
+            logger.info("\n" + "=" * 80)
+            logger.info("Allocator v1 Summary")
+            logger.info("=" * 80)
+            logger.info(f"Risk scalars applied: {n_scaled}/{len(scalars)} rebalances ({pct_scaled:.1f}%)")
+            logger.info(f"Average scalar: {scalars.mean():.3f}")
+            logger.info(f"Min scalar: {scalars.min():.3f}")
+            logger.info(f"Max scalar: {scalars.max():.3f}")
+            
+            # Top 5 largest de-risk events
+            if n_scaled > 0:
+                scaled_dates = [rebalance_dates_history[i] for i, s in enumerate(risk_scalar_applied_history) if s < 1.0]
+                scaled_values = [s for s in risk_scalar_applied_history if s < 1.0]
+                scaled_df = pd.DataFrame({'date': scaled_dates, 'scalar': scaled_values})
+                scaled_df = scaled_df.sort_values('scalar').head(5)
+                
+                logger.info(f"\nTop 5 largest de-risk events:")
+                for idx, row in scaled_df.iterrows():
+                    reduction_pct = (1 - row['scalar']) * 100
+                    logger.info(f"  {row['date'].strftime('%Y-%m-%d')}: scalar={row['scalar']:.3f} (−{reduction_pct:.1f}%)")
+            logger.info("=" * 80)
         
         return {
             'equity_curve': equity_curve_for_metrics,  # Return daily equity curve for consistency
@@ -742,7 +993,14 @@ class ExecSim:
         start: Union[str, datetime],
         end: Union[str, datetime],
         components: Dict,
-        market
+        market,
+        sleeve_signals_history: Optional[Dict] = None,
+        risk_scalar_applied_history: Optional[list] = None,
+        risk_scalar_computed_history: Optional[list] = None,
+        weights_raw_history: Optional[list] = None,
+        allocator_v1_enabled: bool = False,
+        allocator_v1_mode: str = 'off',
+        precomputed_scalars: Optional[pd.Series] = None
     ):
         """
         Save run artifacts to disk for diagnostics.
@@ -875,7 +1133,438 @@ class ExecSim:
         else:
             pd.DataFrame().to_csv(run_dir / 'weights.csv')
         
-        # 5. Meta JSON
+        # 4A. Stage 5.5: Raw weights and scalar artifacts (if allocator enabled)
+        if allocator_v1_enabled and weights_raw_history and len(weights_raw_history) > 0:
+            # Save raw weights (before risk scalar applied)
+            weights_raw_panel = pd.DataFrame(weights_raw_history, index=weights_panel.index)
+            weights_raw_panel.to_csv(run_dir / 'weights_raw.csv')
+            logger.info(f"[ExecSim] Saved weights_raw.csv (pre-scaling weights)")
+            
+            # Rename weights.csv to weights_scaled.csv for clarity
+            if (run_dir / 'weights.csv').exists():
+                import shutil
+                shutil.copy(run_dir / 'weights.csv', run_dir / 'weights_scaled.csv')
+                logger.info(f"[ExecSim] Saved weights_scaled.csv (post-scaling weights)")
+            
+            # Save computed and applied scalars at each rebalance
+            if risk_scalar_computed_history and len(risk_scalar_computed_history) > 0:
+                scalars_df = pd.DataFrame({
+                    'risk_scalar_computed': risk_scalar_computed_history,
+                    'risk_scalar_applied': risk_scalar_applied_history
+                }, index=weights_panel.index)
+                scalars_df.to_csv(run_dir / 'allocator_scalars_at_rebalances.csv')
+                logger.info(f"[ExecSim] Saved allocator_scalars_at_rebalances.csv")
+            
+            # Stage 5.5: Precomputed mode artifacts
+            if allocator_v1_mode == 'precomputed' and precomputed_scalars is not None:
+                # Save source scalars (full series from baseline run)
+                precomputed_scalars.to_csv(run_dir / 'allocator_risk_v1_applied_source.csv', header=True)
+                logger.info(f"[ExecSim] Saved allocator_risk_v1_applied_source.csv (loaded from baseline)")
+                
+                # Save used scalars (at rebalance dates only, after reindex/ffill)
+                if risk_scalar_applied_history:
+                    used_scalars_df = pd.DataFrame({
+                        'risk_scalar_used': risk_scalar_applied_history
+                    }, index=weights_panel.index)
+                    used_scalars_df.to_csv(run_dir / 'allocator_risk_v1_applied_used.csv')
+                    logger.info(f"[ExecSim] Saved allocator_risk_v1_applied_used.csv (actually applied)")
+                
+                # Save metadata for precomputed mode
+                allocator_v1_config = components.get('allocator_v1_config', {})
+                precomputed_meta = {
+                    'mode': 'precomputed',
+                    'source_run_id': allocator_v1_config.get('precomputed_run_id'),
+                    'source_filename': allocator_v1_config.get('precomputed_scalar_filename'),
+                    'n_rebalances': len(weights_panel),
+                    'n_scaled': sum(1 for s in risk_scalar_applied_history if s < 1.0),
+                    'pct_scaled': sum(1 for s in risk_scalar_applied_history if s < 1.0) / len(risk_scalar_applied_history) * 100 if risk_scalar_applied_history else 0,
+                    'mean_scalar': float(pd.Series(risk_scalar_applied_history).mean()) if risk_scalar_applied_history else 1.0,
+                    'min_scalar': float(pd.Series(risk_scalar_applied_history).min()) if risk_scalar_applied_history else 1.0,
+                    'max_scalar': float(pd.Series(risk_scalar_applied_history).max()) if risk_scalar_applied_history else 1.0,
+                    'generated_at': datetime.now().isoformat()
+                }
+                
+                with open(run_dir / 'allocator_precomputed_meta.json', 'w') as f:
+                    json.dump(precomputed_meta, f, indent=2)
+                
+                logger.info(f"[ExecSim] Saved allocator_precomputed_meta.json")
+        
+        # 4B. Stage 4A: Trend Unit Returns (optional, for allocator state)
+        trend_unit_returns_df = None
+        if not weights_panel.empty and not returns_df.empty:
+            try:
+                logger.info("[ExecSim] Computing trend unit returns...")
+                
+                # Forward-fill weights to daily
+                weights_daily = weights_panel.reindex(returns_df.index).ffill().fillna(0.0)
+                
+                # Align symbols
+                common_symbols = weights_daily.columns.intersection(returns_df.columns)
+                if len(common_symbols) > 0:
+                    # Compute trend unit returns: weight[t-1] * return[t]
+                    # Shift weights by 1 day (lagged weights)
+                    weights_lagged = weights_daily[common_symbols].shift(1).fillna(0.0)
+                    returns_aligned = returns_df[common_symbols]
+                    
+                    # Per-asset unit returns (still in log space)
+                    # Convert to simple returns for interpretability
+                    returns_simple = np.exp(returns_aligned) - 1.0
+                    trend_unit_returns_df = weights_lagged * returns_simple
+                    
+                    # Save to CSV
+                    trend_unit_returns_df.to_csv(run_dir / 'trend_unit_returns.csv')
+                    logger.info(f"[ExecSim] Saved trend_unit_returns.csv: {len(trend_unit_returns_df)} rows, {len(common_symbols)} assets")
+            except Exception as e:
+                logger.warning(f"[ExecSim] Failed to compute trend_unit_returns: {e}")
+        
+        # 4B. Stage 4A: Sleeve Returns (optional, for allocator state)
+        sleeve_returns_df = None
+        if sleeve_signals_history and 'strategy' in components and hasattr(components['strategy'], 'strategies'):
+            try:
+                logger.info("[ExecSim] Computing sleeve returns...")
+                
+                # Get the combined strategy
+                strategy = components['strategy']
+                
+                # For each sleeve, compute its return contribution
+                # This is an approximation: we attribute portfolio returns proportionally to each sleeve's signal contribution
+                sleeve_returns_data = {}
+                
+                for sleeve_name, sleeve_strategy in strategy.strategies.items():
+                    sleeve_weight = strategy.weights.get(sleeve_name, 0.0)
+                    if sleeve_weight > 0:
+                        # Get the sleeve's signals (if captured)
+                        if sleeve_name in sleeve_signals_history and len(sleeve_signals_history[sleeve_name]) > 0:
+                            # Reconstruct sleeve signals as a DataFrame
+                            sleeve_dates = [d for d, _ in sleeve_signals_history[sleeve_name]]
+                            sleeve_sigs_list = [s for _, s in sleeve_signals_history[sleeve_name]]
+                            
+                            if len(sleeve_sigs_list) > 0:
+                                sleeve_sigs_df = pd.DataFrame(sleeve_sigs_list, index=sleeve_dates)
+                                
+                                # Forward-fill to daily frequency
+                                sleeve_sigs_daily = sleeve_sigs_df.reindex(returns_df.index).ffill().fillna(0.0)
+                                
+                                # Compute sleeve return as: sum(sleeve_signal[t-1] * asset_return[t])
+                                # This is an approximation of the sleeve's contribution
+                                sleeve_sigs_lagged = sleeve_sigs_daily.shift(1).fillna(0.0)
+                                
+                                # Align with asset returns
+                                common_assets = sleeve_sigs_lagged.columns.intersection(returns_df.columns)
+                                if len(common_assets) > 0:
+                                    sigs_aligned = sleeve_sigs_lagged[common_assets]
+                                    rets_aligned = returns_df[common_assets]
+                                    
+                                    # Convert returns to simple
+                                    rets_simple = np.exp(rets_aligned) - 1.0
+                                    
+                                    # Sleeve return = weighted sum of (signal * return)
+                                    sleeve_returns_data[sleeve_name] = (sigs_aligned * rets_simple).sum(axis=1)
+                
+                if sleeve_returns_data:
+                    sleeve_returns_df = pd.DataFrame(sleeve_returns_data)
+                    sleeve_returns_df.to_csv(run_dir / 'sleeve_returns.csv')
+                    logger.info(f"[ExecSim] Saved sleeve_returns.csv: {len(sleeve_returns_df)} rows, {len(sleeve_returns_data)} sleeves")
+            except Exception as e:
+                logger.warning(f"[ExecSim] Failed to compute sleeve_returns: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # 5. Allocator State v1 (optional, compute if we have the necessary data)
+        allocator_state_success = False
+        try:
+            from src.allocator.state_v1 import AllocatorStateV1, LOOKBACKS
+            from src.allocator.state_validate import validate_allocator_state_v1, validate_inputs_aligned
+            
+            if (portfolio_returns_daily is not None and 
+                equity_daily_filtered is not None and 
+                not returns_df.empty):
+                
+                logger.info("[ExecSim] Computing allocator state v1...")
+                
+                # Validate input alignment
+                validate_inputs_aligned(
+                    portfolio_returns=portfolio_returns_daily,
+                    equity_curve=equity_daily_filtered,
+                    asset_returns=asset_returns_simple
+                )
+                
+                # Initialize allocator state computer
+                allocator_state = AllocatorStateV1()
+                
+                # Compute state features
+                # Stage 4A: Pass trend_unit_returns and sleeve_returns if available
+                state_df = allocator_state.compute(
+                    portfolio_returns=portfolio_returns_daily,
+                    equity_curve=equity_daily_filtered,
+                    asset_returns=asset_returns_simple,
+                    trend_unit_returns=trend_unit_returns_df,
+                    sleeve_returns=sleeve_returns_df
+                )
+                
+                if not state_df.empty:
+                    # Extract metadata from state.attrs
+                    features_present = state_df.attrs.get('features_present', list(state_df.columns))
+                    features_missing = state_df.attrs.get('features_missing', [])
+                    rows_before = state_df.attrs.get('rows_before_dropna', len(state_df))
+                    rows_after = state_df.attrs.get('rows_after_dropna', len(state_df))
+                    rows_dropped = state_df.attrs.get('rows_dropped', 0)
+                    required_features = state_df.attrs.get('required_features', [])
+                    optional_features = state_df.attrs.get('optional_features', [])
+                    
+                    # Compute effective start shift
+                    effective_start_shift_days = 0
+                    effective_start = state_df.index[0].strftime('%Y-%m-%d')
+                    effective_end = state_df.index[-1].strftime('%Y-%m-%d')
+                    
+                    requested_start_dt = pd.Timestamp(str(start))
+                    effective_start_dt = pd.Timestamp(effective_start)
+                    effective_start_shift_days = (effective_start_dt - requested_start_dt).days
+                    
+                    # Create metadata with canonical structure
+                    state_meta = {
+                        'allocator_state_version': AllocatorStateV1.VERSION,
+                        'lookbacks': LOOKBACKS,
+                        'required_features': required_features,
+                        'optional_features': optional_features,
+                        'features_present': features_present,
+                        'features_missing': features_missing,
+                        'rows_requested': rows_before,
+                        'rows_valid': rows_after,
+                        'rows_dropped': rows_dropped,
+                        'effective_start_date': effective_start,
+                        'effective_end_date': effective_end,
+                        'requested_start_date': str(start),
+                        'requested_end_date': str(end),
+                        'effective_start_shift_days': effective_start_shift_days,
+                        'generated_at': datetime.now().isoformat()
+                    }
+                    
+                    # Validate state before saving
+                    validate_allocator_state_v1(state_df, state_meta)
+                    
+                    # Save allocator state CSV
+                    state_df.to_csv(run_dir / 'allocator_state_v1.csv')
+                    
+                    # Save metadata
+                    with open(run_dir / 'allocator_state_v1_meta.json', 'w') as f:
+                        json.dump(state_meta, f, indent=2)
+                    
+                    logger.info(
+                        f"[ExecSim] ✓ Saved allocator_state_v1.csv: {len(state_df)} rows, "
+                        f"{len(features_present)} features "
+                        f"({len(required_features)} required, {len(features_present) - len(required_features)} optional)"
+                    )
+                    allocator_state_success = True
+                    
+                    # Stage 4B-C: Compute regime and risk scalars from allocator state
+                    # These are ALWAYS computed and saved (independent of allocator_v1.enabled)
+                    try:
+                        from src.allocator.regime_v1 import RegimeClassifierV1
+                        from src.allocator.risk_v1 import RiskTransformerV1
+                        from src.allocator.regime_rules_v1 import get_default_thresholds
+                        
+                        logger.info("[ExecSim] Computing allocator regime v1...")
+                        classifier = RegimeClassifierV1()
+                        regime = classifier.classify(state_df)
+                        
+                        if not regime.empty:
+                            # Save regime series
+                            regime_df = regime.to_frame('regime')
+                            regime_df.to_csv(run_dir / 'allocator_regime_v1.csv')
+                            
+                            # Compute regime statistics
+                            regime_counts = regime.value_counts().sort_index()
+                            regime_pct = (regime_counts / len(regime) * 100).round(1)
+                            
+                            # Compute transition counts
+                            transitions = {}
+                            for i in range(len(regime) - 1):
+                                from_regime = regime.iloc[i]
+                                to_regime = regime.iloc[i + 1]
+                                key = f"{from_regime}->{to_regime}"
+                                transitions[key] = transitions.get(key, 0) + 1
+                            
+                            # Compute max consecutive days per regime
+                            max_consecutive = {}
+                            current_regime = None
+                            current_count = 0
+                            
+                            for r in regime:
+                                if r == current_regime:
+                                    current_count += 1
+                                else:
+                                    if current_regime is not None:
+                                        max_consecutive[current_regime] = max(
+                                            max_consecutive.get(current_regime, 0),
+                                            current_count
+                                        )
+                                    current_regime = r
+                                    current_count = 1
+                            
+                            if current_regime is not None:
+                                max_consecutive[current_regime] = max(
+                                    max_consecutive.get(current_regime, 0),
+                                    current_count
+                                )
+                            
+                            # Save regime metadata
+                            regime_meta = {
+                                'version': RegimeClassifierV1.VERSION,
+                                'thresholds': get_default_thresholds(),
+                                'regime_day_counts': regime_counts.to_dict(),
+                                'regime_percentages': regime_pct.to_dict(),
+                                'transition_counts': transitions,
+                                'max_consecutive_days': max_consecutive,
+                                'effective_start_date': regime.index[0].strftime('%Y-%m-%d'),
+                                'effective_end_date': regime.index[-1].strftime('%Y-%m-%d'),
+                                'generated_at': datetime.now().isoformat()
+                            }
+                            
+                            with open(run_dir / 'allocator_regime_v1_meta.json', 'w') as f:
+                                json.dump(regime_meta, f, indent=2)
+                            
+                            logger.info(
+                                f"[ExecSim] ✓ Saved allocator_regime_v1.csv: {len(regime)} rows, "
+                                f"distribution: {regime_counts.to_dict()}"
+                            )
+                            
+                            # Stage 4C: Compute risk scalars from regime
+                            logger.info("[ExecSim] Computing allocator risk v1...")
+                            transformer = RiskTransformerV1()
+                            risk_scalars = transformer.transform(state_df, regime)
+                            
+                            if not risk_scalars.empty:
+                                # Save risk scalars
+                                risk_scalars.to_csv(run_dir / 'allocator_risk_v1.csv')
+                                
+                                # Compute statistics
+                                risk_scalar = risk_scalars['risk_scalar']
+                                risk_stats = {
+                                    'mean': float(risk_scalar.mean()),
+                                    'std': float(risk_scalar.std()),
+                                    'min': float(risk_scalar.min()),
+                                    'max': float(risk_scalar.max()),
+                                    'median': float(risk_scalar.median()),
+                                    'q25': float(risk_scalar.quantile(0.25)),
+                                    'q75': float(risk_scalar.quantile(0.75))
+                                }
+                                
+                                # Compute risk scalar by regime
+                                from src.allocator.risk_v1 import DEFAULT_REGIME_SCALARS, RISK_MIN, RISK_MAX
+                                aligned_regime = regime.reindex(risk_scalar.index)
+                                risk_by_regime = {}
+                                for regime_name in DEFAULT_REGIME_SCALARS.keys():
+                                    regime_mask = aligned_regime == regime_name
+                                    if regime_mask.any():
+                                        risk_by_regime[regime_name] = {
+                                            'mean': float(risk_scalar[regime_mask].mean()),
+                                            'min': float(risk_scalar[regime_mask].min()),
+                                            'max': float(risk_scalar[regime_mask].max()),
+                                            'count': int(regime_mask.sum())
+                                        }
+                                
+                                # Save risk metadata
+                                risk_meta = {
+                                    'version': RiskTransformerV1.VERSION,
+                                    'regime_scalar_mapping': DEFAULT_REGIME_SCALARS,
+                                    'smoothing_alpha': transformer.smoothing_alpha,
+                                    'smoothing_half_life': transformer.smoothing_half_life,
+                                    'risk_bounds': [RISK_MIN, RISK_MAX],
+                                    'risk_scalar_stats': risk_stats,
+                                    'risk_scalar_by_regime': risk_by_regime,
+                                    'effective_start_date': risk_scalar.index[0].strftime('%Y-%m-%d'),
+                                    'effective_end_date': risk_scalar.index[-1].strftime('%Y-%m-%d'),
+                                    'generated_at': datetime.now().isoformat()
+                                }
+                                
+                                with open(run_dir / 'allocator_risk_v1_meta.json', 'w') as f:
+                                    json.dump(risk_meta, f, indent=2)
+                                
+                                logger.info(
+                                    f"[ExecSim] ✓ Saved allocator_risk_v1.csv: {len(risk_scalar)} rows, "
+                                    f"mean={risk_stats['mean']:.3f}, range=[{risk_stats['min']:.3f}, {risk_stats['max']:.3f}]"
+                                )
+                                
+                                # Stage 5: Create applied risk_scalar series (lagged, at rebalance dates)
+                                # Reindex risk_scalar to rebalance dates (forward fill to get most recent value)
+                                # Then shift by 1 to create 1-bar lag (use yesterday's scalar today)
+                                risk_scalar_at_rebalances = risk_scalar.reindex(weights_panel.index, method='ffill')
+                                # Fill any remaining NaNs with 1.0 (no scaling for early rebalances before state available)
+                                risk_scalar_at_rebalances = risk_scalar_at_rebalances.fillna(1.0)
+                                risk_scalar_applied = risk_scalar_at_rebalances.shift(1, fill_value=1.0)
+                                
+                                # Create DataFrame
+                                risk_scalar_applied_df = risk_scalar_applied.to_frame('risk_scalar_applied')
+                                risk_scalar_applied_df.to_csv(run_dir / 'allocator_risk_v1_applied.csv')
+                                
+                                # Compute statistics for applied scalars
+                                applied_stats = {
+                                    'mean': float(risk_scalar_applied.mean()),
+                                    'std': float(risk_scalar_applied.std()),
+                                    'min': float(risk_scalar_applied.min()),
+                                    'max': float(risk_scalar_applied.max()),
+                                    'median': float(risk_scalar_applied.median()),
+                                    'n_rebalances': len(risk_scalar_applied),
+                                    'n_scaled': int((risk_scalar_applied < 1.0).sum()),
+                                    'pct_scaled': float((risk_scalar_applied < 1.0).sum() / len(risk_scalar_applied) * 100)
+                                }
+                                
+                                # Save metadata for applied scalars
+                                applied_meta = {
+                                    'version': RiskTransformerV1.VERSION,
+                                    'description': 'Risk scalars that would be applied to weights (1-rebalance lag)',
+                                    'lag_convention': '1-rebalance lag (apply risk_scalar[t-1] to weights[t])',
+                                    'construction': 'Reindex daily risk_scalar to rebalance dates (forward fill), then shift by 1',
+                                    'applied_stats': applied_stats,
+                                    'first_rebalance': weights_panel.index[0].strftime('%Y-%m-%d'),
+                                    'last_rebalance': weights_panel.index[-1].strftime('%Y-%m-%d'),
+                                    'generated_at': datetime.now().isoformat()
+                                }
+                                
+                                with open(run_dir / 'allocator_risk_v1_applied_meta.json', 'w') as f:
+                                    json.dump(applied_meta, f, indent=2)
+                                
+                                logger.info(
+                                    f"[ExecSim] ✓ Saved allocator_risk_v1_applied.csv: {len(risk_scalar_applied)} rebalances, "
+                                    f"mean={applied_stats['mean']:.3f}, "
+                                    f"scaled {applied_stats['n_scaled']}/{applied_stats['n_rebalances']} times "
+                                    f"({applied_stats['pct_scaled']:.1f}%)"
+                                )
+                            else:
+                                logger.warning("[ExecSim] ⚠️  Risk transformation returned empty DataFrame")
+                        else:
+                            logger.warning("[ExecSim] ⚠️  Regime classification returned empty series")
+                    except Exception as e:
+                        logger.error(f"[ExecSim] ❌ Failed to compute regime/risk: {e}")
+                        import traceback
+                        logger.error(traceback.format_exc())
+                else:
+                    logger.warning("[ExecSim] ⚠️  Allocator state computation returned empty DataFrame")
+        except Exception as e:
+            # Fail soft but loud: write error JSON and log red flag
+            import traceback
+            error_traceback = traceback.format_exc()
+            
+            error_info = {
+                'error': str(e),
+                'traceback': error_traceback,
+                'inputs_present': {
+                    'portfolio_returns': portfolio_returns_daily is not None,
+                    'equity_curve': equity_daily_filtered is not None,
+                    'asset_returns': not returns_df.empty
+                },
+                'generated_at': datetime.now().isoformat()
+            }
+            
+            # Write error JSON
+            with open(run_dir / 'allocator_state_v1_error.json', 'w') as f:
+                json.dump(error_info, f, indent=2)
+            
+            logger.error(f"[ExecSim] ❌ Failed to compute allocator state v1: {e}")
+            logger.error(f"[ExecSim] Error details written to allocator_state_v1_error.json")
+        
+        # 6. Meta JSON
         strategy_name = "unknown"
         if 'strategy' in components:
             strategy = components['strategy']
@@ -902,6 +1591,13 @@ class ExecSim:
             json.dump(meta, f, indent=2)
         
         logger.info(f"[ExecSim] Saved artifacts to {run_dir}")
+        
+        # Red flag if allocator state failed
+        if not allocator_state_success:
+            logger.warning(
+                f"[ExecSim] 🚩 RED FLAG: Allocator state v1 computation failed or returned empty. "
+                f"See allocator_state_v1_error.json for details."
+            )
     
     def describe(self) -> dict:
         """

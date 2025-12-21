@@ -708,6 +708,83 @@ Allocator development follows the structured lifecycle defined in `PROCEDURES.md
    - Formal promotion process
    - Versioned releases (e.g., Allocator v2)
 
+#### 5.1.1 Allocator v1 Status (December 2024)
+
+**Status:** ✅ Phase-D COMPLETE (Production-Ready)
+
+Allocator v1 has completed Stages 4A-5.5 (December 2024) and is production-ready for deployment.
+
+**Implementation Completion:**
+- ✅ **Stage 4A**: State layer (10 features) implemented and validated
+- ✅ **Stage 4B**: Regime classifier (4 regimes, rule-based, sticky) implemented
+- ✅ **Stage 4C**: Risk transformer (risk scalars with EWMA smoothing) implemented
+- ✅ **Stage 4D**: Exposure application layer (weight scaling with 1-rebalance lag) implemented
+- ✅ **Stage 5**: Risk scalar application (lagged, no circularity) implemented
+- ✅ **Stage 5.5**: Two-pass audit workflow (baseline vs scaled) implemented
+
+**Allocator v1 Architecture:**
+
+**A. State Estimation (`AllocatorStateV1`):**
+- 10 canonical features: volatility/acceleration (3), drawdown/path (2), correlation (3), engine health (2)
+- 8 required features + 2 optional features
+- Artifact: `allocator_state_v1.csv`
+
+**B. Regime Interpretation (`RegimeClassifierV1`):**
+- 4 risk regimes: NORMAL, ELEVATED, STRESS, CRISIS
+- Rule-based classification with hysteresis and anti-thrash
+- Artifact: `allocator_regime_v1.csv`
+
+**C. Risk Transformation (`RiskTransformerV1`):**
+- Regime → risk scalar mapping: NORMAL (1.0), ELEVATED (0.85), STRESS (0.55), CRISIS (0.30)
+- EWMA smoothing (5d half-life)
+- Bounded [0.25, 1.0]
+- Artifact: `allocator_risk_v1.csv`, `allocator_risk_v1_applied.csv`
+
+**D. Exposure Application:**
+- 3 modes: `off` (artifacts only), `precomputed` (two-pass audit), `compute` (on-the-fly, has warmup issues)
+- 1-rebalance lag: apply `risk_scalar[t-1]` to `weights[t]`
+- Artifacts: `weights_raw.csv`, `weights_scaled.csv`
+
+**Validation Status:**
+- ✅ All 10 state features computed correctly
+- ✅ Regime classifier is sticky (no thrashing)
+- ✅ Risk scalars are bounded and deterministic
+- ✅ Two-pass audit framework operational
+- ✅ Comparison reports generated automatically
+- ✅ Complete artifact trail and metadata
+
+**Configuration:**
+```yaml
+allocator_v1:
+  enabled: false              # Default: artifacts only
+  mode: "off"                 # "off" | "compute" | "precomputed"
+  precomputed_run_id: null    # For two-pass audit
+  state_version: "v1.0"
+  regime_version: "v1.0"
+  risk_version: "v1.0"
+```
+
+**Deployment Readiness:**
+- **Two-pass audit**: Canonical workflow for validating allocator impact
+- **Diagnostic scripts**: State/regime/risk computation, two-pass orchestration, comparison reports
+- **Documentation**: Complete SOT updates in SYSTEM_CONSTRUCTION.md, DIAGNOSTICS.md, PROCEDURES.md
+
+**Production Readiness (Complete):**
+- ✅ **Stage 6**: Production mode locked (`precomputed` as default, `compute` research-only)
+- ✅ **Stage 6.5**: Stability & sanity review framework (qualitative validation before deployment)
+
+**Future Enhancements (Post-v1):**
+- **Stage 7**: Threshold tuning against historical stress events (post-deployment)
+- **Stage 8**: Convexity overlays (VIX calls) gated by regime (post-deployment)
+- **Stage 9**: True incremental state computation (resolve warmup period, enables `compute` mode)
+
+**See Also:**
+- `docs/ALLOCATOR_V1_STAGE_4_COMPLETE.md` - Full implementation documentation
+- `docs/ALLOCATOR_V1_QUICK_START.md` - Quick start guide
+- `SOTs/SYSTEM_CONSTRUCTION.md` § "Allocator v1 Implementation"
+- `SOTs/DIAGNOSTICS.md` § "Allocator v1 Diagnostics"
+- `SOTs/PROCEDURES.md` § "Allocator v1 Production Procedures"
+
 **Allocator Logic Components:**
 - ERC or Ridge-RP portfolio construction
 - Risk parity across meta-sleeves

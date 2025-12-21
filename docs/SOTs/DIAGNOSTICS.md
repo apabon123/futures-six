@@ -429,6 +429,218 @@ print(f"CAGR: {metrics['cagr']:.2%}")
 
 5. **Equity ratio**: When comparing runs, the equity ratio shows cumulative impact over time
 
+---
+
+## Allocator v1 Diagnostics
+
+The Allocator v1 system provides a comprehensive suite of diagnostics for monitoring and auditing risk control behavior. All allocator diagnostics are saved automatically as artifacts alongside standard backtest outputs.
+
+### Allocator Artifact Structure
+
+Every backtest run with Allocator v1 produces these canonical artifacts (saved in `reports/runs/{run_id}/`):
+
+**State Artifacts:**
+- `allocator_state_v1.csv` - Daily state features (10 columns)
+- `allocator_state_v1_meta.json` - State computation metadata
+
+**Regime Artifacts:**
+- `allocator_regime_v1.csv` - Daily regime labels (NORMAL/ELEVATED/STRESS/CRISIS)
+- `allocator_regime_v1_meta.json` - Regime classification metadata
+
+**Risk Artifacts:**
+- `allocator_risk_v1.csv` - Daily risk scalars (computed)
+- `allocator_risk_v1_applied.csv` - Lagged risk scalars (applied to weights)
+- `allocator_risk_v1_meta.json` - Risk transformation metadata
+- `allocator_risk_v1_applied_meta.json` - Application metadata
+
+**Weight Artifacts (when allocator enabled):**
+- `weights_raw.csv` - Pre-scaling weights
+- `weights_scaled.csv` - Post-scaling weights (after risk scalar applied)
+- `allocator_risk_v1_applied_used.csv` - Scalars actually used at each rebalance
+
+**Optional Artifacts:**
+- `trend_unit_returns.csv` - Per-asset unit returns for Trend sleeve (required for `trend_breadth_20d`)
+- `sleeve_returns.csv` - Per-sleeve daily returns (required for `sleeve_concentration_60d`)
+
+**Error Artifacts (when computation fails):**
+- `allocator_state_v1_error.json` - Contains traceback and input diagnostics
+
+### Allocator State Features (10 features)
+
+The state layer computes 10 canonical features describing portfolio and market conditions:
+
+**Volatility & Acceleration (3 features):**
+- `port_rvol_20d`: 20-day portfolio realized volatility (annualized)
+- `port_rvol_60d`: 60-day portfolio realized volatility (annualized)
+- `vol_accel`: Ratio of 20d/60d volatility (detects acceleration)
+
+**Drawdown & Path (2 features):**
+- `dd_level`: Current drawdown from peak equity (negative, e.g., -0.10 = 10% DD)
+- `dd_slope_10d`: 10-day drawdown slope (detects worsening)
+
+**Cross-Asset Correlation (3 features):**
+- `corr_20d`: 20-day average pairwise correlation across asset returns
+- `corr_60d`: 60-day average pairwise correlation across asset returns
+- `corr_shock`: Recent spike in correlation (20d - 60d)
+
+**Engine Health (2 features, optional):**
+- `trend_breadth_20d`: Fraction of Trend positions with positive 20d return (requires `trend_unit_returns.csv`)
+- `sleeve_concentration_60d`: Herfindahl index of sleeve PnL concentration (requires `sleeve_returns.csv`)
+
+**Feature Coverage:**
+- **Required features:** First 8 features (always present)
+- **Optional features:** Last 2 features (present only if input data available)
+- All required features are validated for NaN values; optional features may be missing
+
+### Regime Classification Logic
+
+The regime classifier maps state features to 4 discrete risk regimes:
+
+**Regimes:**
+1. **NORMAL** - Typical market conditions (risk_scalar = 1.00)
+2. **ELEVATED** - Increased volatility or correlation (risk_scalar = 0.85)
+3. **STRESS** - Significant drawdown or volatility spike (risk_scalar = 0.55)
+4. **CRISIS** - Extreme conditions requiring defensive positioning (risk_scalar = 0.30)
+
+**Classification Logic:**
+- Uses 4 stress condition signals: `S_vol_fast`, `S_corr_spike`, `S_dd_deep`, `S_dd_worsening`
+- Computes `risk_score = sum([S_vol_fast, S_corr_spike, S_dd_deep, S_dd_worsening])`
+- Enter CRISIS if: `dd_level <= -0.20` OR `risk_score >= 3` OR `(S_vol_fast AND S_corr_spike AND S_dd_worsening)`
+- Enter STRESS if: `risk_score >= 2` OR `(S_vol_fast AND S_corr_spike)` OR `dd_level <= -0.12`
+- Enter ELEVATED if: `risk_score >= 1`
+- Otherwise NORMAL
+
+**Hysteresis:**
+- Separate EXIT thresholds lower than ENTER thresholds
+- Anti-thrash rule: Must remain in regime for at least 5 days
+- Prevents regime flapping during boundary conditions
+
+### Diagnostic Scripts
+
+**State Computation:**
+```bash
+python scripts/diagnostics/run_allocator_state_v1.py --run_id <run_id>
+```
+- Loads existing run artifacts
+- Computes allocator state from portfolio/asset/sleeve returns
+- Saves `allocator_state_v1.csv` and metadata
+
+**Regime Classification:**
+```bash
+python scripts/diagnostics/run_allocator_regime_v1.py --run_id <run_id>
+```
+- Loads `allocator_state_v1.csv`
+- Classifies regimes using rule-based logic
+- Saves `allocator_regime_v1.csv` and metadata
+
+**Risk Transformation:**
+```bash
+python scripts/diagnostics/run_allocator_risk_v1.py --run_id <run_id>
+```
+- Loads state + regime artifacts
+- Computes risk scalars with EWMA smoothing
+- Saves `allocator_risk_v1.csv` and metadata
+
+**Two-Pass Audit:**
+```bash
+python scripts/diagnostics/run_allocator_two_pass.py \
+  --strategy_profile core_v9 \
+  --start 2024-01-01 \
+  --end 2024-12-15
+```
+- **Pass 1:** Runs baseline with allocator disabled → produces risk scalars
+- **Pass 2:** Re-runs with precomputed scalars applied → produces scaled portfolio
+- Generates comparison report: `two_pass_comparison.json` and `two_pass_comparison.md`
+
+### Two-Pass Audit Report Metrics
+
+The comparison report includes:
+
+**Performance Metrics (baseline vs scaled):**
+- CAGR (Compound Annual Growth Rate)
+- Annualized Volatility
+- Sharpe Ratio
+- Maximum Drawdown
+- Worst Month
+- Worst Quarter
+
+**Allocator Usage Statistics:**
+- % Rebalances scaled (how often scalar < 1.0)
+- Mean/Min/Max risk scalar
+- Top 10 de-risking events (dates with lowest scalars)
+
+**Regime Statistics (from baseline run):**
+- Days in each regime (NORMAL/ELEVATED/STRESS/CRISIS)
+- Regime transition counts
+
+**Comparison Report Location:**
+- `reports/runs/{scaled_run_id}/two_pass_comparison.json` (machine-readable)
+- `reports/runs/{scaled_run_id}/two_pass_comparison.md` (human-readable)
+
+### Validation Checks
+
+The `src/allocator/state_validate.py` module provides:
+
+**`validate_allocator_state_v1(state_df, meta)`:**
+- Asserts required features present
+- Asserts monotonic date index
+- Asserts no NaN in required features
+- Warns if >5% of rows dropped (data quality issue)
+
+**`validate_inputs_aligned(portfolio_returns, equity_curve, asset_returns)`:**
+- Ensures all inputs have matching date indices
+- Prevents silent misalignments
+
+### Allocator Configuration
+
+In `configs/strategies.yaml`:
+
+```yaml
+allocator_v1:
+  enabled: false              # Master switch (default: false)
+  mode: "off"                 # "off" | "compute" | "precomputed"
+  precomputed_run_id: null    # Required if mode="precomputed"
+  precomputed_scalar_filename: "allocator_risk_v1_applied.csv"
+  apply_missing_scalar_as: 1.0
+  state_version: "v1.0"
+  regime_version: "v1.0"
+  risk_version: "v1.0"
+```
+
+**Modes:**
+- **`off`** - Compute all artifacts but don't apply to weights (default for research)
+- **`compute`** - On-the-fly state/regime/risk computation and application (has warmup issues)
+- **`precomputed`** - Load scalars from a prior baseline run and apply with lag (recommended for two-pass audit)
+
+### Best Practices for Allocator Diagnostics
+
+1. **Always run in "off" mode first**: Generate artifacts without affecting weights, then audit
+2. **Use two-pass workflow**: Compare baseline (no allocator) vs scaled (allocator applied)
+3. **Check regime stickiness**: Regime transitions should be rare (not daily)
+4. **Validate feature coverage**: Ensure optional features are present if expected
+5. **Monitor row drops**: >5% row drop indicates data quality issues
+6. **Inspect top de-risk events**: Check if allocator triggered during known stress periods
+7. **Compare MaxDD reduction**: Primary goal is drawdown control, not Sharpe optimization
+
+### Known Issues and Limitations
+
+**Warmup Period:**
+- State features require 60-day rolling windows
+- Early dates (first ~60 days) will have empty state
+- Two-pass audit sidesteps this by using precomputed scalars
+
+**Optional Features:**
+- `trend_breadth_20d` and `sleeve_concentration_60d` require specific sleeve data
+- These features are excluded (not set to NaN) if inputs unavailable
+- Regime classifier still works with 8 core features
+
+**Mode Recommendations:**
+- Use `mode: "off"` for research and initial validation
+- Use `mode: "precomputed"` for two-pass audit
+- Avoid `mode: "compute"` until warmup period is resolved (Stage 9)
+
+---
+
 ## Data Integrity / Breaking Fixes
 
 This section documents data integrity issues and breaking fixes that affect diagnostic results. All results generated before these fixes are invalid and must be re-run.

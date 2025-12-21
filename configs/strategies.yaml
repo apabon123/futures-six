@@ -29,6 +29,22 @@ allocator:
   turnover_cap: 0.5
   lambda_turnover: 0.001
 
+# Allocator v1: State-Regime-Risk system (Production-Ready, December 2024)
+# Frozen at v1.0 — See docs/ALLOCATOR_V1_FREEZE.md for change policy
+allocator_v1:
+  enabled: true               # Master switch: true to apply risk scalars, false to compute artifacts only
+  mode: "precomputed"         # PRODUCTION DEFAULT: "precomputed" (safe, deterministic, auditable)
+  # Modes:
+  #   "off":        Compute artifacts only, no weight scaling (baseline generation)
+  #   "compute":    On-the-fly computation (research-only, has warmup issues)
+  #   "precomputed": Load scalars from validated baseline run (PRODUCTION MODE)
+  precomputed_run_id: null    # Run ID to load scalars from (SET THIS for production deployment)
+  precomputed_scalar_filename: "allocator_risk_v1_applied.csv"  # Filename to load from baseline
+  apply_missing_scalar_as: 1.0  # Default scalar if date not found (no scaling)
+  state_version: "v1.0"       # FROZEN
+  regime_version: "v1.0"      # FROZEN
+  risk_version: "v1.0"        # FROZEN
+
 exec:
   rebalance: "W-FRI"
   slippage_bps: 0.5

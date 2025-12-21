@@ -654,6 +654,9 @@ def main():
         logger.info(f"\nExecuting backtest from {start_date} to {end_date}...")
         
         # Package components
+        # Stage 4D: Include allocator_v1 config for integration point
+        allocator_v1_config = config.get('allocator_v1', {})
+        
         components = {
             'strategy': strategy,
             'macro_overlay': macro_overlay,
@@ -661,7 +664,8 @@ def main():
             'risk_vol': risk,
             'allocator': allocator,
             'curve_rv_meta': curve_rv_meta,  # Add Curve RV meta-sleeve if enabled
-            'curve_rv_weight': curve_rv_weight  # Add Curve RV weight
+            'curve_rv_weight': curve_rv_weight,  # Add Curve RV weight
+            'allocator_v1_config': allocator_v1_config  # Stage 4D: Allocator v1 config
         }
         
         results = exec_sim.run(
