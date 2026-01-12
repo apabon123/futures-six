@@ -29,7 +29,27 @@ allocator:
   turnover_cap: 0.5
   lambda_turnover: 0.001
 
-# Allocator v1: State-Regime-Risk system (Production-Ready, December 2024)
+# =============================================================================
+# RISK TARGETING LAYER (Layer 5 in Canonical Stack)
+# =============================================================================
+# Purpose: Define how large the portfolio is by design
+# Key Principle: Encodes risk appetite, not risk control
+# This layer is ALWAYS ON and UPSTREAM of the allocator
+risk_targeting:
+  enabled: true               # Master switch for Risk Targeting layer
+  target_vol: 0.20            # Target annualized portfolio volatility (20%)
+  vol_lookback: 63            # Rolling window for vol estimation (days)
+  leverage_cap: 7.0           # Maximum leverage allowed
+  leverage_floor: 1.0         # Minimum leverage (no deleveraging below 1x)
+  vol_floor: 0.05             # Minimum vol estimate to avoid extreme scaling
+  update_frequency: "static"  # How often target_vol can change: "static", "quarterly", "monthly"
+  # Note: Risk Targeting answers "How big do I trade in normal conditions?"
+  # Allocator (Layer 6) can scale DOWN from here, but this sets the baseline.
+
+# =============================================================================
+# ALLOCATOR V1: State-Regime-Risk System (Layer 6 in Canonical Stack)
+# =============================================================================
+# Production-Ready, December 2024
 # Frozen at v1.0 — See docs/ALLOCATOR_V1_FREEZE.md for change policy
 allocator_v1:
   enabled: true               # Master switch: true to apply risk scalars, false to compute artifacts only
@@ -38,12 +58,29 @@ allocator_v1:
   #   "off":        Compute artifacts only, no weight scaling (baseline generation)
   #   "compute":    On-the-fly computation (research-only, has warmup issues)
   #   "precomputed": Load scalars from validated baseline run (PRODUCTION MODE)
+  
+  # Profile selection: H (High), M (Medium), L (Low) risk tolerance
+  # - H: Rare intervention, tail-only protection, minimal Sharpe drag
+  # - M: Balanced approach, active risk management without excessive drag
+  # - L: Conservative, institutional-style (default v1 behavior)
+  profile: "H"                # RECOMMENDED FOR PRODUCTION: "H" (captures engine alpha)
+  
   precomputed_run_id: null    # Run ID to load scalars from (SET THIS for production deployment)
   precomputed_scalar_filename: "allocator_risk_v1_applied.csv"  # Filename to load from baseline
   apply_missing_scalar_as: 1.0  # Default scalar if date not found (no scaling)
   state_version: "v1.0"       # FROZEN
   regime_version: "v1.0"      # FROZEN
   risk_version: "v1.0"        # FROZEN
+  
+  # Profile-specific overrides (optional, profile defaults are used if not specified)
+  # These are automatically set by the profile, but can be overridden here:
+  # regime_scalars:
+  #   NORMAL: 1.00
+  #   ELEVATED: 0.98  # Profile-H default
+  #   STRESS: 0.85    # Profile-H default
+  #   CRISIS: 0.60    # Profile-H default
+  # smoothing_alpha: 0.15  # Profile-H default
+  # risk_min: 0.50         # Profile-H default
 
 exec:
   rebalance: "W-FRI"

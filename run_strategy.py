@@ -53,6 +53,7 @@ from src.agents.overlay_macro_regime import MacroRegimeFilter
 from src.agents.risk_vol import RiskVol
 from src.agents.allocator import Allocator
 from src.agents.exec_sim import ExecSim
+from src.layers import RiskTargetingLayer, create_risk_targeting_layer, ArtifactWriter, create_artifact_writer
 
 
 def load_config(path: Path = CONFIG_PATH) -> dict:
@@ -93,6 +94,12 @@ def main():
         default=None,
         help="Run identifier for saving artifacts. If not specified, generates timestamp-based ID."
     )
+    parser.add_argument(
+        "--config_path",
+        type=str,
+        default=None,
+        help="Path to strategies.yaml config file. If not specified, uses configs/strategies.yaml"
+    )
     
     args = parser.parse_args()
     
@@ -100,6 +107,7 @@ def main():
     end_date = args.end
     run_id = args.run_id
     strategy_profile = args.strategy_profile
+    config_path = Path(args.config_path) if args.config_path else CONFIG_PATH
     
     logger.info("=" * 80)
     logger.info("FUTURES-SIX: TSMOM Strategy Backtest")
@@ -110,9 +118,21 @@ def main():
         logger.info(f"Strategy Profile: {strategy_profile}")
     if run_id:
         logger.info(f"Run ID: {run_id}")
+    if args.config_path:
+        logger.info(f"Config Path: {config_path}")
     
     try:
-        config = load_config()
+        config = load_config(config_path)
+        
+        # Log config source and key settings (for A/B backtest verification)
+        logger.info(f"\n[Config] Loaded from: {config_path}")
+        allocator_v1_cfg = config.get('allocator_v1', {})
+        risk_targeting_cfg = config.get('risk_targeting', {})
+        logger.info(f"[Config] allocator_v1.enabled={allocator_v1_cfg.get('enabled')}, "
+                   f"mode={allocator_v1_cfg.get('mode')}, profile={allocator_v1_cfg.get('profile')}")
+        logger.info(f"[Config] risk_targeting.enabled={risk_targeting_cfg.get('enabled')}, "
+                   f"target_vol={risk_targeting_cfg.get('target_vol')}, "
+                   f"leverage_cap={risk_targeting_cfg.get('leverage_cap')}")
         
         # Load strategy profile if specified
         if strategy_profile:
@@ -640,12 +660,37 @@ def main():
         vol_overlay = VolManagedOverlay(risk_vol=risk)
         logger.info(f"  Config: {vol_overlay.describe()}")
         
-        # 7. Initialize Allocator
-        logger.info("\n[8/8] Initializing Allocator...")
+        # 7. Initialize Risk Targeting Layer (Layer 5)
+        logger.info("\n[8/9] Initializing Risk Targeting Layer...")
+        risk_targeting_cfg = config.get('risk_targeting', {})
+        risk_targeting_enabled = risk_targeting_cfg.get('enabled', False)
+        risk_targeting_layer = None
+        
+        if risk_targeting_enabled:
+            # Use profile if specified, otherwise use config values
+            profile = risk_targeting_cfg.get('profile', 'default')
+            if profile:
+                risk_targeting_layer = create_risk_targeting_layer(profile=profile)
+            else:
+                # Create from config values
+                risk_targeting_layer = RiskTargetingLayer(
+                    target_vol=risk_targeting_cfg.get('target_vol', 0.20),
+                    leverage_cap=risk_targeting_cfg.get('leverage_cap', 7.0),
+                    leverage_floor=risk_targeting_cfg.get('leverage_floor', 1.0),
+                    vol_lookback=risk_targeting_cfg.get('vol_lookback', 63),
+                    update_frequency=risk_targeting_cfg.get('update_frequency', 'static'),
+                    config_path=None  # Don't load from config when explicitly set
+                )
+            logger.info(f"  Config: {risk_targeting_layer.describe()}")
+        else:
+            logger.info("  Risk Targeting disabled (enabled: false)")
+        
+        # 8. Initialize Allocator
+        logger.info("\n[9/9] Initializing Allocator...")
         allocator = Allocator()
         logger.info(f"  Config: {allocator.describe()}")
         
-        # 8. Initialize and Run ExecSim
+        # 9. Initialize and Run ExecSim
         logger.info("\nRunning backtest with ExecSim...")
         exec_sim = ExecSim()
         logger.info(f"  Config: {exec_sim.describe()}")
@@ -662,6 +707,7 @@ def main():
             'macro_overlay': macro_overlay,
             'overlay': vol_overlay,
             'risk_vol': risk,
+            'risk_targeting': risk_targeting_layer,  # Layer 5: Risk Targeting
             'allocator': allocator,
             'curve_rv_meta': curve_rv_meta,  # Add Curve RV meta-sleeve if enabled
             'curve_rv_weight': curve_rv_weight,  # Add Curve RV weight

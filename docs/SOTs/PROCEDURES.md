@@ -1327,6 +1327,81 @@ Before enabling allocator in production:
 - [ ] Worst month/quarter metrics improved vs baseline
 - [ ] No unexpected regime thrashing during normal periods
 
+### Phase 1C: Risk Targeting + Allocator Integration (Completion Checklist)
+
+**Status:** ✅ **COMPLETE** (January 2026)
+
+**Phase 1C Acceptance Criteria:**
+
+**Golden Proof Run:**
+- [x] **Run ID:** `rt_alloc_h_apply_precomputed_2024`
+- [x] **Config:** `configs/proofs/phase1c_allocator_apply.yaml`
+- [x] **Validator:** `scripts/diagnostics/validate_phase1c_completion.py <run_id>` must PASS
+
+**Acceptance Criteria (All Passed):**
+1. [x] **RT Artifacts:** Panel data bug fixed (all 13 instruments per date, gross matches logs)
+2. [x] **RT Layer:** Leverage calculation correct, weight scaling correct
+3. [x] **Allocator Computation:** Regimes + scalars correct (42% active, min 0.68)
+4. [x] **Allocator Application:** Multipliers applied to weights (% active > 0%)
+5. [x] **Returns Differentiation:** RT + Alloc-H returns differ from RT-only (difference > 1e-6)
+6. [x] **Weight Scaling Verification:** `final_weights ≈ post_rt_weights * multiplier` (error < 0.01)
+7. [x] **ExecSim Logs:** "Risk scalars applied: X/52 rebalances" where X > 0
+8. [x] **Contract Tests:** All tests pass (`test_risk_targeting_contracts.py`, `test_allocator_profile_activation.py`)
+
+**Phase 1C Validation Command:**
+```bash
+# Validate Phase 1C completion
+python scripts/diagnostics/validate_phase1c_completion.py rt_alloc_h_apply_precomputed_2024
+
+# Expected output: "OVERALL: PASS - Allocator was applied!"
+```
+
+**Proof Config Location:**
+- **Stable config:** `configs/proofs/phase1c_allocator_apply.yaml`
+- **Temp config (legacy):** `configs/temp_phase1c_proof_precomputed.yaml` (deprecated, use proofs/ version)
+
+**Important Nuance (Documented):**
+
+Phase 1C validation uses a **two-step process**:
+1. **Step 1:** Compute allocator scalars (`rt_alloc_h_apply_proof_2024` in `compute` mode)
+2. **Step 2:** Apply scalars via `precomputed` mode (`rt_alloc_h_apply_precomputed_2024`)
+
+**This proves:**
+- ✅ Allocator application path works correctly
+- ✅ Config plumbing is correct
+- ✅ Weight scaling is deterministic and auditable
+- ✅ End-to-end integration is sound
+
+**Behavioral Difference (Phase 2/3 Validation):**
+
+There is a difference between:
+- **`compute` mode:** Compute-and-apply in-loop (live-like behavior, has warmup issues)
+- **`precomputed` mode:** Compute once, apply later (replay behavior, production-ready)
+
+**Phase 1C proves the application path and config plumbing.**  
+**Phase 2/3 will validate compute-and-apply stability** (or explicitly choose `precomputed` for paper-live v0 if that's acceptable).
+
+**Artifact Validation:**
+```bash
+# Test RT artifacts integrity
+python scripts/diagnostics/test_rt_artifact_fix.py <run_id>
+
+# Expected: All tests PASS (13 instruments per date, gross consistency)
+```
+
+**Phase 1C Completion Declaration:**
+
+Phase 1C is complete when:
+- ✅ All acceptance criteria pass
+- ✅ Validation script returns PASS
+- ✅ All contract tests pass
+- ✅ Documentation updated in SOTs
+
+**Date Completed:** 2026-01-10  
+**Signed Off:** AI Agent + User Validation
+
+---
+
 ### Allocator v1 Known Limitations
 
 **Warmup Period:**

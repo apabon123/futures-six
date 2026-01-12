@@ -4,21 +4,25 @@ RiskTransformerV1: Risk Scaling from Regime and State
 Consumes regime classifications and allocator state to emit risk scalars:
 - risk_scalar: Portfolio-level exposure scaling (RISK_MIN to 1.0)
 
-Maps regimes to target scalars with smoothing to avoid jerkiness:
+Maps regimes to target scalars with smoothing to avoid jerkiness.
+
+Default (Profile-L / Institutional):
 - NORMAL: risk_scalar = 1.0 (no adjustment)
 - ELEVATED: risk_scalar = 0.85 (moderate reduction)
 - STRESS: risk_scalar = 0.55 (significant reduction)
 - CRISIS: risk_scalar = 0.30 (defensive positioning)
+
+See profiles.py for H/M/L profile configurations.
 """
 
 import logging
-from typing import Optional, Dict
+from typing import Optional, Dict, Union
 import pandas as pd
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Default regime -> risk_scalar mapping
+# Default regime -> risk_scalar mapping (Profile-L / Institutional)
 DEFAULT_REGIME_SCALARS = {
     'NORMAL': 1.00,
     'ELEVATED': 0.85,
@@ -98,7 +102,8 @@ class RiskTransformerV1:
     def transform(
         self,
         state_df: pd.DataFrame,
-        regime: pd.Series
+        regime: pd.Series,
+        override_regime: Optional[str] = None
     ) -> pd.DataFrame:
         """
         Transform regime and state into risk scalars.
@@ -106,10 +111,33 @@ class RiskTransformerV1:
         Args:
             state_df: Allocator state DataFrame with canonical features
             regime: Regime series indexed by date
+            override_regime: Optional manual regime override (NORMAL/ELEVATED/STRESS/CRISIS)
+                           When set, bypasses regime detection and uses this regime for all dates.
+                           Useful for testing profile behavior.
         
         Returns:
             DataFrame with 'risk_scalar' column indexed by date
         """
+        if override_regime is not None:
+            # Manual override mode: use specified regime for all dates
+            if override_regime not in self.regime_scalars:
+                raise ValueError(
+                    f"override_regime must be one of {list(self.regime_scalars.keys())}, "
+                    f"got {override_regime}"
+                )
+            
+            # Create regime series with override value
+            if regime.empty:
+                # If no regime provided, create dummy index from state_df
+                if state_df.empty:
+                    logger.warning("[RiskTransformerV1] Empty state and regime, returning empty DataFrame")
+                    return pd.DataFrame(columns=['risk_scalar'])
+                regime = pd.Series(override_regime, index=state_df.index)
+            else:
+                regime = pd.Series(override_regime, index=regime.index)
+            
+            logger.info(f"[RiskTransformerV1] Using manual regime override: {override_regime}")
+        
         if regime.empty:
             logger.warning("[RiskTransformerV1] Empty regime series, returning empty DataFrame")
             return pd.DataFrame(columns=['risk_scalar'])
@@ -183,4 +211,67 @@ class RiskTransformerV1:
             'inputs': ['allocator_state_v1', 'regime_series'],
             'outputs': ['risk_scalar']
         }
+
+
+# =============================================================================
+# FACTORY FUNCTIONS
+# =============================================================================
+
+def create_risk_transformer_from_profile(
+    profile: Union[str, "AllocatorProfile"]
+) -> RiskTransformerV1:
+    """
+    Create a RiskTransformerV1 configured with a specific allocator profile.
+    
+    Profiles:
+    - "H" (High): Rare intervention, tail-only protection, minimal Sharpe drag
+    - "M" (Medium): Balanced approach, active risk management without excessive drag
+    - "L" (Low): Conservative, institutional-style (≈ Allocator v1 default)
+    
+    Args:
+        profile: Profile name ("H", "M", "L") or AllocatorProfile instance
+    
+    Returns:
+        Configured RiskTransformerV1 instance
+    
+    Example:
+        >>> transformer_h = create_risk_transformer_from_profile("H")
+        >>> transformer_l = create_risk_transformer_from_profile("L")
+    """
+    # Import here to avoid circular dependency
+    from .profiles import get_allocator_profile, AllocatorProfile
+    
+    if isinstance(profile, str):
+        profile_config = get_allocator_profile(profile)
+    elif isinstance(profile, AllocatorProfile):
+        profile_config = profile
+    else:
+        raise TypeError(f"profile must be str or AllocatorProfile, got {type(profile)}")
+    
+    logger.info(
+        f"[RiskTransformerV1] Creating transformer with profile: {profile_config.name}"
+    )
+    
+    return RiskTransformerV1(
+        regime_scalars=profile_config.regime_scalars,
+        risk_min=profile_config.risk_min,
+        risk_max=RISK_MAX,
+        smoothing_alpha=profile_config.smoothing_alpha,
+    )
+
+
+# Convenience aliases for profile-based creation
+def create_allocator_h() -> RiskTransformerV1:
+    """Create Allocator-H (High risk tolerance, rare intervention)."""
+    return create_risk_transformer_from_profile("H")
+
+
+def create_allocator_m() -> RiskTransformerV1:
+    """Create Allocator-M (Medium risk tolerance, balanced approach)."""
+    return create_risk_transformer_from_profile("M")
+
+
+def create_allocator_l() -> RiskTransformerV1:
+    """Create Allocator-L (Low risk tolerance, institutional/conservative)."""
+    return create_risk_transformer_from_profile("L")
 

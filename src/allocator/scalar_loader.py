@@ -66,18 +66,26 @@ def load_precomputed_applied_scalars(
     if not isinstance(scalars.index, pd.DatetimeIndex):
         raise ValueError(f"Index must be DatetimeIndex, got {type(scalars.index)}")
     
+    # Sort index FIRST to ensure monotonic ordering (fixes "built-in slightly out of order" issue)
     if not scalars.index.is_monotonic_increasing:
         logger.warning("[ScalarLoader] Index is not monotonic, sorting...")
         scalars = scalars.sort_index()
+        # Remove any duplicate dates (keep last if duplicates exist)
+        if scalars.index.duplicated().any():
+            n_dupes = scalars.index.duplicated().sum()
+            logger.warning(f"[ScalarLoader] Found {n_dupes} duplicate dates, keeping last occurrence")
+            scalars = scalars[~scalars.index.duplicated(keep='last')]
+            # Re-sort after deduplication to ensure monotonic
+            scalars = scalars.sort_index()
     
-    # Check for NaNs
+    # Check for NaNs (after sorting for correct forward-fill behavior)
     n_nan = scalars.isna().sum()
     if n_nan > 0:
         logger.warning(
             f"[ScalarLoader] Found {n_nan} NaN values in scalar series "
             f"({n_nan / len(scalars) * 100:.1f}%). These will be forward-filled."
         )
-        scalars = scalars.fillna(method='ffill')
+        scalars = scalars.ffill()
     
     # Log summary
     logger.info(

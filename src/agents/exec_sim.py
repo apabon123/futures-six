@@ -85,6 +85,11 @@ class ExecSim:
             f"filter_roll_jumps={self.filter_roll_jumps}, roll_jump_threshold_bp={self.roll_jump_threshold_bp}"
         )
     
+    @staticmethod
+    def _to_ts(x):
+        """Normalize date-like objects to pandas.Timestamp."""
+        return x if isinstance(x, pd.Timestamp) else pd.Timestamp(x)
+    
     def _load_config(self, config_path: str) -> Optional[dict]:
         """Load configuration from YAML file."""
         path = Path(config_path)
@@ -295,12 +300,44 @@ class ExecSim:
         overlay = components['overlay']
         macro_overlay = components.get('macro_overlay')
         risk_vol = components['risk_vol']
+        risk_targeting = components.get('risk_targeting')  # Layer 5: Risk Targeting
         allocator = components['allocator']
+        
+        # Generate run_id if not provided (needed for artifact writer)
+        if run_id is None:
+            run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+            logger.info(f"[ExecSim] Generated run_id: {run_id}")
+        
+        # Initialize artifact writer if Risk Targeting or Allocator v1 is enabled
+        artifact_writer = None
+        if risk_targeting is not None or components.get('allocator_v1_config', {}).get('enabled', False):
+            from src.layers import create_artifact_writer
+            # Create run directory structure
+            run_dir = Path(out_dir) / run_id
+            run_dir.mkdir(parents=True, exist_ok=True)
+            artifact_writer = create_artifact_writer(run_dir)
+            
+            # Pass artifact writer to Risk Targeting layer
+            if risk_targeting is not None:
+                risk_targeting.artifact_writer = artifact_writer
+                # Write params.json once at start
+                risk_targeting._write_params()
         
         # Stage 5.5: Check allocator_v1 config and mode
         allocator_v1_config = components.get('allocator_v1_config', {})
         allocator_v1_enabled = allocator_v1_config.get('enabled', False)
         allocator_v1_mode = allocator_v1_config.get('mode', 'off')
+        allocator_v1_profile = allocator_v1_config.get('profile', None)
+        allocator_v1_precomputed_run_id = allocator_v1_config.get('precomputed_run_id', None)
+        
+        # Log allocator config at startup (critical for debugging)
+        logger.info(
+            f"[ExecSim] Allocator v1 config: "
+            f"enabled={allocator_v1_enabled} "
+            f"mode={allocator_v1_mode} "
+            f"profile={allocator_v1_profile} "
+            f"precomputed_run_id={allocator_v1_precomputed_run_id}"
+        )
         
         # Precomputed mode: load scalars from prior run
         precomputed_scalars = None
@@ -360,6 +397,7 @@ class ExecSim:
         
         # Build rebalance schedule
         rebalance_dates = self._build_rebalance_dates(market, risk_vol, start, end)
+        rebalance_dates = pd.to_datetime(rebalance_dates)
         
         if len(rebalance_dates) == 0:
             logger.error("[ExecSim] No valid rebalance dates, cannot run backtest")
@@ -427,6 +465,7 @@ class ExecSim:
         
         # Loop over rebalance dates
         for i, date in enumerate(rebalance_dates):
+            date = self._to_ts(date)
             logger.debug(f"[ExecSim] Rebalance {i+1}/{len(rebalance_dates)}: {date}")
             
             try:
@@ -516,10 +555,52 @@ class ExecSim:
                     scaled_signals = scaled_signals.copy()
                     scaled_signals.loc[invalid_symbols] = 0.0
                 
-                # Step 4: Allocate to final weights
+                # Step 4: Allocate to final weights (Portfolio Construction - Layer 3)
                 weights_raw = allocator.solve(scaled_signals, cov, weights_prev=prev_weights)
                 
-                # Stage 5.5: Apply risk scalar (mode-dependent)
+                # Step 5: Risk Targeting Layer (Layer 5: vol → leverage)
+                weights_pre_rt = weights_raw.copy()  # Save pre-RT weights for artifacts
+                if risk_targeting is not None:
+                    # Get historical returns for volatility estimation
+                    # Use returns up to (but not including) current date
+                    if date in returns_df.index:
+                        date_idx = returns_df.index.get_loc(date)
+                        if date_idx > 0:
+                            # Get returns up to previous day
+                            returns_for_vol = returns_df.iloc[:date_idx]
+                        else:
+                            returns_for_vol = pd.DataFrame()
+                    else:
+                        # Find last date <= current date
+                        valid_dates = returns_df.index[returns_df.index < date]
+                        if len(valid_dates) > 0:
+                            returns_for_vol = returns_df.loc[:valid_dates[-1]]
+                        else:
+                            returns_for_vol = pd.DataFrame()
+                    
+                    # Convert log returns to simple returns for Risk Targeting
+                    # Risk Targeting expects simple returns (it will compute cov internally)
+                    if not returns_for_vol.empty:
+                        returns_simple = np.exp(returns_for_vol) - 1.0
+                    else:
+                        returns_simple = pd.DataFrame()
+                    
+                    # Scale weights using Risk Targeting
+                    weights_raw = risk_targeting.scale_weights(
+                        weights=weights_pre_rt,
+                        returns=returns_simple,
+                        date=date
+                    )
+                    logger.debug(
+                        f"[ExecSim] {date}: Risk Targeting applied. "
+                        f"Pre-RT leverage: {weights_pre_rt.abs().sum():.2f}x, "
+                        f"Post-RT leverage: {weights_raw.abs().sum():.2f}x"
+                    )
+                else:
+                    # No Risk Targeting: weights_pre_rt = weights_raw
+                    pass
+                
+                # Stage 5.5: Apply risk scalar (mode-dependent) - Allocator Layer 6
                 current_risk_scalar = 1.0  # Default: no scaling
                 risk_scalar_applied = 1.0
                 
@@ -542,6 +623,26 @@ class ExecSim:
                         
                         # In precomputed mode, computed=applied (no lag within Pass 2)
                         current_risk_scalar = risk_scalar_applied
+                        
+                        # Emit allocator artifacts for precomputed mode
+                        if artifact_writer is not None:
+                            profile_name = allocator_v1_config.get('profile', 'H')
+                            
+                            # For precomputed mode, we don't have regime, so use NORMAL
+                            # (regime was determined in baseline run)
+                            regime_df = pd.DataFrame({
+                                'date': [date.strftime('%Y-%m-%d')],
+                                'regime': ['NORMAL'],  # Precomputed: regime from baseline
+                                'profile': [profile_name],
+                            })
+                            artifact_writer.write_csv("allocator/regime_series.csv", regime_df, mode="append")
+                            
+                            multiplier_df = pd.DataFrame({
+                                'date': [date.strftime('%Y-%m-%d')],
+                                'multiplier': [risk_scalar_applied],
+                                'profile': [profile_name],
+                            })
+                            artifact_writer.write_csv("allocator/multiplier_series.csv", multiplier_df, mode="append")
                     except Exception as e:
                         logger.warning(f"[ExecSim] Failed to lookup precomputed scalar at {date}: {e}")
                         risk_scalar_applied = 1.0
@@ -579,11 +680,35 @@ class ExecSim:
                                 regime = classifier.classify(state_df)
                                 
                                 if not regime.empty:
-                                    transformer = RiskTransformerV1()
+                                    # Create transformer with profile from config
+                                    profile_name = allocator_v1_config.get('profile', 'H')
+                                    from src.allocator.risk_v1 import create_risk_transformer_from_profile
+                                    transformer = create_risk_transformer_from_profile(profile_name)
                                     risk_scalars = transformer.transform(state_df, regime)
                                     
                                     if not risk_scalars.empty:
                                         current_risk_scalar = float(risk_scalars['risk_scalar'].iloc[-1])
+                                        
+                                        # Emit allocator artifacts
+                                        if artifact_writer is not None:
+                                            # Get profile name from config
+                                            profile_name = allocator_v1_config.get('profile', 'H')
+                                            
+                                            # Write regime series
+                                            regime_df = pd.DataFrame({
+                                                'date': [date.strftime('%Y-%m-%d')],
+                                                'regime': [regime.iloc[-1]],
+                                                'profile': [profile_name],
+                                            })
+                                            artifact_writer.write_csv("allocator/regime_series.csv", regime_df, mode="append")
+                                            
+                                            # Write multiplier series
+                                            multiplier_df = pd.DataFrame({
+                                                'date': [date.strftime('%Y-%m-%d')],
+                                                'multiplier': [current_risk_scalar],
+                                                'profile': [profile_name],
+                                            })
+                                            artifact_writer.write_csv("allocator/multiplier_series.csv", multiplier_df, mode="append")
                         except Exception as e:
                             logger.warning(f"[ExecSim] Failed to compute risk scalar at {date}: {e}")
                             current_risk_scalar = 1.0
@@ -623,10 +748,10 @@ class ExecSim:
                 # Step 4: Compute returns for holding period (date to next rebalance or end)
                 # Find next date for return calculation
                 if i < len(rebalance_dates) - 1:
-                    next_date = rebalance_dates[i + 1]
+                    next_date = self._to_ts(rebalance_dates[i + 1])
                 else:
                     # Last rebalance: hold until end
-                    next_date = returns_df.index[-1] if date < returns_df.index[-1] else date
+                    next_date = self._to_ts(returns_df.index[-1]) if date < returns_df.index[-1] else date
                 
                 # Get returns from current date to next date
                 # Convention: close-to-close, so returns[date+1] is the first return we earn
@@ -697,7 +822,9 @@ class ExecSim:
                 
             except Exception as e:
                 logger.error(f"[ExecSim] Error on {date}: {e}")
-                continue
+                import traceback
+                traceback.print_exc()
+                raise
         
         # Handle Curve RV returns if enabled
         curve_rv_meta = components.get('curve_rv_meta')
@@ -803,12 +930,7 @@ class ExecSim:
             f"MaxDD={report.get('max_drawdown', 0):.2%}"
         )
         
-        # Save artifacts (always save, generate run_id if not provided)
-        if run_id is None:
-            # Generate default run_id from timestamp
-            run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-            logger.info(f"[ExecSim] Generated run_id: {run_id}")
-        
+        # Save artifacts (run_id already generated above if needed)
         self._save_run_artifacts(
             run_id=run_id,
             out_dir=out_dir,

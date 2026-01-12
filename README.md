@@ -25,11 +25,11 @@ Futures-Six is a complete systematic trading framework that:
 Futures-Six implements a **canonical 7-layer execution stack** (authoritative order):
 
 1. **Engine Signals** (alpha generation)
-2. **Engine Policy** (validity & selectivity) - *Planned*
+2. **Engine Policy** (validity & selectivity) - *Phase 2 (Next)*
 3. **Portfolio Construction** (static weights)
 4. **Discretionary Overlay** (bounded tilts) - *Optional*
-5. **Risk Targeting** (vol → leverage)
-6. **Allocator** (risk brake) - ✅ **v1 Production-Ready**
+5. **Risk Targeting** (vol → leverage) - ✅ **Phase 1C Complete (Production-Ready)**
+6. **Allocator** (risk brake) - ✅ **Phase 1C Complete (H/M/L Profiles Production-Ready)**
 7. **Margin & Execution Constraints**
 
 **Key Principle:** Each layer answers one question. No layer subsumes another's responsibilities.
@@ -57,11 +57,20 @@ Futures-Six implements a **canonical 7-layer execution stack** (authoritative or
 - **VX Carry:** 4.6% (volatility carry)
 - **Curve RV:** 8% (curve relative value: rank fly + pack slope)
 
-**Allocator v1 Status:** ✅ **Production-Ready** (December 2024)
+**Risk Targeting Status:** ✅ **Phase 1C Complete (Production-Ready, January 2026)**
+- Target volatility: 20% (configurable)
+- Leverage cap: 7.0×, Leverage floor: 1.0×
+- Vol estimation: Rolling 63-day covariance
+- Update frequency: Weekly (on rebalances)
+- Artifacts: Complete audit trail (leverage series, realized vol, weights pre/post)
+
+**Allocator v1 Status:** ✅ **Phase 1C Complete (Production-Ready, January 2026)**
 - State layer: 10 features (volatility, drawdown, correlation, engine health)
 - Regime classification: 4 regimes (NORMAL, ELEVATED, STRESS, CRISIS)
 - Risk scalars: Portfolio-level exposure scaling (0.25-1.0)
+- Profiles: H (high risk tolerance), M (medium), L (low/institutional)
 - Mode: `precomputed` (production-safe, deterministic, auditable)
+- Golden proof: `rt_alloc_h_apply_precomputed_2024` (validated end-to-end)
 
 ---
 
@@ -123,6 +132,14 @@ python scripts/run_perf_diagnostics.py \
 - **`docs/SOTs/PROCEDURES.md`** ⭐ – Step-by-step procedures for adding/changing sleeves, Allocator v1 production procedures
 - **`docs/SOTs/ROADMAP.md`** ⭐ – Strategic development roadmap (2026-2028), sleeve status, production deployment planning
 
+**Phase 1C Documentation (Risk Targeting + Allocator Integration):**
+
+- **`docs/PHASE_1C_COMPLETE.md`** ⭐ – Comprehensive Phase 1C completion summary
+- **`docs/PHASE_1C_SOT_REVIEW.md`** – SOT alignment verification
+- **`docs/PHASE_1C_FINAL_ANALYSIS.md`** – Detailed A/B backtest analysis
+- **`docs/PHASE_1C_BUG_FIXES_COMPLETE.md`** – Critical bug fixes summary
+- **`docs/PHASE_1C_PROOF_RUN.md`** – Golden proof run documentation
+
 **Allocator v1 Documentation:**
 
 - **`docs/ALLOCATOR_V1_FREEZE.md`** – Production freeze specification (v1.0 locked)
@@ -165,15 +182,42 @@ python scripts/run_perf_diagnostics.py \
 - SR3 Rank Fly: 2-6-10 rank fly momentum
 - SR3 Pack Slope: Front vs back pack momentum
 
-### Allocator v1 (Risk Control)
+### Risk Targeting (Layer 5)
 
-**Status:** ✅ **Production-Ready** (Frozen at v1.0, December 2024)
+**Status:** ✅ **Phase 1C Complete (Production-Ready, January 2026)**
+
+**Purpose:** Define portfolio size by converting target volatility to leverage.
+
+**Implementation:**
+- Target volatility: 20% (configurable)
+- Leverage cap: 7.0×, Leverage floor: 1.0×
+- Vol estimation: Rolling 63-day covariance matrix
+- Update frequency: Weekly (on rebalance dates)
+- Weight scaling: Normalizes to unit gross, applies leverage, renormalizes if needed
+
+**Artifacts:**
+- `risk_targeting/leverage_series.csv` (time series)
+- `risk_targeting/realized_vol.csv` (time series)
+- `risk_targeting/weights_pre_risk_targeting.csv` (panel: date × instrument)
+- `risk_targeting/weights_post_risk_targeting.csv` (panel: date × instrument)
+- `risk_targeting/params.json` (config snapshot)
+
+**See:** `docs/SOTs/SYSTEM_CONSTRUCTION.md` § "Phase 1C" for complete details.
+
+### Allocator v1 (Risk Control, Layer 6)
+
+**Status:** ✅ **Phase 1C Complete (Production-Ready, January 2026)**
 
 **Architecture:**
 - **State Layer:** 10 features (volatility, drawdown, correlation, engine health)
 - **Regime Layer:** 4 regimes (NORMAL, ELEVATED, STRESS, CRISIS)
 - **Risk Layer:** Risk scalars (0.25-1.0, EWMA smoothed)
 - **Exposure Layer:** Portfolio-level weight scaling (1-rebalance lag)
+
+**Profiles:**
+- **Profile-H:** High risk tolerance (rare intervention, tail-only)
+- **Profile-M:** Medium risk tolerance (balanced)
+- **Profile-L:** Low risk tolerance (conservative, institutional-style)
 
 **Production Mode:** `precomputed` (loads scalars from validated baseline run)
 
@@ -183,7 +227,9 @@ python scripts/run_perf_diagnostics.py \
 - Sticky (hysteresis, anti-thrash)
 - Portfolio-level only (no sleeve-specific scaling)
 
-**See:** `docs/ALLOCATOR_V1_FREEZE.md` for complete specification.
+**Golden Proof:** `rt_alloc_h_apply_precomputed_2024` (validated end-to-end)
+
+**See:** `docs/SOTs/SYSTEM_CONSTRUCTION.md` § "Phase 1C" and `docs/ALLOCATOR_V1_FREEZE.md` for complete specification.
 
 ---
 
@@ -227,6 +273,24 @@ python scripts/run_csmom_sanity.py --start 2020-01-06 --end 2025-10-31
 
 **Phase-0 Pass Criteria:** Sharpe ≥ 0.10 over canonical window.
 
+### Phase 1C Validation (Risk Targeting + Allocator)
+
+```bash
+# Validate Phase 1C completion (golden proof run)
+python scripts/diagnostics/validate_phase1c_completion.py rt_alloc_h_apply_precomputed_2024
+
+# Run Phase 1C A/B backtests (Baseline, RT only, RT + Alloc-H)
+python scripts/diagnostics/run_phase1c_ab_backtests.py \
+  --strategy_profile core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro \
+  --start 2024-01-01 \
+  --end 2024-12-31 \
+  --allocator_mode precomputed \
+  --precomputed_run_id <compute_run_id>
+
+# Validate RT artifacts
+python scripts/diagnostics/test_rt_artifact_fix.py <run_id>
+```
+
 ### Allocator v1 Validation
 
 ```bash
@@ -255,24 +319,35 @@ futures-six/
 │   │   ├── data_broker.py     # MarketData: Read-only OHLCV access
 │   │   ├── exec_sim.py        # ExecSim: Backtest execution engine
 │   │   └── ...                 # Strategy agents (Trend, CSMOM, VRP, etc.)
+│   ├── layers/
+│   │   ├── risk_targeting.py  # RiskTargetingLayer: vol → leverage (Layer 5)
+│   │   └── artifact_writer.py # ArtifactWriter: CSV/JSON artifact management
 │   ├── allocator/
 │   │   ├── state_v1.py        # AllocatorStateV1: 10 state features
 │   │   ├── regime_v1.py       # RegimeClassifierV1: 4 regimes
 │   │   ├── risk_v1.py         # RiskTransformerV1: Risk scalars
+│   │   ├── profiles.py        # AllocatorProfile: H/M/L profiles
 │   │   └── scalar_loader.py   # Precomputed scalar loader
 │   └── diagnostics/
 │       └── ...                 # Diagnostic utilities
 ├── scripts/
 │   ├── diagnostics/
-│   │   ├── run_allocator_two_pass.py    # Two-pass allocator audit
-│   │   ├── compare_two_runs.py          # Comparison report generator
-│   │   └── run_perf_diagnostics.py      # Performance diagnostics
+│   │   ├── run_allocator_two_pass.py         # Two-pass allocator audit
+│   │   ├── run_phase1c_ab_backtests.py      # Phase 1C A/B backtests
+│   │   ├── validate_phase1c_completion.py   # Phase 1C validation
+│   │   ├── test_rt_artifact_fix.py           # RT artifact validation
+│   │   ├── compare_two_runs.py              # Comparison report generator
+│   │   └── run_perf_diagnostics.py          # Performance diagnostics
 │   └── run_*.py               # Phase-0 sanity checks
 ├── docs/
 │   ├── SOTs/                  # Single Source of Truth documents
+│   ├── PHASE_1C_*.md          # Phase 1C completion documentation
 │   ├── ALLOCATOR_V1_*.md      # Allocator v1 documentation
 │   └── META_SLEEVES/          # Meta-sleeve implementation docs
-├── tests/                      # Comprehensive test suite
+├── tests/
+│   ├── test_risk_targeting_contracts.py      # RT semantic correctness
+│   ├── test_allocator_profile_activation.py  # Allocator profile tests
+│   └── ...                     # Comprehensive test suite
 ├── run_strategy.py            # Main entry point
 └── README.md                  # This file
 ```
@@ -294,10 +369,12 @@ futures-six/
 
 - ✅ **Layered Architecture:** Canonical 7-layer execution stack with strict boundaries
 - ✅ **Multiple Engines:** Trend, CSMOM, VRP, Carry, Curve RV meta-sleeves
-- ✅ **Allocator v1:** Production-ready risk control (state → regime → scalars)
+- ✅ **Risk Targeting:** Production-ready volatility-to-leverage conversion (Layer 5)
+- ✅ **Allocator v1:** Production-ready risk control with H/M/L profiles (Layer 6)
 - ✅ **Two-Pass Audit:** Baseline vs allocator comparison framework
 - ✅ **Comprehensive Diagnostics:** Performance metrics, regime analysis, allocator usage
 - ✅ **Phase-0 Validation:** Sign-only sanity checks before production
+- ✅ **Contract Tests:** Prevent regressions in RT and Allocator semantics
 - ✅ **Deterministic:** Fully reproducible backtests
 - ✅ **Auditable:** Complete artifact trail (CSV, JSON metadata)
 
@@ -327,5 +404,6 @@ Futures-Six follows institutional best practices for systematic trading:
 
 ---
 
-**Last Updated:** December 2024  
-**Version:** Core v9 + Allocator v1 (Production-Ready)
+**Last Updated:** January 2026  
+**Version:** Core v9 + Risk Targeting (Layer 5) + Allocator v1 H/M/L Profiles (Layer 6)  
+**Status:** Phase 1C Complete ✅ | Next: Phase 2 (Engine Policy)
