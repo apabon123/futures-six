@@ -30,6 +30,48 @@ allocator:
   lambda_turnover: 0.001
 
 # =============================================================================
+# ENGINE POLICY V1 (Layer 2 in Canonical Stack)
+# =============================================================================
+# Purpose: Determine whether and how much an engine should participate given context
+# Key Principle: Engine Policy is a validity filter, not an optimizer
+# This layer sits BETWEEN Engine Signals (Layer 1) and Portfolio Construction (Layer 3)
+engine_policy_v1:
+  enabled: false              # Master switch for Engine Policy layer
+  mode: "off"                 # "off" | "compute" | "precomputed"
+  # Modes:
+  #   "off":        Disabled, no policy applied (all engines ON)
+  #   "compute":    Compute state daily, apply with lag (research mode)
+  #   "precomputed": Load multipliers from validated baseline run (production mode)
+  
+  precomputed_run_id: null    # Run ID to load multipliers from (required for mode="precomputed")
+  lag_rebalances: 1           # Apply t-1 policy to t rebalance (same concept as allocator lag)
+  
+  # Per-engine configuration (engine-local, not global)
+  # Each engine can have its own rule and feature
+  engines:
+    trend:
+      enabled: true           # Only trend engine enabled for v1
+      rule: "gamma_vol_stress_gate_v1"  # Rule identifier
+      feature: "gamma_stress_proxy"     # Feature column name in market.features
+      threshold: 1            # If feature is already {0,1}, threshold=1 means OFF when feature >= 1
+      invert: false           # false => OFF when feature >= threshold
+    
+    # Other engines disabled by default (placeholder for future expansion)
+    csmom:
+      enabled: false
+      rule: "gamma_vol_stress_gate_v1"
+      feature: "gamma_stress_proxy"
+      threshold: 1
+      invert: false
+    
+    vrp:
+      enabled: false  # Enable for VRP policy v1 (extreme stress gate)
+      rule: "vrp_extreme_stress_gate_v1"
+      feature: "vrp_stress_proxy"
+      threshold: 1
+      invert: false
+
+# =============================================================================
 # RISK TARGETING LAYER (Layer 5 in Canonical Stack)
 # =============================================================================
 # Purpose: Define how large the portfolio is by design
@@ -53,11 +95,12 @@ risk_targeting:
 # Frozen at v1.0 — See docs/ALLOCATOR_V1_FREEZE.md for change policy
 allocator_v1:
   enabled: true               # Master switch: true to apply risk scalars, false to compute artifacts only
-  mode: "precomputed"         # PRODUCTION DEFAULT: "precomputed" (safe, deterministic, auditable)
+  mode: "off"                 # DEFAULT: "off" (artifacts only). Set to "precomputed" with precomputed_run_id for production
   # Modes:
-  #   "off":        Compute artifacts only, no weight scaling (baseline generation)
+  #   "off":        Compute artifacts only, no weight scaling (baseline generation) - DEFAULT
   #   "compute":    On-the-fly computation (research-only, has warmup issues)
   #   "precomputed": Load scalars from validated baseline run (PRODUCTION MODE)
+  #                  ⚠️ REQUIRES precomputed_run_id to be set, otherwise defaults to 'off'
   
   # Profile selection: H (High), M (Medium), L (Low) risk tolerance
   # - H: Rare intervention, tail-only protection, minimal Sharpe drag
@@ -65,7 +108,7 @@ allocator_v1:
   # - L: Conservative, institutional-style (default v1 behavior)
   profile: "H"                # RECOMMENDED FOR PRODUCTION: "H" (captures engine alpha)
   
-  precomputed_run_id: null    # Run ID to load scalars from (SET THIS for production deployment)
+  precomputed_run_id: null    # Run ID to load scalars from (REQUIRED if mode="precomputed")
   precomputed_scalar_filename: "allocator_risk_v1_applied.csv"  # Filename to load from baseline
   apply_missing_scalar_as: 1.0  # Default scalar if date not found (no scaling)
   state_version: "v1.0"       # FROZEN

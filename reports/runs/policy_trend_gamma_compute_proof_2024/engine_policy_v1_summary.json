@@ -1,0 +1,9 @@
+{
+  "version": "v1.0",
+  "mode": "compute",
+  "source_run_id": null,
+  "n_rebalances": 253,
+  "trend_n_gated": 0,
+  "trend_pct_gated": 0.0,
+  "generated_at": "2026-01-12T14:33:41.771749"
+}

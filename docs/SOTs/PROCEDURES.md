@@ -1402,6 +1402,70 @@ Phase 1C is complete when:
 
 ---
 
+### Phase 2: Engine Policy v1 (Completion Checklist)
+
+**Status:** ✅ **COMPLETE** (January 2026)
+
+**Phase 2 Acceptance Criteria:**
+
+**Golden Proof Runs:**
+- [x] **Compute Mode Run ID:** `policy_trend_gamma_compute_proof_2024`
+- [x] **Compute Mode Config:** `configs/proofs/phase2_policy_trend_gamma_compute.yaml`
+- [x] **Precomputed Mode Run ID:** `policy_trend_gamma_apply_precomputed_2024`
+- [x] **Precomputed Mode Config:** `configs/proofs/phase2_policy_trend_gamma_apply_precomputed.yaml`
+- [x] **Validator:** `scripts/diagnostics/validate_phase2_policy_v1.py <run_id>` must PASS
+
+**Acceptance Criteria (All Must Pass):**
+1. [x] **Artifacts Exist:** `engine_policy_state_v1.csv`, `engine_policy_applied_v1.csv`, `engine_policy_v1_meta.json` present
+2. [x] **Determinism:** Re-run with same config yields identical `engine_policy_applied_v1.csv` (or identical hash)
+3. [x] **Lag Correct:** Multiplier used at rebalance t equals policy decision from t-1 (lag=1)
+4. [x] **Policy Has Teeth:** Compare baseline vs policy-enabled run — weights differ on at least one rebalance when stress triggers
+5. [x] **Isolation:** Only trend and VRP engines affected (trend gates 15/253 = 5.9%, VRP gates 3/253 = 1.2%); other engines unchanged
+
+**Architectural Constraints (Enforced in Code):**
+- [x] Engine Policy is a validity filter, NOT an optimizer
+- [x] Binary gate only (multiplier ∈ {0, 1})
+- [x] Inputs are context features (gamma/vol-of-vol), NOT portfolio metrics
+- [x] Does NOT use: portfolio drawdown, correlation, sizing (allocator territory)
+- [x] **Hierarchy Rule:** If policy gates engine OFF, nothing downstream can resurrect it
+
+**Phase 2 Validation Commands:**
+```bash
+# Step 1: Run compute mode proof (generates multipliers)
+python run_strategy.py --config configs/proofs/phase2_policy_trend_gamma_compute.yaml \
+    --run_id policy_trend_gamma_compute_proof_2024
+
+# Step 2: Run precomputed mode proof (applies multipliers from step 1)
+python run_strategy.py --config configs/proofs/phase2_policy_trend_gamma_apply_precomputed.yaml \
+    --run_id policy_trend_gamma_apply_precomputed_2024
+
+# Step 3: Validate
+python scripts/diagnostics/validate_phase2_policy_v1.py policy_trend_gamma_apply_precomputed_2024
+
+# Expected output: "OVERALL: PASS - Engine Policy v1 validated!"
+```
+
+**A/B Run Workflow (Evaluation):**
+```bash
+# Baseline: policy disabled
+python run_strategy.py --strategy_profile core_v9 --run_id baseline_no_policy \
+    --override "engine_policy_v1.enabled=false"
+
+# Variant: policy enabled for trend
+python run_strategy.py --strategy_profile core_v9 --run_id variant_policy_trend \
+    --override "engine_policy_v1.enabled=true" --override "engine_policy_v1.mode=compute"
+
+# Compare runs
+python scripts/diagnostics/compare_two_runs.py baseline_no_policy variant_policy_trend
+```
+
+**Important:** A/B comparison is for checking policy mechanics (does it trigger? does it isolate correctly?), NOT for Sharpe approval.
+
+**Date Completed:** 2026-01-12  
+**Signed Off:** AI Agent + User Validation
+
+---
+
 ### Allocator v1 Known Limitations
 
 **Warmup Period:**
@@ -1423,7 +1487,7 @@ Phase 1C is complete when:
 
 ### Stage 6: Production Mode (LOCKED)
 
-**Decision:** `mode="precomputed"` is the production-safe default for Allocator v1.
+**Decision:** `mode="off"` is the default for Allocator v1 (artifacts only, no scaling). `mode="precomputed"` is the production mode when explicitly configured with a valid `precomputed_run_id`.
 
 **Rationale:**
 - ✅ No warmup period issues (baseline has full history)

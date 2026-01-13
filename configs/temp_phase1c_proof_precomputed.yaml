@@ -1,0 +1,3070 @@
+allocator:
+  gross_cap: 7.0
+  lambda_turnover: 0.001
+  method: signal-beta
+  net_cap: 2.0
+  turnover_cap: 0.5
+  w_bounds_per_asset:
+  - -1.5
+  - 1.5
+allocator_v1:
+  apply_missing_scalar_as: 1.0
+  enabled: true
+  mode: precomputed
+  precomputed_run_id: rt_alloc_h_apply_proof_2024
+  precomputed_scalar_filename: allocator_risk_v1_applied.csv
+  profile: H
+  regime_version: v1.0
+  risk_version: v1.0
+  state_version: v1.0
+exec:
+  commission_per_contract: 0.0
+  position_notional_scale: 1.0
+  rebalance: W-FRI
+  slippage_bps: 0.5
+features:
+  canonical_medium_momentum:
+    clip: 3.0
+    lookback: 84
+    skip_recent: 10
+    vol_window: 21
+    window: 252
+  fx_commod_carry:
+    clip: 3.0
+    roots:
+    - CL
+    - GC
+    - 6E
+    - 6B
+    - 6J
+    window: 252
+  long_momentum:
+    clip: 3.0
+    lookback: 252
+    skip_recent: 21
+    vol_window: 63
+    window: 252
+  medium_momentum:
+    clip: 3.0
+    lookback: 84
+    skip_recent: 10
+    vol_window: 63
+    window: 252
+  persistence:
+    acceleration_window: 21
+    clip: 3.0
+  rates_curve:
+    anchor_lag_days: 2
+    dv01_config_path: configs/rates_dv01.yaml
+    window: 252
+  residual_trend:
+    clip: 3.0
+    long_lookback: 252
+    short_lookback: 21
+  short_momentum:
+    clip: 3.0
+    lookback: 21
+    skip_recent: 5
+    vol_window: 20
+    window: 252
+  sr3_curve:
+    ranks:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    root: SR3
+    window: 252
+macro_regime:
+  breadth_lookback: 200
+  enabled: true
+  fred_lookback: 252
+  fred_series:
+  - VIXCLS
+  - DGS10
+  - DGS2
+  - FEDFUNDS
+  - UNRATE
+  - CPIAUCSL
+  - DTWEXBGS
+  - TEDRATE
+  fred_weight: 0.3
+  k_bounds:
+    max: 1.0
+    min: 0.5
+  proxy_symbols:
+  - ES_FRONT_CALENDAR_2D
+  - NQ_FRONT_CALENDAR_2D
+  rebalance: W-FRI
+  smoothing: 0.15
+  vol_lookback: 21
+  vol_thresholds:
+    high: 0.22
+    low: 0.12
+risk_targeting:
+  enabled: true
+  leverage_cap: 7.0
+  leverage_floor: 1.0
+  target_vol: 0.2
+  update_frequency: static
+  vol_floor: 0.05
+  vol_lookback: 63
+risk_vol:
+  cov_lookback: 252
+  nan_policy: mask-asset
+  shrinkage: lw
+  vol_lookback: 63
+strategies:
+  csmom_meta:
+    enabled: false
+    params:
+      clip: 3.0
+      horizon_weights:
+      - 0.4
+      - 0.35
+      - 0.25
+      lookbacks:
+      - 63
+      - 126
+      - 252
+      neutralize_cross_section: true
+      rebalance: D
+      vol_lookback: 63
+    weight: 0.25
+  fx_commod_carry:
+    enabled: true
+    params:
+      clip: 3.0
+      roots:
+      - CL
+      - GC
+      - 6E
+      - 6B
+      - 6J
+      w_mom: 0.15
+      w_ts: 0.6
+      w_xs: 0.25
+      window: 252
+    weight: 0.1
+  rates_curve:
+    enabled: true
+    params:
+      w_curv_2s5s10s: 0.15
+      w_curv_5s10s30s: 0.15
+      w_slope_2s10s: 0.35
+      w_slope_5s30s: 0.35
+      z_cap: 3.0
+    weight: 0.15
+  sr3_carry_curve:
+    enabled: true
+    params:
+      cap: 3.0
+      w_carry: 0.3
+      w_curv_belly: 0.15
+      w_curve: 0.25
+      w_front_lvl: 0.1
+      w_pack_slope: 0.2
+      window: 252
+    weight: 0.15
+  tsmom:
+    enabled: true
+    params:
+      rebalance: W-FRI
+      signal_cap: 3.0
+      weights:
+        breakout_252: 0.3
+        ret_252: 0.5
+        slope_slow: 0.2
+    weight: 0.6
+  tsmom_med:
+    enabled: true
+    params:
+      rebalance: W-FRI
+      signal_cap: 3.0
+      weights:
+        breakout_126: 0.3
+        persistence: 0.1
+        ret_84: 0.4
+        slope_med: 0.2
+    weight: 0.15
+  tsmom_med_canonical:
+    enabled: false
+    params:
+      rebalance: W-FRI
+      signal_cap: 3.0
+    weight: 0.15
+  tsmom_multihorizon:
+    enabled: false
+    params:
+      feature_weights:
+        breakout_mid_50_100:
+          breakout_100: 0.5
+          breakout_50: 0.5
+        long:
+          breakout_252: 0.3
+          ret_252: 0.5
+          slope_slow: 0.2
+        med:
+          breakout_126: 0.3
+          persistence: 0.1
+          ret_84: 0.4
+          slope_med: 0.2
+        short:
+          breakout_21: 0.3
+          ret_21: 0.5
+          reversal: 0.0
+          slope_fast: 0.2
+      horizon_weights:
+        long_252: 0.5
+        med_84: 0.3
+        short_21: 0.2
+      rebalance: W-FRI
+      signal_cap: 3.0
+      vol_normalization:
+        enabled: true
+        halflife_days: 63
+        risk_scale: 0.2
+        sigma_floor_annual: 0.05
+    weight: 0.6
+  tsmom_short:
+    enabled: true
+    params:
+      rebalance: W-FRI
+      signal_cap: 3.0
+      weights:
+        breakout_21: 0.3
+        ret_21: 0.5
+        reversal_filter: 0.0
+        slope_fast: 0.2
+    weight: 0.1
+strategy_profiles:
+  core_v1:
+    macro_regime:
+      enabled: false
+    strategies:
+      fx_commod_carry:
+        enabled: true
+        params:
+          clip: 3.0
+          roots:
+          - CL
+          - GC
+          - 6E
+          - 6B
+          - 6J
+          w_mom: 0.15
+          w_ts: 0.6
+          w_xs: 0.25
+          window: 252
+        weight: 1.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+          weights:
+            breakout_252: 0.3
+            ret_252: 0.5
+            slope_slow: 0.2
+        weight: 1.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v1_with_macro:
+    macro_regime:
+      enabled: true
+    strategies:
+      fx_commod_carry:
+        enabled: true
+        params:
+          clip: 3.0
+          roots:
+          - CL
+          - GC
+          - 6E
+          - 6B
+          - 6J
+          w_mom: 0.15
+          w_ts: 0.6
+          w_xs: 0.25
+          window: 252
+        weight: 1.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+          weights:
+            breakout_252: 0.3
+            ret_252: 0.5
+            slope_slow: 0.2
+        weight: 1.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v2_no_macro:
+    macro_regime:
+      enabled: false
+    strategies:
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 1.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v3_no_macro:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            breakout_mid_50_100:
+              breakout_100: 0.3
+              breakout_50: 0.7
+            long:
+              breakout_252: 0.333333
+              ret_252: 0.333333
+              slope_slow: 0.333334
+            med:
+              breakout_84: 0.333333
+              persistence: 0.0
+              ret_84: 0.333333
+              slope_21_84: 0.333334
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            breakout_mid_50_100: 0.03
+            long_252: 0.485
+            med_84: 0.291
+            short_21: 0.194
+          medium_variant: canonical
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 1.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v3_no_macro_legacy:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            breakout_mid_50_100:
+              breakout_100: 0.3
+              breakout_50: 0.7
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            breakout_mid_50_100: 0.03
+            long_252: 0.485
+            med_84: 0.291
+            short_21: 0.194
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 1.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v3_trend_breakout:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            breakout_mid_50_100:
+              breakout_100: 0.5
+              breakout_50: 0.5
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            breakout_mid_50_100: 0.1
+            long_252: 0.45
+            med_84: 0.28
+            residual_252_21: 0.07
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 1.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v3_trend_breakout_1b_0100:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            breakout_mid_50_100:
+              breakout_100: 1.0
+              breakout_50: 0.0
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            breakout_mid_50_100: 0.03
+            long_252: 0.47
+            med_84: 0.29
+            residual_252_21: 0.01
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 1.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v3_trend_breakout_1b_1000:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            breakout_mid_50_100:
+              breakout_100: 0.0
+              breakout_50: 1.0
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            breakout_mid_50_100: 0.03
+            long_252: 0.47
+            med_84: 0.29
+            residual_252_21: 0.01
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 1.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v3_trend_breakout_1b_3070:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            breakout_mid_50_100:
+              breakout_100: 0.7
+              breakout_50: 0.3
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            breakout_mid_50_100: 0.03
+            long_252: 0.47
+            med_84: 0.29
+            residual_252_21: 0.01
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 1.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v3_trend_breakout_1b_7030:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            breakout_mid_50_100:
+              breakout_100: 0.3
+              breakout_50: 0.7
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            breakout_mid_50_100: 0.03
+            long_252: 0.485
+            med_84: 0.291
+            short_21: 0.194
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 1.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v3_trend_breakout_70_30_phase2:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            breakout_mid_50_100:
+              breakout_100: 0.3
+              breakout_50: 0.7
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            breakout_mid_50_100: 0.03
+            long_252: 0.485
+            med_84: 0.291
+            short_21: 0.194
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 1.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v3_trend_long_canonical:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            breakout_mid_50_100:
+              breakout_100: 0.3
+              breakout_50: 0.7
+            long:
+              breakout_252: 0.333333
+              ret_252: 0.333333
+              slope_slow: 0.333334
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            breakout_mid_50_100: 0.03
+            long_252: 0.485
+            med_84: 0.291
+            short_21: 0.194
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 1.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v3_trend_medcanon_no_macro:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            breakout_mid_50_100:
+              breakout_100: 0.3
+              breakout_50: 0.7
+            long:
+              breakout_252: 0.333333
+              ret_252: 0.333333
+              slope_slow: 0.333334
+            med:
+              breakout_84: 0.333333
+              persistence: 0.0
+              ret_84: 0.333333
+              slope_21_84: 0.333334
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            breakout_mid_50_100: 0.03
+            long_252: 0.485
+            med_84: 0.291
+            short_21: 0.194
+          medium_variant: canonical
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 1.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v3_trend_plus_persistence_external:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+          weights:
+            breakout_accel: 0.1
+            return_accel: 0.1
+            slope_accel: 0.8
+        weight: 0.2
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 0.8
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v3_trend_plus_residual_experiment:
+    base_profile: core_v3_no_macro
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: true
+        params:
+          long_lookback: 252
+          rebalance: W-FRI
+          short_lookback: 21
+          signal_cap: 3.0
+        weight: 0.2
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 0.8
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v3_trend_shortcanon_no_macro:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            breakout_mid_50_100:
+              breakout_100: 0.3
+              breakout_50: 0.7
+            long:
+              breakout_252: 0.333333
+              ret_252: 0.333333
+              slope_slow: 0.333334
+            med:
+              breakout_84: 0.333333
+              persistence: 0.0
+              ret_84: 0.333333
+              slope_21_84: 0.333334
+            short:
+              breakout_21: 0.333333
+              ret_21: 0.333333
+              reversal: 0.0
+              slope_fast: 0.333334
+          horizon_weights:
+            breakout_mid_50_100: 0.03
+            long_252: 0.485
+            med_84: 0.291
+            short_21: 0.194
+          medium_variant: canonical
+          rebalance: W-FRI
+          short_variant: canonical
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 1.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v3_trend_v2_with_residual:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.45
+            med_84: 0.28
+            residual_252_21: 0.15
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 1.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v4_trend_csmom_no_macro:
+    description: Trend + CSMOM baseline WITHOUT VRP (superseded by core_v5).
+    is_baseline: false
+    macro_regime:
+      enabled: false
+    name: core_v4_trend_csmom_no_macro
+    notes: Kept for historical comparison; replaced by core_v5_trend_csmom_vrp_core_no_macro
+      after VRP-Core Phase-2 promotion.
+    status: superseded
+    strategies:
+      csmom_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          horizon_weights:
+          - 0.4
+          - 0.35
+          - 0.25
+          lookbacks:
+          - 63
+          - 126
+          - 252
+          neutralize_cross_section: true
+          rebalance: D
+          vol_lookback: 63
+        weight: 0.25
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 0.75
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  core_v5_trend_csmom_vrp_core_no_macro:
+    components:
+      csmom_meta: true
+      trend_meta: true
+      vrp_convergence: false
+      vrp_core: true
+    description: Trend + CSMOM + VRP-Core; no macro overlays
+    display_name: Core v5
+    is_baseline: false
+    macro_regime:
+      enabled: false
+    name: core_v5_trend_csmom_vrp_core_no_macro
+    notes: 'Promoted to baseline on Phase-2 pass: Sharpe +0.0074, small CAGR +0.11%,
+      MaxDD slightly improved vs core_v4.'
+    overlays:
+      macro: false
+    status: historical_reference
+    strategies:
+      csmom_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          horizon_weights:
+          - 0.4
+          - 0.35
+          - 0.25
+          lookbacks:
+          - 63
+          - 126
+          - 252
+          neutralize_cross_section: true
+          rebalance: D
+          vol_lookback: 63
+        weight: 0.25
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 0.65
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      vrp_core_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          rv_lookback: 21
+          signal_mode: zscore
+          zscore_window: 252
+        weight: 0.1
+  core_v6_trend_csmom_vrp_core_convergence_no_macro:
+    components:
+      csmom_meta: true
+      trend_meta: true
+      vrp_convergence: true
+      vrp_core: true
+    description: Trend + CSMOM + VRP-Core + VRP-Convergence; no macro overlays
+    display_name: Core v6
+    is_baseline: true
+    macro_regime:
+      enabled: false
+    name: core_v6_trend_csmom_vrp_core_convergence_no_macro
+    notes: 'Phase-2 test: Adding VRP-Convergence (5%) to core_v5 baseline. VRP-Core
+      reduced to 7.5% to make room.'
+    overlays:
+      macro: false
+    status: baseline
+    strategies:
+      csmom_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          horizon_weights:
+          - 0.4
+          - 0.35
+          - 0.25
+          lookbacks:
+          - 63
+          - 126
+          - 252
+          neutralize_cross_section: true
+          rebalance: D
+          vol_lookback: 63
+        weight: 0.25
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 0.625
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      vrp_convergence_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.05
+      vrp_core_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          rv_lookback: 21
+          signal_mode: zscore
+          zscore_window: 252
+        weight: 0.075
+  core_v6_trend_csmom_vrp_core_convergence_vrp_alt_10_no_macro:
+    description: Trend + CSMOM + VRP-Core + VRP-Convergence + VRP-Alt (10%); no macro
+      overlays
+    display_name: Core v6 + VRP-Alt (10%)
+    is_baseline: false
+    macro_regime:
+      enabled: false
+    name: core_v6_trend_csmom_vrp_core_convergence_vrp_alt_10_no_macro
+    status: phase2_scaling_test
+    strategies:
+      csmom_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          horizon_weights:
+          - 0.4
+          - 0.35
+          - 0.25
+          lookbacks:
+          - 63
+          - 126
+          - 252
+          neutralize_cross_section: true
+          rebalance: D
+          vol_lookback: 63
+        weight: 0.25
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 0.575
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      vrp_alt_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.1
+      vrp_convergence_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.0
+      vrp_core_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          rv_lookback: 21
+          signal_mode: zscore
+          zscore_window: 252
+        weight: 0.075
+  core_v6_trend_csmom_vrp_core_convergence_vrp_alt_15_no_macro:
+    description: Trend + CSMOM + VRP-Core + VRP-Convergence + VRP-Alt (15%); no macro
+      overlays
+    display_name: Core v6 + VRP-Alt (15%)
+    is_baseline: false
+    macro_regime:
+      enabled: false
+    name: core_v6_trend_csmom_vrp_core_convergence_vrp_alt_15_no_macro
+    status: phase2_scaling_test
+    strategies:
+      csmom_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          horizon_weights:
+          - 0.4
+          - 0.35
+          - 0.25
+          lookbacks:
+          - 63
+          - 126
+          - 252
+          neutralize_cross_section: true
+          rebalance: D
+          vol_lookback: 63
+        weight: 0.25
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 0.55
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      vrp_alt_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.15
+      vrp_convergence_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.0
+      vrp_core_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          rv_lookback: 21
+          signal_mode: zscore
+          zscore_window: 252
+        weight: 0.075
+  core_v6_trend_csmom_vrp_core_convergence_vrp_alt_7p5_no_macro:
+    description: Trend + CSMOM + VRP-Core + VRP-Convergence + VRP-Alt (7.5%); no macro
+      overlays
+    display_name: Core v6 + VRP-Alt (7.5%)
+    is_baseline: false
+    macro_regime:
+      enabled: false
+    name: core_v6_trend_csmom_vrp_core_convergence_vrp_alt_7p5_no_macro
+    status: phase2_scaling_test
+    strategies:
+      csmom_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          horizon_weights:
+          - 0.4
+          - 0.35
+          - 0.25
+          lookbacks:
+          - 63
+          - 126
+          - 252
+          neutralize_cross_section: true
+          rebalance: D
+          vol_lookback: 63
+        weight: 0.25
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 0.5875
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      vrp_alt_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.075
+      vrp_convergence_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.0125
+      vrp_core_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          rv_lookback: 21
+          signal_mode: zscore
+          zscore_window: 252
+        weight: 0.075
+  core_v6_trend_csmom_vrp_core_convergence_vrp_alt_no_macro:
+    components:
+      csmom_meta: true
+      trend_meta: true
+      vrp_alt: true
+      vrp_convergence: true
+      vrp_core: true
+    description: Trend + CSMOM + VRP-Core + VRP-Convergence + VRP-Alt; no macro overlays
+    display_name: Core v6 + VRP-Alt
+    is_baseline: false
+    macro_regime:
+      enabled: false
+    name: core_v6_trend_csmom_vrp_core_convergence_vrp_alt_no_macro
+    notes: 'Phase-2 test: Adding VRP-Alt (5%) to core_v6 baseline. Trend reduced by
+      2.5%, VRP-Convergence reduced from 5% to 2.5% to make room.'
+    overlays:
+      macro: false
+    status: phase2_experimental
+    strategies:
+      csmom_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          horizon_weights:
+          - 0.4
+          - 0.35
+          - 0.25
+          lookbacks:
+          - 63
+          - 126
+          - 252
+          neutralize_cross_section: true
+          rebalance: D
+          vol_lookback: 63
+        weight: 0.25
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 0.6
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      vrp_alt_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.05
+      vrp_convergence_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.025
+      vrp_core_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          rv_lookback: 21
+          signal_mode: zscore
+          zscore_window: 252
+        weight: 0.075
+  core_v7_trend_csmom_vrp_core_convergence_vrp_alt_no_macro:
+    components:
+      csmom_meta: true
+      trend_meta: true
+      vrp_alt: true
+      vrp_convergence: true
+      vrp_core: true
+    description: Trend + CSMOM + VRP-Core + VRP-Convergence + VRP-Alt; no macro overlays
+      (Superseded by Core v8)
+    display_name: Core v7
+    is_baseline: false
+    macro_regime:
+      enabled: false
+    name: core_v7_trend_csmom_vrp_core_convergence_vrp_alt_no_macro
+    notes: 'Core v7: VRP-Alt promoted at 15% weight. Final composition: Trend 60%,
+      CSMOM 25%, VRP-Core 7.5%, VRP-Convergence 2.5%, VRP-Alt 15%.'
+    overlays:
+      macro: false
+    status: superseded
+    strategies:
+      csmom_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          horizon_weights:
+          - 0.4
+          - 0.35
+          - 0.25
+          lookbacks:
+          - 63
+          - 126
+          - 252
+          neutralize_cross_section: true
+          rebalance: D
+          vol_lookback: 63
+        weight: 0.25
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 0.6
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      vrp_alt_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.15
+      vrp_convergence_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.025
+      vrp_core_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          rv_lookback: 21
+          signal_mode: zscore
+          zscore_window: 252
+        weight: 0.075
+  core_v8_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_no_macro:
+    components:
+      csmom_meta: true
+      trend_meta: true
+      vrp_alt: true
+      vrp_convergence: true
+      vrp_core: true
+      vx_carry: true
+    description: Core v7 + VX Calendar Carry (5%); no macro overlays
+    display_name: Core v8
+    is_baseline: true
+    macro_regime:
+      enabled: false
+    name: core_v8_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_no_macro
+    notes: 'Core v8: VX Calendar Carry promoted at 5% weight. Canonical atomic: vx2_vx1_short.
+      Final composition: Trend 57%, CSMOM 23.75%, VRP-Core 7.125%, VRP-Convergence
+      2.375%, VRP-Alt 14.25%, VX Carry 5%.'
+    overlays:
+      macro: false
+    status: production_baseline
+    strategies:
+      csmom_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          horizon_weights:
+          - 0.4
+          - 0.35
+          - 0.25
+          lookbacks:
+          - 63
+          - 126
+          - 252
+          neutralize_cross_section: true
+          rebalance: D
+          vol_lookback: 63
+        weight: 0.2375
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 0.57
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      vrp_alt_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.1425
+      vrp_convergence_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.02375
+      vrp_core_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          rv_lookback: 21
+          signal_mode: zscore
+          zscore_window: 252
+        weight: 0.07125
+      vx_calendar_carry:
+        enabled: true
+        params:
+          clip: 2.0
+          lag: 1
+          max_leverage: 10.0
+          min_vol_floor: 0.01
+          target_vol: 0.1
+          variant: vx2_vx1_short
+          vol_lookback: 60
+          zscore_window: 90
+        weight: 0.05
+  core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro:
+    components:
+      csmom_meta: true
+      curve_rv: true
+      trend_meta: true
+      vrp_alt: true
+      vrp_convergence: true
+      vrp_core: true
+      vx_carry: true
+    description: Core v8 + SR3 Curve RV Meta-Sleeve (Rank Fly 5% + Pack Slope 3%);
+      no macro overlays
+    display_name: Core v9
+    is_baseline: true
+    macro_regime:
+      enabled: false
+    name: core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro
+    notes: 'Core v9: Curve RV Meta-Sleeve promoted at 8% total (Rank Fly 5% + Pack
+      Slope 3%). All Core v8 sleeves scaled by 0.92. Final composition: Trend 52.4%,
+      CSMOM 21.85%, VRP-Core 6.555%, VRP-Convergence 2.185%, VRP-Alt 13.11%, VX Carry
+      4.6%, Curve RV 8%.'
+    overlays:
+      macro: false
+    status: production_baseline
+    strategies:
+      csmom_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          horizon_weights:
+          - 0.4
+          - 0.35
+          - 0.25
+          lookbacks:
+          - 63
+          - 126
+          - 252
+          neutralize_cross_section: true
+          rebalance: D
+          vol_lookback: 63
+        weight: 0.2185
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      sr3_curve_rv_meta:
+        enabled: true
+        params:
+          atomic_weights:
+            pack_slope: 0.375
+            rank_fly: 0.625
+          clip: 3.0
+          enabled_atomics:
+          - rank_fly
+          - pack_slope
+          lag: 1
+          max_leverage: 10.0
+          min_vol_floor: 0.01
+          target_vol: 0.1
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.08
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 0.5244
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      vrp_alt_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.1311
+      vrp_convergence_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.02185
+      vrp_core_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          rv_lookback: 21
+          signal_mode: zscore
+          zscore_window: 252
+        weight: 0.06555
+      vx_calendar_carry:
+        enabled: true
+        params:
+          clip: 2.0
+          lag: 1
+          max_leverage: 10.0
+          min_vol_floor: 0.01
+          target_vol: 0.1
+          variant: vx2_vx1_short
+          vol_lookback: 60
+          zscore_window: 90
+        weight: 0.046
+  core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_packslope_no_macro:
+    components:
+      csmom_meta: true
+      curve_rv: true
+      trend_meta: true
+      vrp_alt: true
+      vrp_convergence: true
+      vrp_core: true
+      vx_carry: true
+    description: Core v8 + SR3 Curve RV Pack Slope Momentum (3%); no macro overlays
+    display_name: Core v9 + Pack Slope (3%)
+    is_baseline: false
+    macro_regime:
+      enabled: false
+    name: core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_packslope_no_macro
+    notes: 'Core v9 Phase-2: Pack Slope Momentum at 3% weight. All Core v8 sleeves
+      scaled by 0.97.'
+    overlays:
+      macro: false
+    status: phase2_test
+    strategies:
+      csmom_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          horizon_weights:
+          - 0.4
+          - 0.35
+          - 0.25
+          lookbacks:
+          - 63
+          - 126
+          - 252
+          neutralize_cross_section: true
+          rebalance: D
+          vol_lookback: 63
+        weight: 0.230375
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      sr3_curve_rv_meta:
+        enabled: true
+        params:
+          atomic_weights:
+            pack_slope: 1.0
+          clip: 3.0
+          enabled_atomics:
+          - pack_slope
+          lag: 1
+          max_leverage: 10.0
+          min_vol_floor: 0.01
+          target_vol: 0.1
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.03
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 0.5529
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      vrp_alt_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.138225
+      vrp_convergence_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.0230375
+      vrp_core_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          rv_lookback: 21
+          signal_mode: zscore
+          zscore_window: 252
+        weight: 0.0691125
+      vx_calendar_carry:
+        enabled: true
+        params:
+          clip: 2.0
+          lag: 1
+          max_leverage: 10.0
+          min_vol_floor: 0.01
+          target_vol: 0.1
+          variant: vx2_vx1_short
+          vol_lookback: 60
+          zscore_window: 90
+        weight: 0.0485
+  core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_rankfly_no_macro:
+    components:
+      csmom_meta: true
+      curve_rv: true
+      trend_meta: true
+      vrp_alt: true
+      vrp_convergence: true
+      vrp_core: true
+      vx_carry: true
+    description: Core v8 + SR3 Curve RV Rank Fly Momentum (5%); no macro overlays
+    display_name: Core v9 + Rank Fly (5%)
+    is_baseline: false
+    macro_regime:
+      enabled: false
+    name: core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_rankfly_no_macro
+    notes: 'Core v9 Phase-2: Rank Fly Momentum at 5% weight. All Core v8 sleeves scaled
+      by 0.95.'
+    overlays:
+      macro: false
+    status: phase2_test
+    strategies:
+      csmom_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          horizon_weights:
+          - 0.4
+          - 0.35
+          - 0.25
+          lookbacks:
+          - 63
+          - 126
+          - 252
+          neutralize_cross_section: true
+          rebalance: D
+          vol_lookback: 63
+        weight: 0.225625
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      sr3_curve_rv_meta:
+        enabled: true
+        params:
+          atomic_weights:
+            rank_fly: 1.0
+          clip: 3.0
+          enabled_atomics:
+          - rank_fly
+          lag: 1
+          max_leverage: 10.0
+          min_vol_floor: 0.01
+          target_vol: 0.1
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.05
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: true
+        params:
+          feature_weights:
+            long:
+              breakout_252: 0.3
+              ret_252: 0.5
+              slope_slow: 0.2
+            med:
+              breakout_126: 0.3
+              persistence: 0.1
+              ret_84: 0.4
+              slope_med: 0.2
+            short:
+              breakout_21: 0.3
+              ret_21: 0.5
+              reversal: 0.0
+              slope_fast: 0.2
+          horizon_weights:
+            long_252: 0.5
+            med_84: 0.3
+            short_21: 0.2
+          rebalance: W-FRI
+          signal_cap: 3.0
+          vol_normalization:
+            enabled: true
+            halflife_days: 63
+            risk_scale: 0.2
+            sigma_floor_annual: 0.05
+        weight: 0.5415
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+      vrp_alt_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.135375
+      vrp_convergence_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          signal_mode: zscore
+          target_vol: 0.1
+          vol_floor: 0.05
+          vol_lookback: 63
+          zscore_window: 252
+        weight: 0.0225625
+      vrp_core_meta:
+        enabled: true
+        params:
+          clip: 3.0
+          rv_lookback: 21
+          signal_mode: zscore
+          zscore_window: 252
+        weight: 0.0676875
+      vx_calendar_carry:
+        enabled: true
+        params:
+          clip: 2.0
+          lag: 1
+          max_leverage: 10.0
+          min_vol_floor: 0.01
+          target_vol: 0.1
+          variant: vx2_vx1_short
+          vol_lookback: 60
+          zscore_window: 90
+        weight: 0.0475
+  medium_canonical_phase1:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_med_canonical:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+        weight: 1.0
+      tsmom_multihorizon:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  medium_legacy_phase1:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+          weights:
+            breakout_126: 0.3
+            persistence: 0.1
+            ret_84: 0.4
+            slope_med: 0.2
+        weight: 1.0
+      tsmom_multihorizon:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  momentum_long_fxcarry_rates_v1:
+    macro_regime:
+      enabled: false
+    strategies:
+      fx_commod_carry:
+        enabled: true
+        params:
+          clip: 3.0
+          roots:
+          - CL
+          - GC
+          - 6E
+          - 6B
+          - 6J
+          w_mom: 0.15
+          w_ts: 0.6
+          w_xs: 0.25
+          window: 252
+        weight: 1.0
+      rates_curve:
+        enabled: true
+        params:
+          sym_10y: ZN_FRONT_VOLUME
+          sym_2y: ZT_FRONT_VOLUME
+          sym_30y: UB_FRONT_VOLUME
+          sym_5y: ZF_FRONT_VOLUME
+          w_curv_2s5s10s: 0.15
+          w_curv_5s10s30s: 0.15
+          w_slope_2s10s: 0.35
+          w_slope_5s30s: 0.35
+          z_cap: 3.0
+        weight: 1.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+          weights:
+            breakout_252: 0.3
+            ret_252: 0.5
+            slope_slow: 0.2
+        weight: 1.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  momentum_long_fxcarry_sr3_v1:
+    macro_regime:
+      enabled: false
+    strategies:
+      fx_commod_carry:
+        enabled: true
+        params:
+          clip: 3.0
+          roots:
+          - CL
+          - GC
+          - 6E
+          - 6B
+          - 6J
+          w_mom: 0.15
+          w_ts: 0.6
+          w_xs: 0.25
+          window: 252
+        weight: 1.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: true
+        params:
+          clip: 3.0
+          w_carry: 0.4
+          w_curve: 0.3
+          w_level: 0.1
+          w_slope: 0.2
+        weight: 1.0
+      tsmom:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+          weights:
+            breakout_252: 0.3
+            ret_252: 0.5
+            slope_slow: 0.2
+        weight: 1.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  momentum_long_fxcarry_v1:
+    macro_regime:
+      enabled: false
+    strategies:
+      fx_commod_carry:
+        enabled: true
+        params:
+          clip: 3.0
+          roots:
+          - CL
+          - GC
+          - 6E
+          - 6B
+          - 6J
+          w_mom: 0.15
+          w_ts: 0.6
+          w_xs: 0.25
+          window: 252
+        weight: 1.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+          weights:
+            breakout_252: 0.3
+            ret_252: 0.5
+            slope_slow: 0.2
+        weight: 1.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  momentum_only_v1:
+    macro_regime:
+      enabled: false
+    strategies:
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+          weights:
+            breakout_252: 0.3
+            ret_252: 0.5
+            slope_slow: 0.2
+        weight: 1.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  momentum_stack_v1:
+    macro_regime:
+      enabled: false
+    strategies:
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+          weights:
+            breakout_252: 0.3
+            ret_252: 0.5
+            slope_slow: 0.2
+        weight: 1.0
+      tsmom_med:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+          weights:
+            breakout_126: 0.3
+            persistence: 0.1
+            ret_84: 0.4
+            slope_med: 0.2
+        weight: 0.5
+      tsmom_short:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+          weights:
+            breakout_21: 0.3
+            ret_21: 0.5
+            reversal_filter: 0.0
+            slope_fast: 0.2
+        weight: 0.2
+  persistence_phase1:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+          weights:
+            breakout_accel: 0.1
+            return_accel: 0.1
+            slope_accel: 0.8
+        weight: 1.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: false
+        weight: 0.0
+  short_canonical_phase1:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+          variant: canonical
+          weights:
+            breakout_21: 0.333333
+            ret_21: 0.333333
+            reversal_filter: 0.0
+            slope_fast: 0.333334
+        weight: 1.0
+  short_legacy_phase1:
+    macro_regime:
+      enabled: false
+    strategies:
+      csmom_meta:
+        enabled: false
+        weight: 0.0
+      fx_commod_carry:
+        enabled: false
+        weight: 0.0
+      persistence:
+        enabled: false
+        weight: 0.0
+      rates_curve:
+        enabled: false
+        weight: 0.0
+      residual_trend:
+        enabled: false
+        weight: 0.0
+      sr3_carry_curve:
+        enabled: false
+        weight: 0.0
+      tsmom:
+        enabled: false
+        weight: 0.0
+      tsmom_med:
+        enabled: false
+        weight: 0.0
+      tsmom_multihorizon:
+        enabled: false
+        weight: 0.0
+      tsmom_short:
+        enabled: true
+        params:
+          rebalance: W-FRI
+          signal_cap: 3.0
+          variant: legacy
+          weights:
+            breakout_21: 0.3
+            ret_21: 0.5
+            reversal_filter: 0.0
+            slope_fast: 0.2
+        weight: 1.0
+tsmom:
+  lookbacks:
+  - 252
+  rebalance: W-FRI
+  signal_cap: 3.0
+  skip_recent: 21
+  standardize: vol
+vol_overlay:
+  cap_leverage: 7.0
+  leverage_mode: global
+  lookback_vol: 63
+  position_bounds:
+  - -3.0
+  - 3.0
+  target_vol: 0.2

@@ -1,0 +1,33 @@
+{
+  "version": "v1.0",
+  "mode": "precomputed",
+  "source_run_id": "policy_trend_gamma_compute_proof_2024",
+  "source_determinism_hash": "8db210140a2c8812",
+  "applied_csv_hash": "00a69506c92d3bb5",
+  "lag_rebalances": 1,
+  "engines": [
+    {
+      "name": "trend",
+      "rule": "gamma_vol_stress_gate_v1",
+      "feature": "gamma_stress_proxy",
+      "threshold": 1,
+      "invert": false
+    },
+    {
+      "name": "vrp",
+      "rule": "vrp_extreme_stress_gate_v1",
+      "feature": "vrp_stress_proxy",
+      "threshold": 1,
+      "invert": false
+    }
+  ],
+  "stats": {
+    "n_rebalances": 253,
+    "trend_n_gated": 15,
+    "trend_pct_gated": 5.928853754940711,
+    "engines_affected": [
+      "trend"
+    ]
+  },
+  "generated_at": "2026-01-12T16:46:48.954054"
+}

@@ -1,0 +1,45 @@
+{
+  "comparison": [
+    {
+      "Scenario": "Baseline (no RT, no allocator)",
+      "CAGR (%)": -3.2297845752202847,
+      "Vol (%)": 10.146663775484999,
+      "Sharpe": -0.31831000284287086,
+      "MaxDD (%)": -9.797824156966154,
+      "Worst Month (%)": -3.417957879186162,
+      "Avg Leverage": 1.0,
+      "Leverage 95pct": 1.0,
+      "% Days Alloc Active": 0.0,
+      "Avg Multiplier": 1.0
+    },
+    {
+      "Scenario": "RT only",
+      "CAGR (%)": -0.9633375075748907,
+      "Vol (%)": 7.276258400255525,
+      "Sharpe": -0.1323946257242679,
+      "MaxDD (%)": -7.297224722461413,
+      "Worst Month (%)": -1.619237326208911,
+      "Avg Leverage": 2.751271885576922,
+      "Leverage 95pct": 4.0,
+      "% Days Alloc Active": 0.0,
+      "Avg Multiplier": 1.0
+    },
+    {
+      "Scenario": "RT + Alloc-H",
+      "CAGR (%)": -0.9633375075748907,
+      "Vol (%)": 7.276258400255525,
+      "Sharpe": -0.1323946257242679,
+      "MaxDD (%)": -7.297224722461413,
+      "Worst Month (%)": -1.619237326208911,
+      "Avg Leverage": 2.751271885576922,
+      "Leverage 95pct": 4.0,
+      "% Days Alloc Active": 0.0,
+      "Avg Multiplier": 1.0
+    }
+  ],
+  "scenarios": [
+    "Baseline (no RT, no allocator)",
+    "RT only",
+    "RT + Alloc-H"
+  ]
+}

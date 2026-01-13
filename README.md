@@ -110,6 +110,7 @@ python scripts/diagnostics/run_allocator_two_pass.py \
 
 ### 4. View Performance Diagnostics
 
+**Command-line diagnostics:**
 ```bash
 # Single run diagnostics
 python scripts/run_perf_diagnostics.py --run_id <run_id>
@@ -120,6 +121,26 @@ python scripts/run_perf_diagnostics.py \
   --baseline_id <baseline_run_id>
 ```
 
+**Interactive dashboard:**
+```bash
+# Launch the Canonical Dashboard (interactive Streamlit app)
+streamlit run src/dashboards/canonical_dashboard.py
+```
+
+The dashboard provides interactive visualization of backtest results with 9 views:
+- Run Overview (artifact completeness, warnings, run notes)
+- Equity + Drawdown
+- Exposure Over Time (pre/post-allocator with policy markers)
+- Position-Level View (holdings snapshot, PnL contribution, turnover)
+- Allocator State Timeline (regime, scalars, drawdown overlay)
+- Drag Waterfall (return decomposition)
+- Correlation & Diversification Health
+- Sleeve Concentration Timeline
+- Baseline Comparison (if baseline selected)
+- Diagnostics Summary
+
+**See:** `docs/SOTs/DIAGNOSTICS.md` § "Canonical Dashboard" for complete documentation.
+
 ---
 
 ## 📚 Documentation
@@ -128,7 +149,7 @@ python scripts/run_perf_diagnostics.py \
 
 - **`docs/SOTs/SYSTEM_CONSTRUCTION.md`** ⭐ – Canonical 7-layer architecture, Engine/Allocator separation, Allocator v1 implementation
 - **`docs/SOTs/STRATEGY.md`** ⭐ – Complete strategy execution flow, Meta-Sleeve architecture, Core v9 baseline
-- **`docs/SOTs/DIAGNOSTICS.md`** ⭐ – Performance diagnostics framework, Allocator v1 diagnostics, Phase-0/1/2 validation
+- **`docs/SOTs/DIAGNOSTICS.md`** ⭐ – Performance diagnostics framework, Canonical Dashboard (interactive tool), Allocator v1 diagnostics, Phase-0/1/2 validation
 - **`docs/SOTs/PROCEDURES.md`** ⭐ – Step-by-step procedures for adding/changing sleeves, Allocator v1 production procedures
 - **`docs/SOTs/ROADMAP.md`** ⭐ – Strategic development roadmap (2026-2028), sleeve status, production deployment planning
 
@@ -373,6 +394,7 @@ futures-six/
 - ✅ **Allocator v1:** Production-ready risk control with H/M/L profiles (Layer 6)
 - ✅ **Two-Pass Audit:** Baseline vs allocator comparison framework
 - ✅ **Comprehensive Diagnostics:** Performance metrics, regime analysis, allocator usage
+- ✅ **Interactive Dashboard:** Streamlit-based visualization tool for run analysis (9 views, baseline comparison, warnings)
 - ✅ **Phase-0 Validation:** Sign-only sanity checks before production
 - ✅ **Contract Tests:** Prevent regressions in RT and Allocator semantics
 - ✅ **Deterministic:** Fully reproducible backtests

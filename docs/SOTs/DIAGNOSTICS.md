@@ -327,30 +327,54 @@ For more details, see `docs/REPORTS_STRUCTURE.md`.
 
 When `ExecSim.run()` is called with a `run_id`, it saves artifacts to `reports/runs/{run_id}/`:
 
+**Core Run Artifacts (Always Generated):**
 - **`portfolio_returns.csv`**: Daily portfolio returns (simple returns)
   - Columns: `date`, `ret`
+  - **Guarantee:** Always generated, regardless of mode (compute, precomputed, or off)
   
 - **`equity_curve.csv`**: Daily equity curve (cumulative, starts at 1.0)
   - Columns: `date`, `equity`
-  
-- **`asset_returns.csv`**: Daily asset returns (simple returns)
-  - Index: Date
-  - Columns: Asset symbols
+  - **Guarantee:** Always generated, regardless of mode
   
 - **`weights.csv`**: Portfolio weights at rebalance dates
   - Index: Rebalance date
   - Columns: Asset symbols
+  - **Guarantee:** Always generated, regardless of mode
   
-- **`meta.json`**: Run metadata
-  - `run_id`: Run identifier
-  - `start_date`: Backtest start date
-  - `end_date`: Backtest end date
-  - `strategy_config_name`: Strategy configuration name
-  - `universe`: List of assets in universe
-  - `rebalance`: Rebalance frequency
-  - `slippage_bps`: Slippage in basis points
-  - `n_rebalances`: Number of rebalances
-  - `n_trading_days`: Number of trading days
+- **`meta.json`**: Run metadata (see structure below)
+  - **Guarantee:** Always generated, regardless of mode
+
+**Optional Artifacts:**
+- **`asset_returns.csv`**: Daily asset returns (simple returns)
+  - Index: Date
+  - Columns: Asset symbols
+
+**Meta.json Structure:**
+```json
+{
+  "run_id": "string",
+  "start_date": "YYYY-MM-DD",           // Requested start date
+  "end_date": "YYYY-MM-DD",
+  "effective_start_date": "YYYY-MM-DD",  // First rebalance date (after warmup)
+  "strategy_profile": "string",          // Strategy profile name (if used)
+  "strategy_config_name": "string",
+  "universe": ["symbol1", "symbol2", ...],
+  "rebalance": "W-FRI",
+  "slippage_bps": 0.5,
+  "n_rebalances": 263,
+  "n_trading_days": 1819,
+  "canonical_window": true,              // Boolean: matches canonical window?
+  "config_hash": "hex_string",           // SHA256 hash of config file (for reproducibility)
+  "allocator_source_run_id": "string",   // Source run ID for precomputed allocator scalars
+  "engine_policy_source_run_id": "string" // Source run ID for precomputed engine policy multipliers
+}
+```
+
+**Precomputed Mode Artifact Guarantee:**
+Precomputed mode runs the full backtest path and saves the same output artifacts as compute mode. The only difference is where scalars/gates come from (loaded from prior run vs computed on-the-fly). This ensures:
+- All diagnostic tools work with precomputed runs
+- Complete audit trail for paper-live runs
+- Source run IDs link precomputed runs back to their compute baselines
 
 ## Data Format Notes
 
@@ -390,6 +414,303 @@ This workflow allows you to:
 - Understand year-by-year impact
 - See per-asset attribution changes
 - Make data-driven decisions about strategy components
+
+## Canonical Dashboard (Interactive Analysis Tool)
+
+**Status:** Production-ready (January 2026)
+
+The Canonical Dashboard is an interactive Streamlit application for human sanity checks on backtest runs. It answers: "Is this thing behaving like I think it is?"
+
+**Key Principle:** The dashboard reads artifacts only. It never computes strategy logic.
+
+### Overview
+
+The dashboard provides interactive visualization and analysis of run artifacts without re-running strategy computations. It complements the command-line diagnostics tools by providing:
+
+- Interactive exploration of run artifacts
+- Visual performance analysis
+- Run completeness validation
+- Baseline comparisons
+- Human-readable "top contributors" tables
+- Automatic issue detection and warnings
+
+### Architecture
+
+**Module:** `src/dashboards/canonical_dashboard.py`
+
+**Technology:**
+- Streamlit (interactive web framework)
+- Plotly (interactive charts)
+- Pandas (data manipulation)
+
+**Data Sources:**
+- Reads artifacts from `reports/runs/{run_id}/`
+- Never computes strategy logic (strictly read-only)
+- Caches artifact loading for performance (`@st.cache_data`)
+
+### Usage
+
+**Launch the dashboard:**
+```bash
+streamlit run src/dashboards/canonical_dashboard.py
+```
+
+The dashboard opens in your default web browser (typically at `http://localhost:8501`).
+
+**Run Selection:**
+- Select a run from the dropdown (populated from `reports/runs/`)
+- Optionally select a baseline run for comparison
+- Required artifacts must be present for views to be enabled
+
+### Dashboard Views
+
+#### 0️⃣ Run Overview (Artifact Completeness Gate)
+
+**Purpose:** Validate run completeness before analysis
+
+**Components:**
+- **Run Completeness Score:**
+  - Required artifacts: "X/4" (portfolio_returns.csv, equity_curve.csv, weights.csv, meta.json)
+  - Required diagnostics: "X/2" (canonical_diagnostics.json, asset_returns.csv)
+  - Optional artifacts: "X/Y" (allocator state, regime, policy, sleeve returns, etc.)
+  - **View blocking:** If required artifacts are missing, downstream views are disabled
+
+- **Run Metadata:**
+  - Run ID, Strategy Profile, Canonical Window, Config Hash
+  - Start/End dates, Source runs (allocator, policy)
+
+- **Known Issues / Warnings Panel:**
+  - Error severity: Run errors (run_error.json presence)
+  - Warning severity: NaN values in returns/weights, extreme turnover spikes, leverage cap frequently binding
+  - Info severity: Missing optional artifacts (e.g., sleeve_returns.csv)
+
+- **Run Notes:**
+  - Persistent text field for run notes (saved to `run_notes.md`)
+  - Session state management (explicit save button)
+
+#### 1️⃣ Equity + Drawdown
+
+**Purpose:** High-level performance visualization
+
+**Components:**
+- Equity curve plot
+- Drawdown plot (with running max)
+- Summary metrics: Current Equity, Total Return, Annualized Vol, Max Drawdown
+
+**Top Contributors Table:**
+- Top 10 assets by PnL contribution (last 30 days)
+
+**Performance Settings:**
+- Downsample option for long series (reduces to 1000 points max)
+
+#### 2️⃣ Exposure Over Time
+
+**Purpose:** Understand exposure evolution and policy/allocator effects
+
+**Components:**
+- **Pre-Allocator Exposure:** From `weights_raw.csv` (post-policy, before allocator scaling)
+- **Post-Allocator Exposure:** From `weights_scaled.csv` (final exposure after allocator scaling)
+- **Policy Gating Markers:** Vertical lines showing which engines gated (Trend=orange, VRP=purple, Both=red)
+- Legend showing gate counts by engine type
+
+**Naming Convention:**
+- "Pre-Allocator" = post-policy but pre-allocator scaling (policy gates affect signals upstream)
+- "Post-Allocator" = final exposure after allocator scaling
+- Note displayed: "Policy gates affect signals before allocator. 'Pre-Allocator' exposure is post-policy."
+
+**Top Contributors Table:**
+- Top 5 sleeves by PnL contribution (last 60 days)
+
+#### 3️⃣ Position-Level View
+
+**Purpose:** Drill down into specific dates and understand position-level contributions
+
+**Components:**
+- **Date Selector:** Choose any date in the run window
+- **Holdings Snapshot:**
+  - Columns: `weight_pre_allocator`, `weight_post_allocator`, `position_direction`, `exposure`, `pnl_contribution`
+  - Limited to top N assets (configurable slider, default 50)
+  - Note: "Pre-Allocator weights are post-policy (policy gates affect signals upstream). 'Post-Allocator' weights are final (after allocator scaling)."
+
+- **PnL Contribution (Last 30 Days):**
+  - Mini table showing recent asset contributions
+
+- **Turnover Proxy:**
+  - Metrics: Average, Max, Latest turnover
+  - Turnover plot over time
+  - **Top Contributors Table:** Top 10 turnover events (rebalance dates)
+
+#### 4️⃣ Allocator State Timeline
+
+**Purpose:** Understand allocator behavior over time
+
+**Components:**
+- **Regime Timeline:** NORMAL/ELEVATED/STRESS/CRISIS markers
+- **Risk Scalar:** Time series of allocator risk scalars
+- **Drawdown Overlay:** Portfolio drawdown overlaid on allocator state
+- **Scalar Histogram:** Distribution of scalar values
+- **Regime Statistics:**
+  - Total transitions, regime percentages
+  - Average duration per regime
+  - Max consecutive days in each regime
+
+#### 5️⃣ Drag Waterfall
+
+**Purpose:** Visualize return decomposition (gross → policy drag → allocator drag → net)
+
+**Components:**
+- Waterfall chart showing:
+  - Gross CAGR
+  - minus Policy Drag (bps/year, converted to %)
+  - minus Allocator Drag (bps/year, converted to %)
+  - equals Net CAGR
+
+**Data Source:** `canonical_diagnostics.json` → `performance_decomposition`
+
+#### 6️⃣ Correlation & Diversification Health
+
+**Purpose:** Monitor correlation spikes and diversification breakdown
+
+**Components:**
+- **Rolling Average Pairwise Correlation:** 20-day and 60-day windows
+- **Rolling Portfolio Volatility:** 20-day window
+- **Drawdown Markers:** Vertical lines at dates with >10% drawdown
+
+**Computation:** Uses `asset_returns.csv` to compute rolling pairwise correlations (similar logic to `AllocatorStateV1._compute_rolling_correlation`)
+
+#### 7️⃣ Sleeve Concentration Timeline
+
+**Purpose:** Monitor sleeve diversification over time
+
+**Components:**
+- **Rolling Herfindahl Index:** 60-day window based on sleeve PnL contributions
+- **Drawdown Overlay:** Portfolio drawdown for context
+- **Perfect Diversification Reference:** Green dashed line at 1/N (e.g., 1/7 ≈ 0.143)
+
+**Data Source:** `sleeve_returns.csv`
+
+**Computation:** Similar logic to `AllocatorStateV1._compute_sleeve_concentration`
+
+#### 8️⃣ Baseline Comparison (if baseline selected)
+
+**Purpose:** Compare variant run against baseline
+
+**Components:**
+- **Equity Ratio Plot:** Variant / Baseline equity (normalized to start at 1.0)
+- **Metrics Comparison Table:**
+  - Metrics: CAGR, Sharpe, MaxDD, Worst Month
+  - Columns: Variant, Baseline, Delta
+  - Formatted percentages
+
+**Data Sources:** Both variant and baseline run artifacts
+
+#### 9️⃣ Diagnostics Summary
+
+**Purpose:** Display canonical diagnostics report inline
+
+**Components:**
+- **Summary Metrics:**
+  - Allocator drag (bps/year)
+  - Policy drag (bps/year)
+  - Sleeve Sharpe table (top/bottom)
+  - Worst 10 drawdowns (with attribution)
+  - PnL concentration (Herfindahl)
+
+- **Download/Copy Section:**
+  - Markdown report textbox
+  - Copy button
+
+**Data Source:** `canonical_diagnostics.json`
+
+### Hardening Features (January 2026)
+
+The dashboard includes five hardening changes for robustness and usability:
+
+#### 1. Run Completeness Score + View Blocking
+
+- **Completeness Score Display:** Metrics showing required artifacts (X/4), required diagnostics (X/2), optional artifacts (X/Y)
+- **View Blocking:** If required artifacts are missing, all downstream views are disabled with a clear error message
+- **Prevents:** Confusing partial plots from incomplete runs
+
+#### 2. Standardized Naming
+
+- **UI Labels:** All labels use "Pre-Allocator" (post-policy, before allocator scaling) and "Post-Allocator" (final after allocator scaling)
+- **Notes:** Clear explanations that policy gates affect signals upstream
+- **Prevents:** Confusion about what "raw" weights represent
+
+#### 3. Top Contributors Tables
+
+- **Top 10 Assets:** By PnL contribution (last 30d) - shown in View 1
+- **Top 5 Sleeves:** By PnL contribution (last 60d) - shown in View 2
+- **Top 10 Turnover Events:** Rebalance dates with highest turnover - shown in View 3
+- **Purpose:** Fast human scan for "what changed?" without drilling into full data
+
+#### 4. Known Issues / Warnings Panel
+
+- **Automatic Detection:**
+  - Run errors (run_error.json)
+  - NaN values in portfolio_returns or weights
+  - Missing sleeve_returns (if views depend on it)
+  - Extreme turnover spikes (max > 3x average)
+  - Leverage cap frequently binding (>50% of rebalance dates)
+- **Severity Levels:** Error (red), Warning (yellow), Info (blue)
+- **Purpose:** Surface investigation signals automatically
+
+#### 5. Cache + Performance Guardrails
+
+- **Artifact Caching:** `@st.cache_data(ttl=3600)` for artifact loading (includes run_id in cache key)
+- **Downsample Option:** Checkbox to downsample long series to 1000 points max for faster plotting
+- **Top N Assets Slider:** Limit position view to top N assets (10-100, default 50) for faster rendering
+- **Purpose:** Maintain performance with many runs and long time series
+
+### Artifact Requirements
+
+**Required Artifacts (hard gate - views blocked if missing):**
+- `portfolio_returns.csv` - Daily portfolio returns
+- `equity_curve.csv` - Daily equity curve
+- `weights.csv` - Rebalance-date weights
+- `meta.json` - Run metadata
+
+**Required Diagnostics (for diagnostics views):**
+- `canonical_diagnostics.json` - Canonical diagnostics report (for Views 5, 9)
+- `asset_returns.csv` - Daily asset returns (for View 6)
+
+**Optional Artifacts (views gracefully degrade if missing):**
+- `weights_raw.csv` - Pre-allocator weights (for View 2 exposure comparison)
+- `weights_scaled.csv` - Post-allocator weights (for View 2, 3)
+- `allocator_regime_v1.csv` - Allocator regime timeline (for View 4)
+- `allocator_risk_v1_applied_used.csv` or `allocator_risk_v1_applied.csv` - Allocator scalars (for View 4)
+- `allocator_regime_v1_meta.json` - Regime metadata (for View 4 statistics)
+- `engine_policy_applied_v1.csv` - Engine policy applied (for View 2 policy markers)
+- `sleeve_returns.csv` - Sleeve returns (for View 7, top contributors)
+- `run_error.json` - Run errors (surfaced in warnings panel)
+
+### Best Practices
+
+1. **Always check Run Overview first:** Completeness score and warnings prevent wasted time on incomplete runs
+
+2. **Use baseline comparison for ablation testing:** Compare variant runs against baselines to isolate effects
+
+3. **Leverage Top Contributors tables:** Quick scan for "what changed?" without full data analysis
+
+4. **Enable downsample for long series:** Improves responsiveness on multi-year runs
+
+5. **Check Known Issues panel:** Automatic detection surfaces investigation signals
+
+6. **Save run notes:** Use the Run Notes field to document run context (preserved in `run_notes.md`)
+
+### Known Limitations
+
+- **Artifact-only analysis:** Dashboard never computes strategy logic (by design)
+- **Single-run focus:** Baseline comparison compares two runs, but multi-run analysis requires external tools
+- **Performance:** Very long time series (>10 years) may require downsample option for responsive plotting
+- **Real-time updates:** Artifact changes require page refresh (no auto-reload)
+
+### Related Documentation
+
+- **Diagnostics Framework:** See "Canonical Diagnostics" section for JSON/Markdown report generation
+- **Allocator Diagnostics:** See "Allocator v1 Diagnostics" section for allocator-specific analysis
+- **Run Artifacts:** See "Run Artifacts" section for artifact format specifications
 
 ## Integration with ExecSim
 

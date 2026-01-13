@@ -1,0 +1,11 @@
+{
+  "estimator": "rolling_covariance",
+  "leverage_cap": 7.0,
+  "leverage_floor": 1.0,
+  "target_vol": 0.2,
+  "update_frequency": "static",
+  "version": "v1.0",
+  "version_hash": "67ff91f7",
+  "vol_floor": 0.05,
+  "vol_lookback": 63
+}

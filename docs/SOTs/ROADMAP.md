@@ -757,8 +757,8 @@ Allocator v1 has completed Stages 4A-5.5 (December 2024) and is production-ready
 ```yaml
 allocator_v1:
   enabled: false              # Default: artifacts only
-  mode: "off"                 # "off" | "compute" | "precomputed"
-  precomputed_run_id: null    # For two-pass audit
+  mode: "off"                 # DEFAULT: "off" (artifacts only). "precomputed" for production (requires precomputed_run_id)
+  precomputed_run_id: null    # Required if mode="precomputed"
   state_version: "v1.0"
   regime_version: "v1.0"
   risk_version: "v1.0"
@@ -770,7 +770,7 @@ allocator_v1:
 - **Documentation**: Complete SOT updates in SYSTEM_CONSTRUCTION.md, DIAGNOSTICS.md, PROCEDURES.md
 
 **Production Readiness (Complete):**
-- ✅ **Stage 6**: Production mode locked (`precomputed` as default, `compute` research-only)
+- ✅ **Stage 6**: Production mode locked (`off` as default, `precomputed` for production when explicitly configured)
 - ✅ **Stage 6.5**: Stability & sanity review framework (qualitative validation before deployment)
 
 **Future Enhancements (Post-v1):**

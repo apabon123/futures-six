@@ -330,7 +330,7 @@ The canonical execution stack is:
 ### Current System Status (As of January 2026)
 
 - **Engines:** v1 COMPLETE
-- **Engine Policy:** NOT YET IMPLEMENTED
+- **Engine Policy:** ✅ **Phase 2 COMPLETE** (Trend + VRP Gates)
 - **Portfolio Construction:** Static v1
 - **Discretionary Overlay:** Defined, optional
 - **Risk Targeting:** ✅ **Phase 1C COMPLETE** (Production-Ready)
@@ -344,9 +344,18 @@ The canonical execution stack is:
 4. ✅ All artifacts auditable and deterministic
 5. ✅ Contract tests prevent regressions
 
+**Phase 2 Completion (January 2026):**
+1. ✅ Engine Policy v1 module implemented (`src/agents/engine_policy_v1.py`)
+2. ✅ Binary gate for Trend engine: gamma_stress_proxy @ 95th percentile (VVIX or VIX change variance)
+3. ✅ Binary gate for VRP engine: vrp_stress_proxy (VVIX >= 99th percentile OR gamma_stress + backwardation)
+4. ✅ Config schema added (`engine_policy_v1` in `strategies.yaml`)
+5. ✅ Wired into canonical stack between Engine Signals and Portfolio Construction
+6. ✅ Artifacts: `engine_policy_state_v1.csv`, `engine_policy_applied_v1.csv`, `engine_policy_v1_meta.json`
+7. ✅ Validator script: `scripts/diagnostics/validate_phase2_policy_v1.py`
+8. ✅ Golden proofs validated: Trend gates 15/253 (5.9%), VRP gates 3/253 (1.2%)
+
 **Next development steps:**
-1. Build Engine Policy v1 (Phase 2)
-2. Paper-live deployment (Phase 3)
+1. Paper-live v0 prep (Phase 3)
 
 ---
 
@@ -445,6 +454,110 @@ There is a difference between:
 - `docs/PHASE_1C_BUG_FIXES_COMPLETE.md` — Bug fixes summary
 - `docs/PHASE_1C_PROOF_RUN.md` — Proof run documentation
 - `docs/PHASE_1C_HANDOFF.md` — Status summary
+
+---
+
+### Phase 2: Engine Policy v1 (COMPLETE — January 2026)
+
+**Status:** ✅ **COMPLETE** — Production-Ready
+
+**Phase 2 Objectives:**
+1. ✅ Implement Engine Policy layer (Layer 2: validity filter)
+2. ✅ Binary gate for Trend engine: gamma_stress_proxy @ 95th percentile
+3. ✅ Binary gate for VRP engine: extreme stress proxy (VVIX >= 99th OR backwardation + stress)
+4. ✅ Mirror allocator artifact philosophy (state + applied + meta)
+5. ✅ Support `compute` and `precomputed` modes
+6. ✅ Validator script for acceptance testing
+
+**Implementation Summary:**
+
+**Module:** `src/agents/engine_policy_v1.py`
+- `EnginePolicyV1` class with `compute_state()`, `compute_applied_multipliers()`, `apply()`
+- Binary gate only (multiplier ∈ {0, 1}) — enforces SYSTEM_CONSTRUCTION constraint
+- Reads feature from config (generic, not hardcoded)
+- Applies 1-rebalance lag (same concept as allocator)
+
+**Features:**
+- `gamma_stress_proxy`: VVIX 95th percentile (or VIX change variance fallback)
+- `vx_backwardation`: Binary indicator (VX1 > VX2)
+- `vrp_stress_proxy`: Composite (VVIX >= 99th OR gamma_stress + backwardation)
+
+**Config Schema:** `configs/strategies.yaml`
+```yaml
+engine_policy_v1:
+  enabled: true
+  mode: "compute"           # "off" | "compute" | "precomputed"
+  precomputed_run_id: null  # Required if mode="precomputed"
+  lag_rebalances: 1
+  apply_missing_multiplier_as: 1.0
+  engines:
+    trend:
+      enabled: true
+      rule: "gamma_vol_stress_gate_v1"
+      feature: "gamma_stress_proxy"
+      threshold: 1
+      invert: false
+    vrp:
+      enabled: true
+      rule: "vrp_extreme_stress_gate_v1"
+      feature: "vrp_stress_proxy"
+      threshold: 1
+      invert: false
+```
+
+**Artifacts (saved to `reports/runs/{run_id}/`):**
+- `engine_policy_state_v1.csv` — Daily: date, engine, feature_value, policy_state, policy_multiplier
+- `engine_policy_applied_v1.csv` — Rebalance-level: rebalance_date, engine, policy_multiplier_used, source_run_id
+- `engine_policy_v1_meta.json` — Config snapshot, version, determinism hash (compute mode) or source_determinism_hash + applied_csv_hash (precomputed mode)
+- **Core run artifacts always generated:** `portfolio_returns.csv`, `equity_curve.csv`, `weights.csv`, `meta.json` (regardless of mode)
+- **Meta.json includes:** `engine_policy_source_run_id` linking precomputed runs to their compute baseline
+
+**Stack Integration:**
+- Inserted between Engine Signals (Layer 1) and Portfolio Construction (Layer 3)
+- Multiplies engine weights before overlay/aggregation
+- **Hierarchy preserved:** If policy sets trend multiplier to 0, nothing downstream can resurrect it
+
+**Golden Proof Runs (Phase 2 Acceptance Artifacts):**
+
+**Compute Mode Proof:**
+- **Run ID:** `policy_trend_gamma_compute_proof_2024`
+- **Config:** `configs/proofs/phase2_policy_trend_gamma_compute.yaml`
+- **Mode:** `compute` (compute state daily, apply with lag)
+
+**Precomputed Mode Proof:**
+- **Run ID:** `policy_trend_gamma_apply_precomputed_2024`
+- **Config:** `configs/proofs/phase2_policy_trend_gamma_apply_precomputed.yaml`
+- **Mode:** `precomputed` (load multipliers from compute proof)
+
+**Validator:** `scripts/diagnostics/validate_phase2_policy_v1.py {run_id}` must PASS
+
+**Acceptance Criteria:**
+1. ✅ Artifacts exist (state, applied, meta)
+2. ✅ Determinism (re-run produces identical applied.csv)
+3. ✅ Lag correct (multiplier at t = policy from t-1)
+4. ✅ Policy has teeth (weights differ vs baseline when stress triggers)
+5. ✅ Isolation (Trend gates 15/253 = 5.9%, VRP gates 3/253 = 1.2%; other engines unchanged)
+
+**Non-Negotiable Architectural Constraints (Enforced in Code):**
+- ✅ Engine Policy is a validity filter, not an optimizer
+- ✅ v1 is binary gate only (multiplier ∈ {0, 1})
+- ✅ Inputs are context features (gamma/vol-of-vol), not portfolio metrics
+- ✅ Does NOT use: portfolio drawdown, correlation, sizing (allocator territory)
+- ✅ No Sharpe optimization, no fast PnL feedback
+
+**Candidate Variable Classification (Engine Policy v1):**
+
+| Variable | Status |
+|----------|--------|
+| gamma_stress_proxy | ✅ Used (Trend policy, 95th percentile) |
+| vx_backwardation | ✅ Used (VRP policy component) |
+| vrp_stress_proxy | ✅ Used (VRP policy, composite: VVIX >= 99th OR backwardation + stress) |
+| skew | 🔜 Future v2 |
+| dispersion | 🔜 Future v2 |
+| vol-of-vol | 🔜 Future v2 |
+| event calendar | 🔜 Future v2 |
+| portfolio drawdown | ❌ Allocator only |
+| correlation | ❌ Allocator only |
 
 ---
 
@@ -697,16 +810,41 @@ Allocator v1 is the first production implementation of the allocator architectur
 **Purpose:** Apply risk scalars to portfolio weights
 
 **Implementation Modes:**
-1. **`mode: "off"`** - Compute artifacts only, no weight scaling (default)
+1. **`mode: "off"`** - Compute artifacts only, no weight scaling (**DEFAULT**)
+   - Default mode ensures "off by default unless explicitly configured" stance
+   - Prevents accidental "live apply" without explicit precomputed_run_id
+   - Matches "Decisions are commitments" discipline
 2. **`mode: "precomputed"`** - Load scalars from prior run, apply with lag (Stage 5.5)
-3. **`mode: "compute"`** - On-the-fly computation (has warmup issues, not recommended)
+   - **Requires:** `precomputed_run_id` must be set, otherwise defaults to 'off'
+   - Production-ready mode for two-pass audit and paper-live deployment
+3. **`mode: "compute"`** - On-the-fly computation (has warmup issues, research-only)
+   - Not recommended for production due to warmup period issues
 
 **Application Convention:**
 - 1-rebalance lag: `risk_scalar[t-1]` applied to `weights[t]`
 - No lookahead bias
 - Preserves engine direction (scales uniformly)
 
-**Artifacts:** `weights_raw.csv`, `weights_scaled.csv`, `allocator_risk_v1_applied_used.csv`
+**Artifacts:** 
+- `weights_raw.csv` - Pre-scaling weights (for diagnostics)
+- `weights_scaled.csv` - Post-scaling weights (if allocator enabled)
+- `allocator_risk_v1_applied_used.csv` - Applied scalars at rebalance dates
+- **Core run artifacts always generated:** `portfolio_returns.csv`, `equity_curve.csv`, `weights.csv`, `meta.json` (regardless of mode)
+
+### Warmup Period Handling
+
+**Issue:** Early dates in backtest may not have sufficient history for risk calculations (covariance requires 252 days).
+
+**Solution:** System automatically skips dates with insufficient history during warmup period:
+- Dates are filtered during rebalance schedule building (`_build_rebalance_dates`)
+- Additional error handling in backtest loop catches any remaining warmup issues
+- Effective start date (first actual rebalance) is logged and recorded in `meta.json`
+- This ensures clean artifact generation without warmup artifacts polluting results
+
+**Logging:**
+- Requested start date vs effective start date logged at run start
+- Warmup period (in days) explicitly logged
+- `meta.json` includes both `start_date` (requested) and `effective_start_date` (actual first rebalance)
 
 ### Key Design Principles
 
@@ -766,7 +904,12 @@ In `configs/strategies.yaml`:
 ```yaml
 allocator_v1:
   enabled: false              # Master switch
-  mode: "off"                 # "off" | "compute" | "precomputed"
+  mode: "off"                 # DEFAULT: "off" (artifacts only). Set to "precomputed" with precomputed_run_id for production
+  # Modes:
+  #   "off":        Compute artifacts only, no weight scaling (baseline generation) - DEFAULT
+  #   "compute":    On-the-fly computation (research-only, has warmup issues)
+  #   "precomputed": Load scalars from validated baseline run (PRODUCTION MODE)
+  #                  ⚠️ REQUIRES precomputed_run_id to be set, otherwise defaults to 'off'
   precomputed_run_id: null    # Required if mode="precomputed"
   precomputed_scalar_filename: "allocator_risk_v1_applied.csv"
   apply_missing_scalar_as: 1.0

@@ -1,0 +1,106 @@
+{
+  "run_id": "canonical_frozen_stack_precomputed_20260113_123354",
+  "generated_at": "2026-01-13T12:38:34.251381",
+  "portfolio_metrics": {
+    "core_metrics": {
+      "CAGR": 0.04935077218507833,
+      "Vol": 0.08298563358937866,
+      "Sharpe": 0.6219833124914149,
+      "MaxDD": -0.11537064829357424,
+      "HitRate": 0.5013743815283123
+    },
+    "yearly_stats": {
+      "2020": {
+        "CAGR": 0.10958442138278524,
+        "Vol": 0.08405671987716574,
+        "Sharpe": 1.2792521581132832,
+        "MaxDD": -0.04630298743851913
+      },
+      "2021": {
+        "CAGR": 0.004834814546532673,
+        "Vol": 0.06759342464917492,
+        "Sharpe": 0.10028843312665865,
+        "MaxDD": -0.05714307401574348
+      },
+      "2022": {
+        "CAGR": -0.031774780649051815,
+        "Vol": 0.09441991495086394,
+        "Sharpe": -0.30140963186924025,
+        "MaxDD": -0.08459016224428895
+      },
+      "2023": {
+        "CAGR": 0.0827999491151119,
+        "Vol": 0.08771761899083745,
+        "Sharpe": 0.9416522453490069,
+        "MaxDD": -0.06910951193201609
+      },
+      "2024": {
+        "CAGR": 0.0004278960600578863,
+        "Vol": 0.05541123925154788,
+        "Sharpe": 0.05077255977365187,
+        "MaxDD": -0.05862827274933291
+      },
+      "2025": {
+        "CAGR": 0.15695442443185148,
+        "Vol": 0.10338662914671322,
+        "Sharpe": 1.5118066470349287,
+        "MaxDD": -0.03755400837335243
+      }
+    },
+    "recovery_metrics": {
+      "max_recovery_days": 344,
+      "avg_recovery_days": 13.508196721311476,
+      "n_drawdowns": 61,
+      "worst_drawdown_recovery_days": 344,
+      "worst_drawdown_trough": "2022-11-03 00:00:00",
+      "worst_drawdown_recovery": "2023-10-13 00:00:00"
+    },
+    "worst_periods": {
+      "worst_month": -0.03860176827031503,
+      "worst_month_date": "2023-03",
+      "worst_quarter": -0.059863650276494984,
+      "worst_quarter_date": "2022-Q1"
+    }
+  },
+  "sleeve_attribution": {
+    "sleeve_drawdown_contribution": {
+      "tsmom_multihorizon": 0.27774442363868446,
+      "csmom_meta": -0.030962642373745262
+    },
+    "worst_drawdown_period": {
+      "start": "2022-11-03",
+      "end": "2023-10-18"
+    },
+    "sleeve_total_contribution": {
+      "tsmom_multihorizon": -0.14097513979798926,
+      "csmom_meta": -0.09669511940057104
+    },
+    "sleeve_concentration": 0.866962934074752
+  },
+  "allocator_audit": {
+    "regime_frequencies": {
+      "NORMAL": {
+        "count": 1163,
+        "pct": 68.57311320754717
+      },
+      "ELEVATED": {
+        "count": 490,
+        "pct": 28.891509433962266
+      },
+      "STRESS": {
+        "count": 43,
+        "pct": 2.535377358490566
+      }
+    },
+    "total_days": 1696,
+    "regime_distribution": {
+      "NORMAL": 68.57311320754717,
+      "ELEVATED": 28.891509433962266,
+      "STRESS": 2.535377358490566
+    }
+  },
+  "engine_policy_audit": {
+    "artifacts_available": false,
+    "applied_multipliers": []
+  }
+}

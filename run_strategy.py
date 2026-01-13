@@ -701,6 +701,8 @@ def main():
         # Package components
         # Stage 4D: Include allocator_v1 config for integration point
         allocator_v1_config = config.get('allocator_v1', {})
+        # Phase 2: Include engine_policy_v1 config for integration point
+        engine_policy_v1_config = config.get('engine_policy_v1', {})
         
         components = {
             'strategy': strategy,
@@ -711,7 +713,8 @@ def main():
             'allocator': allocator,
             'curve_rv_meta': curve_rv_meta,  # Add Curve RV meta-sleeve if enabled
             'curve_rv_weight': curve_rv_weight,  # Add Curve RV weight
-            'allocator_v1_config': allocator_v1_config  # Stage 4D: Allocator v1 config
+            'allocator_v1_config': allocator_v1_config,  # Stage 4D: Allocator v1 config
+            'engine_policy_v1_config': engine_policy_v1_config  # Phase 2: Engine Policy v1 config
         }
         
         results = exec_sim.run(
@@ -719,7 +722,9 @@ def main():
             start=start_date,
             end=end_date,
             components=components,
-            run_id=run_id
+            run_id=run_id,
+            strategy_profile=strategy_profile,  # Pass strategy profile for meta.json
+            config_path=str(config_path)  # Pass config path for meta.json
         )
         
         # Extract results
@@ -736,8 +741,12 @@ def main():
         logger.info(f"\nEquity Curve:")
         # Show actual first trading date (first rebalance date), not requested start date
         actual_start_date = equity.index[0]
-        logger.info(f"  Actual Start Date: {actual_start_date} (first rebalance date)")
+        effective_start_date = actual_start_date  # Effective start = first rebalance date (after warmup)
+        warmup_days = (pd.Timestamp(effective_start_date) - pd.Timestamp(start_date)).days if start_date else 0
         logger.info(f"  Requested Start:   {start_date}")
+        logger.info(f"  Effective Start:   {effective_start_date} (first rebalance date, after warmup)")
+        if warmup_days > 0:
+            logger.info(f"  Warmup Period:     {warmup_days} days")
         logger.info(f"  End Date:           {equity.index[-1]}")
         logger.info(f"  Starting Value:     ${equity.iloc[0]:,.2f}")
         logger.info(f"  Ending Value:       ${equity.iloc[-1]:,.2f}")

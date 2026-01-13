@@ -1,0 +1,41 @@
+{
+  "version": "v1.0",
+  "regime_scalar_mapping": {
+    "NORMAL": 1.0,
+    "ELEVATED": 0.85,
+    "STRESS": 0.55,
+    "CRISIS": 0.3
+  },
+  "smoothing_alpha": 0.25,
+  "smoothing_half_life": null,
+  "risk_bounds": [
+    0.25,
+    1.0
+  ],
+  "risk_scalar_stats": {
+    "mean": 0.39229590098063144,
+    "std": 0.08658160183498255,
+    "min": 0.3,
+    "max": 0.5166290283203125,
+    "median": 0.409375,
+    "q25": 0.3,
+    "q75": 0.46668510437011723
+  },
+  "risk_scalar_by_regime": {
+    "STRESS": {
+      "mean": 0.4571589878627232,
+      "min": 0.3625,
+      "max": 0.5166290283203125,
+      "count": 7
+    },
+    "CRISIS": {
+      "mean": 0.3355406999588013,
+      "min": 0.3,
+      "max": 0.4624717712402344,
+      "count": 8
+    }
+  },
+  "effective_start_date": "2024-03-14",
+  "effective_end_date": "2024-03-31",
+  "generated_at": "2026-01-09T14:28:44.215394"
+}

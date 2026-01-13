@@ -1,0 +1,50 @@
+{
+  "version": "v1.0",
+  "thresholds": {
+    "vol_accel_enter": 1.3,
+    "vol_accel_exit": 1.15,
+    "corr_shock_enter": 0.1,
+    "corr_shock_exit": 0.05,
+    "dd_enter": -0.1,
+    "dd_exit": -0.06,
+    "dd_stress_enter": -0.12,
+    "dd_crisis_enter": -0.2,
+    "dd_slope_enter": -0.06,
+    "dd_slope_exit": -0.03,
+    "min_days_in_regime": 5
+  },
+  "regime_day_counts": {
+    "CRISIS": 11,
+    "ELEVATED": 572,
+    "NORMAL": 934,
+    "STRESS": 179
+  },
+  "regime_percentages": {
+    "CRISIS": 0.6,
+    "ELEVATED": 33.7,
+    "NORMAL": 55.1,
+    "STRESS": 10.6
+  },
+  "transition_counts": {
+    "NORMAL->NORMAL": 909,
+    "NORMAL->ELEVATED": 25,
+    "ELEVATED->ELEVATED": 540,
+    "ELEVATED->NORMAL": 21,
+    "ELEVATED->STRESS": 10,
+    "STRESS->STRESS": 167,
+    "STRESS->ELEVATED": 7,
+    "STRESS->NORMAL": 3,
+    "STRESS->CRISIS": 2,
+    "CRISIS->CRISIS": 9,
+    "CRISIS->STRESS": 2
+  },
+  "max_consecutive_days": {
+    "NORMAL": 71,
+    "ELEVATED": 91,
+    "STRESS": 45,
+    "CRISIS": 6
+  },
+  "effective_start_date": "2020-05-28",
+  "effective_end_date": "2025-10-31",
+  "generated_at": "2025-12-18T23:50:54.300553"
+}

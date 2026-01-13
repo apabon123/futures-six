@@ -1,0 +1,19 @@
+{
+  "version": "v1.0",
+  "description": "Risk scalars that would be applied to weights (1-rebalance lag)",
+  "lag_convention": "1-rebalance lag (apply risk_scalar[t-1] to weights[t])",
+  "construction": "Reindex daily risk_scalar to rebalance dates (forward fill), then shift by 1",
+  "applied_stats": {
+    "mean": 0.9601472190001916,
+    "std": 0.07474319220183775,
+    "min": 0.6776374210415492,
+    "max": 1.0,
+    "median": 0.9999990930637015,
+    "n_rebalances": 52,
+    "n_scaled": 31,
+    "pct_scaled": 59.61538461538461
+  },
+  "first_rebalance": "2024-01-05",
+  "last_rebalance": "2024-12-27",
+  "generated_at": "2026-01-09T19:51:28.090778"
+}

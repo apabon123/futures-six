@@ -1,0 +1,12 @@
+{
+  "mode": "precomputed",
+  "source_run_id": "rt_alloc_h_apply_proof_2024",
+  "source_filename": "allocator_risk_v1_applied.csv",
+  "n_rebalances": 52,
+  "n_scaled": 31,
+  "pct_scaled": 59.61538461538461,
+  "mean_scalar": 0.9601472190001916,
+  "min_scalar": 0.6776374210415492,
+  "max_scalar": 1.0,
+  "generated_at": "2026-01-09T20:46:43.295982"
+}

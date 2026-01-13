@@ -1,0 +1,192 @@
+# =============================================================================
+# PHASE 2 PROOF CONFIG: Engine Policy v1 - Trend Gamma/Vol Stress Gate (Compute Mode)
+# =============================================================================
+# Purpose: Golden proof for Engine Policy v1 in compute mode
+# Run ID: policy_trend_gamma_compute_proof_2024
+#
+# This config enables Engine Policy v1 for the Trend engine with:
+# - mode: compute (compute state daily, apply with lag)
+# - feature: gamma_stress_proxy (must exist in market.features)
+# - threshold: 1 (binary gate: OFF when feature >= 1)
+# - lag_rebalances: 1 (apply t-1 policy to t rebalance)
+#
+# Expected artifacts:
+# - engine_policy_state_v1.csv (daily state)
+# - engine_policy_applied_v1.csv (rebalance-level multipliers)
+# - engine_policy_v1_meta.json (config + determinism hash)
+# =============================================================================
+
+allocator:
+  gross_cap: 7.0
+  lambda_turnover: 0.001
+  method: signal-beta
+  net_cap: 2.0
+  turnover_cap: 0.5
+  w_bounds_per_asset:
+  - -1.5
+  - 1.5
+
+allocator_v1:
+  apply_missing_scalar_as: 1.0
+  enabled: false
+  mode: "off"
+  precomputed_run_id: null
+  precomputed_scalar_filename: allocator_risk_v1_applied.csv
+  profile: H
+  regime_version: v1.0
+  risk_version: v1.0
+  state_version: v1.0
+
+# =============================================================================
+# ENGINE POLICY V1: Compute Mode Configuration
+# =============================================================================
+engine_policy_v1:
+  enabled: true
+  mode: "compute"
+  precomputed_run_id: null
+  lag_rebalances: 1
+  apply_missing_multiplier_as: 1.0
+  engines:
+    trend:
+      enabled: true
+      rule: "gamma_vol_stress_gate_v1"
+      feature: "gamma_stress_proxy"
+      threshold: 1
+      invert: false
+    vrp:
+      enabled: true
+      rule: "vrp_extreme_stress_gate_v1"
+      feature: "vrp_stress_proxy"
+      threshold: 1
+      invert: false
+    csmom_meta:
+      enabled: false
+    vrp_core_meta:
+      enabled: false
+    vrp_convergence_meta:
+      enabled: false
+    vrp_alt_meta:
+      enabled: false
+    vx_calendar_carry:
+      enabled: false
+    sr3_curve_rv_meta:
+      enabled: false
+
+exec:
+  commission_per_contract: 0.0
+  position_notional_scale: 1.0
+  rebalance: W-FRI
+  slippage_bps: 0.5
+
+features:
+  canonical_medium_momentum:
+    clip: 3.0
+    lookback: 84
+    skip_recent: 10
+    vol_window: 21
+    window: 252
+  long_momentum:
+    clip: 3.0
+    lookback: 252
+    skip_recent: 21
+    vol_window: 63
+    window: 252
+  medium_momentum:
+    clip: 3.0
+    lookback: 84
+    skip_recent: 10
+    vol_window: 63
+    window: 252
+  short_momentum:
+    clip: 3.0
+    lookback: 21
+    skip_recent: 5
+    vol_window: 20
+    window: 252
+
+macro_regime:
+  enabled: false
+
+risk_targeting:
+  enabled: true
+  leverage_cap: 7.0
+  leverage_floor: 1.0
+  target_vol: 0.2
+  update_frequency: static
+  vol_floor: 0.05
+  vol_lookback: 63
+
+risk_vol:
+  cov_lookback: 252
+  nan_policy: mask-asset
+  shrinkage: lw
+  vol_lookback: 63
+
+# Use core_v3_no_macro as base profile (Trend-only for clear policy isolation)
+strategies:
+  csmom_meta:
+    enabled: false
+    weight: 0.0
+  fx_commod_carry:
+    enabled: false
+    weight: 0.0
+  rates_curve:
+    enabled: false
+    weight: 0.0
+  sr3_carry_curve:
+    enabled: false
+    weight: 0.0
+  tsmom:
+    enabled: false
+    weight: 0.0
+  tsmom_med:
+    enabled: false
+    weight: 0.0
+  tsmom_multihorizon:
+    enabled: true
+    params:
+      feature_weights:
+        breakout_mid_50_100:
+          breakout_100: 0.3
+          breakout_50: 0.7
+        long:
+          breakout_252: 0.333333
+          ret_252: 0.333333
+          slope_slow: 0.333334
+        med:
+          breakout_84: 0.333333
+          persistence: 0.0
+          ret_84: 0.333333
+          slope_21_84: 0.333334
+        short:
+          breakout_21: 0.3
+          ret_21: 0.5
+          reversal: 0.0
+          slope_fast: 0.2
+      horizon_weights:
+        breakout_mid_50_100: 0.03
+        long_252: 0.485
+        med_84: 0.291
+        short_21: 0.194
+      medium_variant: canonical
+      rebalance: W-FRI
+      signal_cap: 3.0
+      vol_normalization:
+        enabled: true
+        halflife_days: 63
+        risk_scale: 0.2
+        sigma_floor_annual: 0.05
+    weight: 1.0
+  tsmom_short:
+    enabled: false
+    weight: 0.0
+
+vol_overlay:
+  cap_leverage: 7.0
+  leverage_mode: global
+  lookback_vol: 63
+  position_bounds:
+  - -3.0
+  - 3.0
+  target_vol: 0.2
+

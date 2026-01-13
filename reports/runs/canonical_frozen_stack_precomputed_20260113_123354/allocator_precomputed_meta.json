@@ -1,0 +1,12 @@
+{
+  "mode": "precomputed",
+  "source_run_id": "canonical_frozen_stack_compute_20260113_123027",
+  "source_filename": "allocator_risk_v1_applied.csv",
+  "n_rebalances": 263,
+  "n_scaled": 263,
+  "pct_scaled": 100.0,
+  "mean_scalar": 0.9460173448183388,
+  "min_scalar": 0.5808795295215643,
+  "max_scalar": 0.9999999999952152,
+  "generated_at": "2026-01-13T12:34:57.940030"
+}

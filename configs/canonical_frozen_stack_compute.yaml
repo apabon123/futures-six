@@ -1,0 +1,104 @@
+# Canonical Frozen Stack Configuration - COMPUTE MODE
+# Step 1: First canonical production-ready system run
+# 
+# This configuration freezes the stack exactly as it will run in paper:
+# - Core v9 engines
+# - Engine Policy v1 (Trend + VRP) - COMPUTE MODE
+# - Risk Targeting ON
+# - Allocator-H ON - COMPUTE MODE
+# - Discretion OFF (macro_regime disabled in core_v9 profile)
+# - Precomputed decision flow (compute → apply)
+# - Canonical evaluation window: 2020-01-06 to 2025-10-31
+#
+# This is NOT optimization. This is "What does the finished system actually look like?"
+# This aligns with ROADMAP.md's "first production-ready system" milestone.
+
+# Strategy Profile: Core v9
+# This profile includes:
+# - Trend Meta-Sleeve (52.4%)
+# - CSMOM Meta-Sleeve (21.85%)
+# - VRP-Core Meta-Sleeve (6.555%)
+# - VRP-Convergence Meta-Sleeve (2.185%)
+# - VRP-Alt Meta-Sleeve (13.11%)
+# - VX Calendar Carry (4.6%)
+# - Curve RV Meta-Sleeve (8%)
+# - No macro overlay (discretion OFF)
+
+# ENGINE POLICY V1 (Layer 2) - COMPUTE MODE
+# Compute state daily, apply with lag (research mode)
+# This generates artifacts that will be used in precomputed mode
+engine_policy_v1:
+  enabled: true
+  mode: "compute"           # Compute state daily, apply with lag
+  precomputed_run_id: null  # Not used in compute mode
+  lag_rebalances: 1
+  apply_missing_multiplier_as: 1.0
+  engines:
+    trend:
+      enabled: true
+      rule: "gamma_vol_stress_gate_v1"
+      feature: "gamma_stress_proxy"
+      threshold: 1
+      invert: false
+    vrp:
+      enabled: true
+      rule: "vrp_extreme_stress_gate_v1"
+      feature: "vrp_stress_proxy"
+      threshold: 1
+      invert: false
+    csmom:
+      enabled: false
+    csmom_meta:
+      enabled: false
+    vrp_core_meta:
+      enabled: false
+    vrp_convergence_meta:
+      enabled: false
+    vrp_alt_meta:
+      enabled: false
+    vx_calendar_carry:
+      enabled: false
+    sr3_curve_rv_meta:
+      enabled: false
+
+# RISK TARGETING LAYER (Layer 5) - ON
+risk_targeting:
+  enabled: true
+  target_vol: 0.20
+  leverage_cap: 7.0
+  leverage_floor: 1.0
+  vol_floor: 0.05
+  vol_lookback: 63
+  update_frequency: "static"
+
+# ALLOCATOR V1 (Layer 6) - COMPUTE MODE
+# Profile-H: High risk tolerance (rare intervention, tail-only)
+# Compute mode generates artifacts that will be used in precomputed mode
+allocator_v1:
+  enabled: true
+  mode: "compute"           # On-the-fly computation (generates artifacts)
+  profile: "H"              # High risk tolerance
+  precomputed_run_id: null  # Not used in compute mode
+  precomputed_scalar_filename: "allocator_risk_v1_applied.csv"
+  apply_missing_scalar_as: 1.0
+  state_version: "v1.0"
+  regime_version: "v1.0"
+  risk_version: "v1.0"
+
+# DISCRETION OFF (macro_regime disabled in core_v9 profile)
+# No additional config needed - core_v9 profile already has macro_regime.enabled: false
+
+# Execution settings
+exec:
+  rebalance: "W-FRI"
+  slippage_bps: 0.5
+  commission_per_contract: 0.0
+  position_notional_scale: 1.0
+
+# Risk volatility settings
+risk_vol:
+  cov_lookback: 252
+  nan_policy: "mask-asset"
+  shrinkage: "lw"
+  vol_lookback: 63
+

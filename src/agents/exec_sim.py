@@ -266,7 +266,9 @@ class ExecSim:
         end: Union[str, datetime],
         components: Dict,
         run_id: Optional[str] = None,
-        out_dir: str = "reports/runs"
+        out_dir: str = "reports/runs",
+        strategy_profile: Optional[str] = None,
+        config_path: Optional[str] = None
     ) -> Dict:
         """
         Run backtest over date range.
@@ -303,18 +305,23 @@ class ExecSim:
         risk_targeting = components.get('risk_targeting')  # Layer 5: Risk Targeting
         allocator = components['allocator']
         
-        # Generate run_id if not provided (needed for artifact writer)
+        # Generate run_id early (needed for error artifacts and logging)
         if run_id is None:
             run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
             logger.info(f"[ExecSim] Generated run_id: {run_id}")
+        
+        # Create run directory early (needed for error artifacts)
+        run_dir = Path(out_dir) / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        
+        # CRITICAL: Log run_id and run_dir for debugging (addresses root cause #2)
+        logger.info(f"[RUN] run_id={run_id} run_dir={run_dir.resolve()}")
         
         # Initialize artifact writer if Risk Targeting or Allocator v1 is enabled
         artifact_writer = None
         if risk_targeting is not None or components.get('allocator_v1_config', {}).get('enabled', False):
             from src.layers import create_artifact_writer
-            # Create run directory structure
-            run_dir = Path(out_dir) / run_id
-            run_dir.mkdir(parents=True, exist_ok=True)
+            # Use run_dir already created above
             artifact_writer = create_artifact_writer(run_dir)
             
             # Pass artifact writer to Risk Targeting layer
@@ -541,8 +548,17 @@ class ExecSim:
                 
                 # Step 3: Get covariance matrix and validity mask for allocator
                 # Pass signals to ensure risk model uses same universe
-                cov = risk_vol.covariance(market, date, signals=scaled_signals)
-                mask = risk_vol.mask(market, date, signals=scaled_signals)
+                try:
+                    cov = risk_vol.covariance(market, date, signals=scaled_signals)
+                    mask = risk_vol.mask(market, date, signals=scaled_signals)
+                except (ValueError, KeyError) as e:
+                    # Skip dates where risk data is insufficient (warmup period)
+                    if "Insufficient history" in str(e) or "need" in str(e).lower():
+                        logger.debug(f"[ExecSim] Skipping {date}: {e}")
+                        continue
+                    else:
+                        # Re-raise other errors
+                        raise
                 
                 # Step 3b: Zero out signals for assets failing validity mask
                 # This prevents allocator from wasting budget on NaNs that got imputed
@@ -947,7 +963,9 @@ class ExecSim:
             weights_raw_history=weights_raw_history,  # Stage 5
             allocator_v1_enabled=allocator_v1_enabled,  # Stage 5
             allocator_v1_mode=allocator_v1_mode,  # Stage 5.5
-            precomputed_scalars=precomputed_scalars  # Stage 5.5
+            precomputed_scalars=precomputed_scalars,  # Stage 5.5
+            strategy_profile=strategy_profile,
+            config_path=config_path
         )
         
         # Stage 5: Print allocator summary
@@ -1122,7 +1140,9 @@ class ExecSim:
         weights_raw_history: Optional[list] = None,
         allocator_v1_enabled: bool = False,
         allocator_v1_mode: str = 'off',
-        precomputed_scalars: Optional[pd.Series] = None
+        precomputed_scalars: Optional[pd.Series] = None,
+        strategy_profile: Optional[str] = None,
+        config_path: Optional[str] = None
     ):
         """
         Save run artifacts to disk for diagnostics.
@@ -1697,16 +1717,59 @@ class ExecSim:
         if hasattr(market, 'universe'):
             universe = list(market.universe) if market.universe else []
         
+        # Extract source run IDs for precomputed mode (for auditability)
+        allocator_v1_config = components.get('allocator_v1_config', {})
+        engine_policy_v1_config = components.get('engine_policy_v1_config', {})
+        
+        allocator_source_run_id = None
+        engine_policy_source_run_id = None
+        
+        if allocator_v1_enabled and allocator_v1_mode == 'precomputed':
+            allocator_source_run_id = allocator_v1_config.get('precomputed_run_id')
+        
+        if components.get('engine_policy_v1_config', {}).get('enabled', False):
+            engine_policy_v1_mode = components.get('engine_policy_v1_config', {}).get('mode', 'off')
+            if engine_policy_v1_mode == 'precomputed':
+                engine_policy_source_run_id = engine_policy_v1_config.get('precomputed_run_id')
+        
+        # Compute effective start date (first rebalance date)
+        effective_start_date = None
+        if not weights_panel.empty:
+            effective_start_date = str(weights_panel.index[0])
+        
+        # Compute config hash for reproducibility
+        config_hash = None
+        if config_path:
+            try:
+                import hashlib
+                with open(config_path, 'rb') as f:
+                    config_bytes = f.read()
+                    config_hash = hashlib.sha256(config_bytes).hexdigest()[:16]
+            except Exception as e:
+                logger.warning(f"[ExecSim] Could not compute config hash: {e}")
+        
+        # Check if dates match canonical window
+        from src.utils.canonical_window import load_canonical_window
+        canonical_start, canonical_end = load_canonical_window()
+        is_canonical_window = (str(start) == canonical_start and str(end) == canonical_end)
+        
         meta = {
             'run_id': run_id,
-            'start_date': str(start),
+            'start_date': str(start),  # Requested start date
             'end_date': str(end),
+            'effective_start_date': effective_start_date,  # First rebalance date (after warmup)
+            'strategy_profile': strategy_profile,  # Strategy profile name (if used)
             'strategy_config_name': strategy_name,
             'universe': universe,
             'rebalance': self.rebalance,
             'slippage_bps': self.slippage_bps,
             'n_rebalances': len(weights_panel) if not weights_panel.empty else 0,
-            'n_trading_days': len(returns_df) if not returns_df.empty else 0
+            'n_trading_days': len(returns_df) if not returns_df.empty else 0,
+            'canonical_window': is_canonical_window,
+            'config_hash': config_hash,  # Hash of config file for reproducibility
+            # Precomputed mode source links (for auditability)
+            'allocator_source_run_id': allocator_source_run_id,
+            'engine_policy_source_run_id': engine_policy_source_run_id
         }
         
         with open(run_dir / 'meta.json', 'w') as f:

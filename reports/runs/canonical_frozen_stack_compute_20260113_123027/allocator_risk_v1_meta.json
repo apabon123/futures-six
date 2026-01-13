@@ -1,0 +1,47 @@
+{
+  "version": "v1.0",
+  "regime_scalar_mapping": {
+    "NORMAL": 1.0,
+    "ELEVATED": 0.85,
+    "STRESS": 0.55,
+    "CRISIS": 0.3
+  },
+  "smoothing_alpha": 0.25,
+  "smoothing_half_life": null,
+  "risk_bounds": [
+    0.25,
+    1.0
+  ],
+  "risk_scalar_stats": {
+    "mean": 0.9580579079547067,
+    "std": 0.06401051286181805,
+    "min": 0.5597704761376825,
+    "max": 1.0,
+    "median": 0.9989311652480418,
+    "q25": 0.913281249999202,
+    "q75": 0.9999988687939211
+  },
+  "risk_scalar_by_regime": {
+    "NORMAL": {
+      "mean": 0.9905170047537112,
+      "min": 0.6698278571032619,
+      "max": 1.0,
+      "count": 1243
+    },
+    "ELEVATED": {
+      "mean": 0.8756406924586814,
+      "min": 0.8500000011352027,
+      "max": 0.9625,
+      "count": 441
+    },
+    "STRESS": {
+      "mean": 0.6246691340034257,
+      "min": 0.5597704761376825,
+      "max": 0.7813352591135387,
+      "count": 12
+    }
+  },
+  "effective_start_date": "2020-05-28",
+  "effective_end_date": "2025-10-31",
+  "generated_at": "2026-01-13T12:33:54.576430"
+}

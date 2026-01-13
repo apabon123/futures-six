@@ -1,0 +1,59 @@
+{
+  "config_snapshot": {
+    "apply_missing_multiplier_as": 1.0,
+    "enabled": true,
+    "engines": {
+      "csmom_meta": {
+        "enabled": false
+      },
+      "sr3_curve_rv_meta": {
+        "enabled": false
+      },
+      "trend": {
+        "enabled": true,
+        "feature": "gamma_stress_proxy",
+        "invert": false,
+        "rule": "gamma_vol_stress_gate_v1",
+        "threshold": 1
+      },
+      "vrp_alt_meta": {
+        "enabled": false
+      },
+      "vrp_convergence_meta": {
+        "enabled": false
+      },
+      "vrp_core_meta": {
+        "enabled": false
+      },
+      "vx_calendar_carry": {
+        "enabled": false
+      }
+    },
+    "lag_rebalances": 1,
+    "mode": "compute",
+    "precomputed_run_id": null
+  },
+  "determinism_hash": "8db210140a2c8812",
+  "enabled": true,
+  "engines": [
+    {
+      "feature": "gamma_stress_proxy",
+      "invert": false,
+      "name": "trend",
+      "rule": "gamma_vol_stress_gate_v1",
+      "threshold": 1
+    }
+  ],
+  "generated_at": "2026-01-12T11:49:39.299392",
+  "lag_rebalances": 1,
+  "mode": "compute",
+  "precomputed_run_id": null,
+  "run_id": "policy_trend_gamma_compute_proof_2024",
+  "stats": {
+    "engines_affected": [],
+    "n_gated": 0,
+    "n_rebalances": 253,
+    "pct_gated": 0.0
+  },
+  "version": "v1.0"
+}

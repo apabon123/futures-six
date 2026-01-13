@@ -1,0 +1,91 @@
+{
+  "baseline_run_id": "baseline_20200106_20251031",
+  "scaled_run_id": "allocpass2_20200106_20251031",
+  "baseline": {
+    "cagr": 0.0935347113317313,
+    "ann_vol": 0.12010195199723332,
+    "sharpe": 0.6607180633252359,
+    "max_drawdown": -0.1531713827996426,
+    "worst_month": {
+      "date": "2023-03-31",
+      "return": -0.05296932963868495
+    },
+    "worst_quarter": {
+      "date": "2022-03-31",
+      "return": -0.06021466993478819
+    },
+    "start": "2020-03-20",
+    "end": "2025-10-31",
+    "n_days": 1755,
+    "scalars": {
+      "available": false
+    },
+    "scalar_meta": {
+      "version": "v1.0",
+      "description": "Risk scalars that would be applied to weights (1-rebalance lag)",
+      "lag_convention": "1-rebalance lag (apply risk_scalar[t-1] to weights[t])",
+      "construction": "Reindex daily risk_scalar to rebalance dates (forward fill), then shift by 1",
+      "applied_stats": {
+        "mean": 0.9187799986358609,
+        "std": 0.1227259037358398,
+        "min": 0.4247110664174154,
+        "max": 1.0,
+        "median": 0.9887433140331732,
+        "n_rebalances": 263,
+        "n_scaled": 240,
+        "pct_scaled": 91.25475285171103
+      },
+      "first_rebalance": "2020-03-20",
+      "last_rebalance": "2025-03-28",
+      "generated_at": "2025-12-18T23:49:45.365180"
+    }
+  },
+  "scaled": {
+    "cagr": 0.0641561341884318,
+    "ann_vol": 0.09876449091704713,
+    "sharpe": 0.5573382510652126,
+    "max_drawdown": -0.1433462527247965,
+    "worst_month": {
+      "date": "2023-03-31",
+      "return": -0.05334918575920233
+    },
+    "worst_quarter": {
+      "date": "2024-12-31",
+      "return": -0.05397480116680664
+    },
+    "start": "2020-03-20",
+    "end": "2025-10-31",
+    "n_days": 1755,
+    "scalars": {
+      "available": true,
+      "n_rebalances": 263,
+      "pct_scaled": 0.7376425855513308,
+      "mean": 0.9220687764839234,
+      "min": 0.4247110664174154,
+      "max": 0.9999999999995984,
+      "p05": 0.5897420009075501,
+      "p50": 0.9939877217103008,
+      "p95": 0.9999999999995984
+    },
+    "scalar_meta": {
+      "mode": "precomputed",
+      "source_run_id": "baseline_20200106_20251031",
+      "source_filename": "allocator_risk_v1_applied.csv",
+      "n_rebalances": 263,
+      "n_scaled": 263,
+      "pct_scaled": 100.0,
+      "mean_scalar": 0.9220687764839234,
+      "min_scalar": 0.4247110664174154,
+      "max_scalar": 0.9999999999995984,
+      "generated_at": "2025-12-18T23:50:37.125725"
+    }
+  },
+  "delta": {
+    "cagr_delta": -0.0293785771432995,
+    "ann_vol_delta": -0.021337461080186193,
+    "sharpe_delta": -0.10337981226002324,
+    "max_drawdown_delta": 0.009825130074846089,
+    "worst_month_delta": -0.0003798561205173856,
+    "worst_quarter_delta": 0.006239868767981549
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "version": "v1.0",
+  "mode": "precomputed",
+  "source_run_id": "policy_trend_gamma_compute_proof_2024",
+  "n_rebalances": 253,
+  "trend_n_gated": 0,
+  "trend_pct_gated": 0.0,
+  "generated_at": "2026-01-12T14:35:03.365794"
+}

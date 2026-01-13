@@ -1,0 +1,31 @@
+# Temporary config for Phase 1C allocator application proof
+# This config explicitly enables RT + Allocator-H in compute mode
+
+risk_targeting:
+  enabled: true
+  target_vol: 0.20
+  leverage_cap: 7.0
+  leverage_floor: 1.0
+  vol_floor: 0.05
+  vol_lookback: 63
+  update_frequency: "static"
+
+allocator_v1:
+  enabled: true
+  mode: "compute"  # CRITICAL: must be compute to apply
+  profile: "H"
+  
+  # Thresholds for Allocator-H (high risk tolerance)
+  # These are defaults from profiles.py but making explicit
+  risk_min: 0.65
+  
+  regime_lookback: 63
+  min_regime_hold_days: 3
+  
+  smoothing:
+    enabled: true
+    halflife: 5
+
+# Note: This config only includes allocator + RT settings
+# Strategy profile will provide the rest (sleeves, engines, etc.)
+

@@ -1,0 +1,83 @@
+{
+  "config_snapshot": {
+    "apply_missing_multiplier_as": 1.0,
+    "enabled": true,
+    "engines": {
+      "csmom": {
+        "enabled": false,
+        "feature": "gamma_stress_proxy",
+        "invert": false,
+        "rule": "gamma_vol_stress_gate_v1",
+        "threshold": 1
+      },
+      "csmom_meta": {
+        "enabled": false
+      },
+      "sr3_curve_rv_meta": {
+        "enabled": false
+      },
+      "trend": {
+        "enabled": true,
+        "feature": "gamma_stress_proxy",
+        "invert": false,
+        "rule": "gamma_vol_stress_gate_v1",
+        "threshold": 1
+      },
+      "vrp": {
+        "enabled": true,
+        "feature": "vrp_stress_proxy",
+        "invert": false,
+        "rule": "vrp_extreme_stress_gate_v1",
+        "threshold": 1
+      },
+      "vrp_alt_meta": {
+        "enabled": false
+      },
+      "vrp_convergence_meta": {
+        "enabled": false
+      },
+      "vrp_core_meta": {
+        "enabled": false
+      },
+      "vx_calendar_carry": {
+        "enabled": false
+      }
+    },
+    "lag_rebalances": 1,
+    "mode": "compute",
+    "precomputed_run_id": null
+  },
+  "determinism_hash": "916514499c545a07",
+  "enabled": true,
+  "engines": [
+    {
+      "feature": "gamma_stress_proxy",
+      "invert": false,
+      "name": "trend",
+      "rule": "gamma_vol_stress_gate_v1",
+      "threshold": 1
+    },
+    {
+      "feature": "vrp_stress_proxy",
+      "invert": false,
+      "name": "vrp",
+      "rule": "vrp_extreme_stress_gate_v1",
+      "threshold": 1
+    }
+  ],
+  "generated_at": "2026-01-13T10:00:17.170302",
+  "lag_rebalances": 1,
+  "mode": "compute",
+  "precomputed_run_id": null,
+  "run_id": "canonical_frozen_stack_compute_20260113_100007",
+  "stats": {
+    "engines_affected": [
+      "trend",
+      "vrp"
+    ],
+    "n_gated": 18,
+    "n_rebalances": 294,
+    "pct_gated": 3.061224489795918
+  },
+  "version": "v1.0"
+}

@@ -253,7 +253,16 @@ class RiskTargetingLayer:
         """
         date = pd.to_datetime(date)
         
-        # Filter to dates before current date
+        # Ensure returns has a DatetimeIndex (not RangeIndex or numpy array)
+        if not isinstance(returns.index, pd.DatetimeIndex):
+            # Try to convert index to DatetimeIndex
+            if 'date' in returns.columns:
+                returns = returns.set_index('date')
+            else:
+                # If we can't convert, assume index represents dates and convert
+                returns.index = pd.to_datetime(returns.index)
+        
+        # Filter to dates before current date (both sides now guaranteed to be datetime-like)
         historical = returns.loc[returns.index < date]
         
         if len(historical) < self.vol_lookback:

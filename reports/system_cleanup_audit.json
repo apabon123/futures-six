@@ -1,0 +1,120 @@
+{
+  "generated_at": "1768320502.4182098",
+  "total_issues": 4,
+  "by_category": {
+    "Logging": [
+      {
+        "category": "Logging",
+        "severity": "medium",
+        "description": "run_strategy.py does not log effective start date (after warmup)",
+        "file": "run_strategy.py",
+        "line": null,
+        "fix_suggestion": "Add logging of effective start date per PROCEDURES.md \u00a7 2.3"
+      }
+    ],
+    "Meta Fields": [
+      {
+        "category": "Meta Fields",
+        "severity": "medium",
+        "description": "Verify meta.json includes all required fields for reproducibility",
+        "file": null,
+        "line": null,
+        "fix_suggestion": "Ensure meta.json includes: run_id, start_date, end_date, strategy_profile, config_hash, canonical_window"
+      }
+    ],
+    "Reproducibility": [
+      {
+        "category": "Reproducibility",
+        "severity": "low",
+        "description": "Verify YAML config files maintain deterministic ordering",
+        "file": "configs/strategies.yaml",
+        "line": null,
+        "fix_suggestion": null
+      }
+    ],
+    "Config Boundaries": [
+      {
+        "category": "Config Boundaries",
+        "severity": "high",
+        "description": "allocator_v1.mode='precomputed' but precomputed_run_id is null - this will default to 'off' mode",
+        "file": "configs/strategies.yaml",
+        "line": null,
+        "fix_suggestion": "Either set mode='off' or provide a default precomputed_run_id, or add validation"
+      }
+    ]
+  },
+  "by_severity": {
+    "high": [
+      {
+        "category": "Config Boundaries",
+        "severity": "high",
+        "description": "allocator_v1.mode='precomputed' but precomputed_run_id is null - this will default to 'off' mode",
+        "file": "configs/strategies.yaml",
+        "line": null,
+        "fix_suggestion": "Either set mode='off' or provide a default precomputed_run_id, or add validation"
+      }
+    ],
+    "medium": [
+      {
+        "category": "Logging",
+        "severity": "medium",
+        "description": "run_strategy.py does not log effective start date (after warmup)",
+        "file": "run_strategy.py",
+        "line": null,
+        "fix_suggestion": "Add logging of effective start date per PROCEDURES.md \u00a7 2.3"
+      },
+      {
+        "category": "Meta Fields",
+        "severity": "medium",
+        "description": "Verify meta.json includes all required fields for reproducibility",
+        "file": null,
+        "line": null,
+        "fix_suggestion": "Ensure meta.json includes: run_id, start_date, end_date, strategy_profile, config_hash, canonical_window"
+      }
+    ],
+    "low": [
+      {
+        "category": "Reproducibility",
+        "severity": "low",
+        "description": "Verify YAML config files maintain deterministic ordering",
+        "file": "configs/strategies.yaml",
+        "line": null,
+        "fix_suggestion": null
+      }
+    ]
+  },
+  "issues": [
+    {
+      "category": "Logging",
+      "severity": "medium",
+      "description": "run_strategy.py does not log effective start date (after warmup)",
+      "file": "run_strategy.py",
+      "line": null,
+      "fix_suggestion": "Add logging of effective start date per PROCEDURES.md \u00a7 2.3"
+    },
+    {
+      "category": "Meta Fields",
+      "severity": "medium",
+      "description": "Verify meta.json includes all required fields for reproducibility",
+      "file": null,
+      "line": null,
+      "fix_suggestion": "Ensure meta.json includes: run_id, start_date, end_date, strategy_profile, config_hash, canonical_window"
+    },
+    {
+      "category": "Reproducibility",
+      "severity": "low",
+      "description": "Verify YAML config files maintain deterministic ordering",
+      "file": "configs/strategies.yaml",
+      "line": null,
+      "fix_suggestion": null
+    },
+    {
+      "category": "Config Boundaries",
+      "severity": "high",
+      "description": "allocator_v1.mode='precomputed' but precomputed_run_id is null - this will default to 'off' mode",
+      "file": "configs/strategies.yaml",
+      "line": null,
+      "fix_suggestion": "Either set mode='off' or provide a default precomputed_run_id, or add validation"
+    }
+  ]
+}

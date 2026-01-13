@@ -1,0 +1,48 @@
+{
+  "allocator_state_version": "v1.0",
+  "lookbacks": {
+    "rvol_fast": 20,
+    "rvol_slow": 60,
+    "dd_slope": 10,
+    "corr_fast": 20,
+    "corr_slow": 60,
+    "trend_breadth": 20,
+    "sleeve_concentration": 60
+  },
+  "required_features": [
+    "port_rvol_20d",
+    "port_rvol_60d",
+    "vol_accel",
+    "dd_level",
+    "dd_slope_10d",
+    "corr_20d",
+    "corr_60d",
+    "corr_shock"
+  ],
+  "optional_features": [
+    "trend_breadth_20d",
+    "sleeve_concentration_60d"
+  ],
+  "features_present": [
+    "port_rvol_20d",
+    "port_rvol_60d",
+    "vol_accel",
+    "dd_level",
+    "dd_slope_10d",
+    "corr_20d",
+    "corr_60d",
+    "corr_shock",
+    "trend_breadth_20d",
+    "sleeve_concentration_60d"
+  ],
+  "features_missing": [],
+  "rows_requested": 74,
+  "rows_valid": 15,
+  "rows_dropped": 59,
+  "effective_start_date": "2024-03-14",
+  "effective_end_date": "2024-03-31",
+  "requested_start_date": "2024-01-01",
+  "requested_end_date": "2024-03-31",
+  "effective_start_shift_days": 73,
+  "generated_at": "2026-01-09T14:28:31.478512"
+}

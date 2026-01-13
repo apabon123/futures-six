@@ -1,0 +1,12 @@
+{
+  "mode": "precomputed",
+  "source_run_id": "baseline_20200106_20251031",
+  "source_filename": "allocator_risk_v1_applied.csv",
+  "n_rebalances": 263,
+  "n_scaled": 263,
+  "pct_scaled": 100.0,
+  "mean_scalar": 0.9220687764839234,
+  "min_scalar": 0.4247110664174154,
+  "max_scalar": 0.9999999999995984,
+  "generated_at": "2025-12-18T23:50:37.125725"
+}

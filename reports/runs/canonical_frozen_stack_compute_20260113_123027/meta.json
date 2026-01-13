@@ -1,0 +1,31 @@
+{
+  "run_id": "canonical_frozen_stack_compute_20260113_123027",
+  "start_date": "2020-01-06",
+  "end_date": "2025-10-31",
+  "effective_start_date": "2020-03-20 00:00:00",
+  "strategy_profile": "core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro",
+  "strategy_config_name": "CombinedStrategy",
+  "universe": [
+    "ES_FRONT_CALENDAR_2D",
+    "NQ_FRONT_CALENDAR_2D",
+    "RTY_FRONT_CALENDAR_2D",
+    "ZT_FRONT_VOLUME",
+    "ZF_FRONT_VOLUME",
+    "ZN_FRONT_VOLUME",
+    "UB_FRONT_VOLUME",
+    "SR3_FRONT_CALENDAR",
+    "CL_FRONT_VOLUME",
+    "GC_FRONT_VOLUME",
+    "6E_FRONT_CALENDAR",
+    "6B_FRONT_CALENDAR",
+    "6J_FRONT_CALENDAR"
+  ],
+  "rebalance": "W-FRI",
+  "slippage_bps": 0.5,
+  "n_rebalances": 263,
+  "n_trading_days": 1819,
+  "canonical_window": true,
+  "config_hash": "b324facba161f15c",
+  "allocator_source_run_id": null,
+  "engine_policy_source_run_id": null
+}
