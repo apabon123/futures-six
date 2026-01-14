@@ -28,6 +28,52 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
+def _load_csv_with_date_index(csv_path: Path, date_col_name: str = 'rebalance_date') -> pd.DataFrame:
+    """
+    Load CSV with date index, handling legacy formats with backward compatibility.
+    
+    Supports:
+    - Canonical format: column named 'rebalance_date' (or date_col_name)
+    - Legacy format: first column is 'Unnamed: 0' containing dates
+    - Legacy format: column named 'date'
+    
+    Args:
+        csv_path: Path to CSV file
+        date_col_name: Expected date column name in canonical format (default: 'rebalance_date')
+        
+    Returns:
+        DataFrame with DatetimeIndex
+    """
+    try:
+        # Try canonical format first
+        df = pd.read_csv(csv_path, parse_dates=[date_col_name], index_col=date_col_name)
+        return df
+    except ValueError as e:
+        if 'Missing column' in str(e) or date_col_name not in str(e):
+            # Legacy format - try reading without specifying date column
+            df = pd.read_csv(csv_path)
+            
+            # Check if first column is unnamed and looks like dates
+            first_col = df.columns[0]
+            if first_col.startswith('Unnamed:') or first_col == 'date':
+                # Use first column as date index
+                date_col = first_col
+                df[date_col] = pd.to_datetime(df[date_col])
+                df = df.set_index(date_col)
+                return df
+            elif 'date' in df.columns:
+                # Has 'date' column - use it
+                df['date'] = pd.to_datetime(df['date'])
+                df = df.set_index('date')
+                return df
+            else:
+                # Try index_col=0 with parse_dates=True as fallback
+                df = pd.read_csv(csv_path, index_col=0, parse_dates=True)
+                return df
+        else:
+            raise
+
+
 def load_run_artifacts(run_dir: Path) -> Dict:
     """
     Load all artifacts from a run directory.
@@ -92,7 +138,7 @@ def load_run_artifacts(run_dir: Path) -> Dict:
     if not allocator_scalar_file.exists():
         allocator_scalar_file = run_dir / "allocator_risk_v1_applied.csv"
     if allocator_scalar_file.exists():
-        df = pd.read_csv(allocator_scalar_file, parse_dates=['rebalance_date'], index_col='rebalance_date')
+        df = _load_csv_with_date_index(allocator_scalar_file)
         artifacts['allocator_scalar'] = df['risk_scalar_applied'] if 'risk_scalar_applied' in df.columns else df.iloc[:, 0]
     else:
         artifacts['allocator_scalar'] = None
@@ -331,21 +377,44 @@ def compute_constraint_binding(artifacts: Dict) -> Dict:
     """
     allocator_scalar = artifacts.get('allocator_scalar')
     engine_policy = artifacts.get('engine_policy')
-    portfolio_returns = artifacts['portfolio_returns']
-    weights = artifacts.get('weights') or artifacts.get('weights_scaled') or artifacts.get('weights_raw')
+    portfolio_returns = artifacts.get('portfolio_returns')
+    
+    # Safely get weights (avoid DataFrame truthiness ambiguity)
+    weights = None
+    for weight_key in ['weights', 'weights_scaled', 'weights_raw']:
+        w = artifacts.get(weight_key)
+        if w is not None and isinstance(w, pd.DataFrame) and not w.empty:
+            weights = w
+            break
+    
     meta = artifacts.get('meta', {})
+    
+    # Handle missing portfolio_returns
+    if portfolio_returns is None:
+        return {
+            'status': 'missing_artifact',
+            'details': 'portfolio_returns is required but missing',
+            'allocator_active_pct': float(np.nan),
+            'allocator_avg_scalar_when_active': float(np.nan),
+            'policy_gated_trend_pct': 0.0,  # Default to 0.0 instead of NaN
+            'policy_gated_vrp_pct': 0.0,  # Default to 0.0 instead of NaN
+            'policy_artifact_missing': True,
+            'exposure_capped_pct': float(np.nan),
+            'vol_below_target_pct': float(np.nan),
+        }
     
     binding = {
         'allocator_active_pct': float(np.nan),
         'allocator_avg_scalar_when_active': float(np.nan),
-        'policy_gated_trend_pct': float(np.nan),
-        'policy_gated_vrp_pct': float(np.nan),
+        'policy_gated_trend_pct': 0.0,  # Default to 0.0 instead of NaN
+        'policy_gated_vrp_pct': 0.0,  # Default to 0.0 instead of NaN
+        'policy_artifact_missing': False,
         'exposure_capped_pct': float(np.nan),
         'vol_below_target_pct': float(np.nan),
     }
     
     # Allocator binding
-    if allocator_scalar is not None and len(allocator_scalar) > 0:
+    if allocator_scalar is not None and isinstance(allocator_scalar, pd.Series) and not allocator_scalar.empty:
         active_mask = allocator_scalar < 0.999  # Slightly below 1.0 to account for rounding
         active_count = active_mask.sum()
         total_count = len(allocator_scalar)
@@ -355,12 +424,19 @@ def compute_constraint_binding(artifacts: Dict) -> Dict:
             avg_scalar = allocator_scalar[active_mask].mean()
             binding['allocator_avg_scalar_when_active'] = float(avg_scalar)
     
-    # Policy gating
-    if engine_policy is not None and len(engine_policy) > 0:
-        # Check for Trend and VRP engines
-        # This is simplified - would need actual engine names from config
-        if 'engine' in engine_policy.columns and 'multiplier' in engine_policy.columns:
-            gated_mask = engine_policy['multiplier'] < 1.0
+    # Policy gating (canonical pivot format: rebalance_date, trend_multiplier, vrp_multiplier)
+    if engine_policy is not None and isinstance(engine_policy, pd.DataFrame) and not engine_policy.empty:
+        # Check for canonical pivot format (trend_multiplier, vrp_multiplier columns)
+        if 'trend_multiplier' in engine_policy.columns and 'vrp_multiplier' in engine_policy.columns:
+            # Canonical pivot format
+            total_rebalances = len(engine_policy)
+            trend_gated = (engine_policy['trend_multiplier'] < 0.999).sum()  # Slightly below 1.0 to account for rounding
+            vrp_gated = (engine_policy['vrp_multiplier'] < 0.999).sum()
+            binding['policy_gated_trend_pct'] = float(trend_gated / total_rebalances * 100) if total_rebalances > 0 else 0.0
+            binding['policy_gated_vrp_pct'] = float(vrp_gated / total_rebalances * 100) if total_rebalances > 0 else 0.0
+        elif 'engine' in engine_policy.columns and 'policy_multiplier_used' in engine_policy.columns:
+            # Legacy long format (for backward compatibility)
+            gated_mask = engine_policy['policy_multiplier_used'] < 1.0
             total_rebalances = len(engine_policy)
             
             # Trend gating (simplified check)
@@ -372,9 +448,12 @@ def compute_constraint_binding(artifacts: Dict) -> Dict:
             vrp_mask = engine_policy['engine'].str.contains('vrp', case=False, na=False)
             vrp_gated = (vrp_mask & gated_mask).sum()
             binding['policy_gated_vrp_pct'] = float(vrp_gated / total_rebalances * 100) if total_rebalances > 0 else 0.0
+    else:
+        # Policy artifact missing
+        binding['policy_artifact_missing'] = True
     
     # Exposure capped by leverage
-    if weights is not None and len(weights) > 0:
+    if weights is not None and isinstance(weights, pd.DataFrame) and not weights.empty:
         # Check leverage caps from config
         leverage_cap = meta.get('config', {}).get('risk_targeting', {}).get('leverage_cap', 7.0)
         if isinstance(leverage_cap, str):
@@ -387,7 +466,7 @@ def compute_constraint_binding(artifacts: Dict) -> Dict:
         binding['exposure_capped_pct'] = float(capped_count / total_days * 100) if total_days > 0 else 0.0
     
     # Vol below target
-    if len(portfolio_returns) > 0:
+    if portfolio_returns is not None and isinstance(portfolio_returns, pd.Series) and not portfolio_returns.empty:
         target_vol = meta.get('config', {}).get('risk_targeting', {}).get('target_vol', 0.20)
         if isinstance(target_vol, str):
             target_vol = float(target_vol)

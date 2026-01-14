@@ -6,7 +6,7 @@ with configurable weights before passing to overlays.
 """
 
 import logging
-from typing import Dict, Optional, Union, List
+from typing import Dict, Optional, Union, List, Tuple
 from datetime import datetime
 import pandas as pd
 
@@ -57,17 +57,21 @@ class CombinedStrategy:
     def signals(
         self,
         market,
-        date: Union[str, datetime]
-    ) -> pd.Series:
+        date: Union[str, datetime],
+        return_components: bool = False
+    ) -> Union[pd.Series, Tuple[pd.Series, Dict[str, pd.Series]]]:
         """
         Generate combined signals from all enabled strategies.
         
         Args:
             market: MarketData instance
             date: Current rebalance date
+            return_components: If True, return (blended, components_dict) instead of just blended
             
         Returns:
-            Combined signals as pd.Series
+            If return_components=False: Combined signals as pd.Series
+            If return_components=True: Tuple of (blended_signals, components_dict)
+                where components_dict maps sleeve names to their weighted signal Series
         """
         date_dt = pd.to_datetime(date)
         
@@ -81,6 +85,7 @@ class CombinedStrategy:
         
         # Collect signals from all strategies
         all_signals = {}
+        components = {}  # Track per-sleeve weighted signals if return_components=True
         
         for strategy_name, strategy in self.strategies.items():
             weight = self.weights.get(strategy_name, 0.0)
@@ -154,10 +159,23 @@ class CombinedStrategy:
                         strategy_sigs = strategy.signals(market, date_dt)
                     
                     # Apply weight and add to combined signals
+                    weighted_sigs = {}
                     for symbol, signal in strategy_sigs.items():
+                        weighted_signal = weight * signal
                         if symbol not in all_signals:
                             all_signals[symbol] = 0.0
-                        all_signals[symbol] += weight * signal
+                        all_signals[symbol] += weighted_signal
+                        weighted_sigs[symbol] = weighted_signal
+                    
+                    # Store component if requested
+                    if return_components:
+                        weighted_series = pd.Series(weighted_sigs)
+                        # Ensure all universe symbols are present (fill missing with 0)
+                        for symbol in market.universe:
+                            if symbol not in weighted_series.index:
+                                weighted_series[symbol] = 0.0
+                        weighted_series = weighted_series.reindex(market.universe, fill_value=0.0)
+                        components[strategy_name] = weighted_series
                         
             except Exception as e:
                 logger.warning(
@@ -190,6 +208,8 @@ class CombinedStrategy:
             f"sum={combined.sum():.3f}"
         )
         
+        if return_components:
+            return combined, components
         return combined
     
     def describe(self) -> dict:

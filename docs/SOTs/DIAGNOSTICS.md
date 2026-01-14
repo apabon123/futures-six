@@ -18,6 +18,46 @@ The diagnostics framework provides a systematic way to:
 - Break down performance by year and by asset
 - Compare runs against baselines for ablation testing
 
+## Canonical Baselines & Pinned Runs (Phase-3 Governance)
+
+Futures-Six maintains an explicit set of pinned runs that are considered:
+
+- **Known-good**
+- **Artifact-complete**
+- **Diagnostic-validated**
+
+These runs serve as authoritative baselines for:
+
+- Ablation testing
+- Performance attribution
+- Regression detection
+- Policy / allocator proofs
+
+The authoritative registry of pinned runs is maintained in:
+
+- `reports/_PINNED/README.md`
+
+**Rules:**
+
+- Any diagnostic comparison must reference a pinned run (or explicitly justify why it does not).
+
+- Pinned runs are immutable:
+  - Never overwritten
+  - Never silently replaced
+
+- New pinned runs must:
+  - Have all required artifacts
+  - Have `canonical_diagnostics.json` and `.md` generated
+  - Be explicitly added to `reports/_PINNED/README.md` with purpose noted
+
+This separation ensures:
+
+- **SOTs define rules**
+- **The README defines state**
+- Diagnostics remain reproducible and auditable
+
+This makes DIAGNOSTICS.md the enforcer, not the ledger.
+
 ## End-to-End Production Readiness Diagnostics
 
 Production readiness is achieved when all major failure modes are identified, explainable, and acceptable, not eliminated.
@@ -348,6 +388,11 @@ When `ExecSim.run()` is called with a `run_id`, it saves artifacts to `reports/r
 - **`asset_returns.csv`**: Daily asset returns (simple returns)
   - Index: Date
   - Columns: Asset symbols
+
+- **`allocator_scalars_at_rebalances.csv`**: Allocator scalar values at each rebalance (when allocator enabled)
+  - Must include `rebalance_date` column (ISO YYYY-MM-DD format)
+  - Must include `risk_scalar_computed` and `risk_scalar_applied` columns
+  - Canonical format uses `rebalance_date` as index column
 
 **Meta.json Structure:**
 ```json
@@ -711,6 +756,57 @@ The dashboard includes five hardening changes for robustness and usability:
 - **Diagnostics Framework:** See "Canonical Diagnostics" section for JSON/Markdown report generation
 - **Allocator Diagnostics:** See "Allocator v1 Diagnostics" section for allocator-specific analysis
 - **Run Artifacts:** See "Run Artifacts" section for artifact format specifications
+
+## Committee Pack Generation (Tool Class 1)
+
+**Tool Class 1** outputs are comprehensive diagnostic reports generated post-run. These are "committee pack" artifacts that provide decision-ready analysis.
+
+### Canonical Command
+
+Generate canonical diagnostics for a run:
+
+```bash
+python scripts/diagnostics/generate_canonical_diagnostics.py --run_id <run_id>
+```
+
+**Explicit Statement:** Tool Class 1 is **not** produced by ExecSim; it is produced **post-run** after artifacts have been saved.
+
+**Outputs:**
+- `canonical_diagnostics.json` (machine-readable)
+- `canonical_diagnostics.md` (human-readable)
+
+**Location:** `reports/runs/{run_id}/`
+
+### Batch Generation / Triage Policy
+
+For generating diagnostics across multiple runs, use the batch script:
+
+```bash
+# Generate for N most recent runs
+python scripts/diagnostics/batch_generate_canonical_diagnostics.py --latest 25
+
+# Generate for specific runs
+python scripts/diagnostics/batch_generate_canonical_diagnostics.py --run_ids run1 run2 run3
+```
+
+**Required Artifacts Pre-Check:**
+
+The batch script validates required artifacts before generation:
+- `portfolio_returns.csv`
+- `equity_curve.csv`
+- `weights*.csv` (any of: `weights.csv`, `weights_scaled.csv`, `weights_raw.csv`)
+- `meta.json`
+
+This matches the artifact requirement concept documented in the "Artifact Requirements" section.
+
+**Triage Classification:**
+
+The batch script classifies failures with:
+- Error type (e.g., `missing_required_artifacts`, `generation_error`)
+- Missing artifacts list (for artifact failures)
+- Error messages (for generation failures)
+
+**Policy:** FAILED due to missing required artifacts = incomplete/abandoned run; safe to ignore. These runs lack the core artifacts needed for diagnostics and should not block workflow.
 
 ## Integration with ExecSim
 

@@ -20,6 +20,7 @@ from datetime import datetime
 from pathlib import Path
 import os
 import json
+import shutil
 
 import yaml
 import pandas as pd
@@ -89,6 +90,76 @@ class ExecSim:
     def _to_ts(x):
         """Normalize date-like objects to pandas.Timestamp."""
         return x if isinstance(x, pd.Timestamp) else pd.Timestamp(x)
+    
+    @staticmethod
+    def _get_sleeve_to_engine_mapping() -> Dict[str, str]:
+        """
+        Get explicit mapping from sleeve names to policy engine names.
+        
+        This is part of the permission layer contract and must be explicit and auditable.
+        
+        Returns:
+            Dict mapping sleeve_name -> policy_engine_name ("trend" or "vrp")
+        """
+        return {
+            # Trend-related sleeves
+            'tsmom_multihorizon': 'trend',
+            'tsmom': 'trend',
+            'tsmom_long': 'trend',
+            'tsmom_med': 'trend',
+            'tsmom_short': 'trend',
+            'tsmom_med_canonical': 'trend',
+            'canonical_medium_momentum': 'trend',
+            'medium_momentum': 'trend',
+            'short_momentum': 'trend',
+            'long_momentum': 'trend',
+            'residual_trend': 'trend',
+            # VRP-related sleeves
+            'vrp_core_meta': 'vrp',
+            'vrp_convergence_meta': 'vrp',
+            'vrp_alt_meta': 'vrp',
+            'vrp_core': 'vrp',
+            'vrp_convergence': 'vrp',
+            'vrp_alt': 'vrp',
+        }
+    
+    @staticmethod
+    def _get_policy_exempt_sleeves() -> set:
+        """
+        Get set of sleeve names that are explicitly exempt from policy.
+        
+        These sleeves are allowed to exist without policy mapping.
+        
+        Returns:
+            Set of exempt sleeve names
+        """
+        return {
+            'csmom_meta',
+            'csmom',
+            'cross_sectional',
+            'rates_curve',
+            'sr3_carry_curve',
+            'fx_commod_carry',
+            'vx_calendar_carry',
+            'sr3_curve_rv_meta',
+            'persistence',
+        }
+    
+    @staticmethod
+    def _map_sleeve_to_policy_engine(sleeve_name: str, mapping: Optional[Dict[str, str]] = None) -> Optional[str]:
+        """
+        Map sleeve name to policy engine name using explicit mapping.
+        
+        Args:
+            sleeve_name: Strategy/sleeve name (e.g., "tsmom_multihorizon", "vrp_core_meta")
+            mapping: Optional explicit mapping dict (default: uses _get_sleeve_to_engine_mapping())
+            
+        Returns:
+            Policy engine name ("trend", "vrp") or None if not mapped
+        """
+        if mapping is None:
+            mapping = ExecSim._get_sleeve_to_engine_mapping()
+        return mapping.get(sleeve_name)
     
     def _load_config(self, config_path: str) -> Optional[dict]:
         """Load configuration from YAML file."""
@@ -259,6 +330,45 @@ class ExecSim:
         turnover = (w_new - w_prev).abs().sum()
         return turnover
     
+    @staticmethod
+    def _materialize_policy_artifact(
+        *,
+        source_run_dir: Path,
+        target_run_dir: Path,
+        filename: str = "engine_policy_applied_v1.csv",
+    ) -> bool:
+        """
+        Copy policy artifact from source run into the current run dir.
+        
+        This ensures precomputed runs are self-contained and auditable.
+        The artifact is copied as-is (preserves exact bytes for determinism).
+        
+        Args:
+            source_run_dir: Path to source run directory
+            target_run_dir: Path to target run directory
+            filename: Artifact filename (default: "engine_policy_applied_v1.csv")
+            
+        Returns:
+            True if copied, False if source missing
+            
+        Raises:
+            FileNotFoundError: If source artifact is missing (hard requirement for precomputed mode)
+        """
+        src = source_run_dir / filename
+        dst = target_run_dir / filename
+        
+        if not src.exists():
+            raise FileNotFoundError(
+                f"Precomputed policy artifact not found: {src}\n"
+                f"Precomputed mode requires engine_policy_applied_v1.csv in source run: {source_run_dir.name}\n"
+                f"This is a hard requirement for production-safe baselines."
+            )
+        
+        # Make the precomputed run self-contained by copying the canonical artifact
+        shutil.copyfile(src, dst)
+        logger.info(f"[ExecSim] Materialized policy artifact: {dst.name} from source run: {source_run_dir.name}")
+        return True
+    
     def run(
         self,
         market,
@@ -317,9 +427,11 @@ class ExecSim:
         # CRITICAL: Log run_id and run_dir for debugging (addresses root cause #2)
         logger.info(f"[RUN] run_id={run_id} run_dir={run_dir.resolve()}")
         
-        # Initialize artifact writer if Risk Targeting or Allocator v1 is enabled
+        # Initialize artifact writer if Risk Targeting, Allocator v1, or Engine Policy v1 is enabled
         artifact_writer = None
-        if risk_targeting is not None or components.get('allocator_v1_config', {}).get('enabled', False):
+        if (risk_targeting is not None or 
+            components.get('allocator_v1_config', {}).get('enabled', False) or
+            components.get('engine_policy_v1_config', {}).get('enabled', False)):
             from src.layers import create_artifact_writer
             # Use run_dir already created above
             artifact_writer = create_artifact_writer(run_dir)
@@ -402,6 +514,50 @@ class ExecSim:
                 "State/regime/risk artifacts will be computed and saved for analysis only."
             )
         
+        # Phase 2: Check engine_policy_v1 config and materialize artifact in precomputed mode
+        engine_policy_v1_config = components.get('engine_policy_v1_config', {})
+        engine_policy_v1_enabled = engine_policy_v1_config.get('enabled', False)
+        engine_policy_v1_mode = engine_policy_v1_config.get('mode', 'off')
+        engine_policy_v1_precomputed_run_id = engine_policy_v1_config.get('precomputed_run_id', None)
+        
+        # Materialize policy artifact in precomputed mode (hard requirement for production-safe baselines)
+        engine_policy_map = None
+        if engine_policy_v1_enabled and engine_policy_v1_mode == 'precomputed':
+            if not engine_policy_v1_precomputed_run_id:
+                raise ValueError(
+                    "engine_policy_v1.mode='precomputed' requires precomputed_run_id to be set"
+                )
+            
+            source_run_dir = Path(out_dir) / engine_policy_v1_precomputed_run_id
+            try:
+                self._materialize_policy_artifact(
+                    source_run_dir=source_run_dir,
+                    target_run_dir=run_dir,
+                    filename="engine_policy_applied_v1.csv"
+                )
+                logger.info(
+                    f"[ExecSim] ✅ Engine Policy v1 ENABLED (mode='precomputed'). "
+                    f"Materialized policy artifact from run: {engine_policy_v1_precomputed_run_id}"
+                )
+                
+                # Load policy multipliers from materialized artifact
+                policy_csv_path = run_dir / "engine_policy_applied_v1.csv"
+                if policy_csv_path.exists():
+                    policy_df = pd.read_csv(policy_csv_path, parse_dates=['rebalance_date'])
+                    policy_df = policy_df.set_index('rebalance_date')
+                    engine_policy_map = policy_df.to_dict(orient='index')
+                    logger.info(
+                        f"[ExecSim] Loaded {len(engine_policy_map)} precomputed policy multipliers from artifact"
+                    )
+            except FileNotFoundError as e:
+                logger.error(f"[ExecSim] Failed to materialize policy artifact: {e}")
+                raise  # Hard requirement: fail loudly for production-safe baselines
+        elif engine_policy_v1_enabled:
+            logger.info(
+                f"[ExecSim] Engine Policy v1 ENABLED (mode='{engine_policy_v1_mode}'). "
+                f"Policy artifacts will be computed/generated during run."
+            )
+        
         # Build rebalance schedule
         rebalance_dates = self._build_rebalance_dates(market, risk_vol, start, end)
         rebalance_dates = pd.to_datetime(rebalance_dates)
@@ -414,6 +570,107 @@ class ExecSim:
                 'signals_panel': pd.DataFrame(),
                 'report': {}
             }
+        
+        # Phase 2: Compute engine policy in compute mode (before rebalance loop)
+        # Note: engine_policy_map may already be loaded in precomputed mode above
+        if engine_policy_v1_enabled and engine_policy_v1_mode == 'compute' and engine_policy_map is None:
+            from src.agents.engine_policy_v1 import EnginePolicyV1
+            
+            logger.info("[ExecSim] ENGINE POLICY ENABLED: entering compute/apply path")
+            
+            # Ensure artifact_writer is created
+            if artifact_writer is None:
+                from src.layers import create_artifact_writer
+                artifact_writer = create_artifact_writer(run_dir)
+            
+            # Instantiate EnginePolicyV1
+            policy = EnginePolicyV1(
+                config=engine_policy_v1_config,
+                artifact_writer=artifact_writer
+            )
+            
+            # Compute state (daily policy state for all enabled engines)
+            state_df = policy.compute_state(market, start, end)
+            
+            # Compute applied multipliers (maps state to rebalance dates, writes artifact)
+            if not state_df.empty:
+                applied_multipliers_df = policy.compute_applied_multipliers(state_df, rebalance_dates)
+                
+                # Build lookup map for applying multipliers during rebalance loop
+                # Convert pivot format to lookup map: date -> {trend_multiplier, vrp_multiplier}
+                if not applied_multipliers_df.empty:
+                    # Read the canonical pivot format artifact
+                    canonical_df = policy._to_canonical_pivot_format(applied_multipliers_df)
+                    canonical_df['rebalance_date'] = pd.to_datetime(canonical_df['rebalance_date'])
+                    canonical_df = canonical_df.set_index('rebalance_date')
+                    engine_policy_map = canonical_df.to_dict(orient='index')
+                    
+                    logger.info(
+                        f"[ExecSim] Engine Policy v1: computed {len(applied_multipliers_df)} multiplier records, "
+                        f"built lookup map with {len(engine_policy_map)} dates"
+                    )
+                else:
+                    logger.warning("[ExecSim] Engine Policy v1: computed empty multipliers")
+            else:
+                logger.warning("[ExecSim] Engine Policy v1: computed empty state, skipping multipliers")
+        
+        # Phase 2.5: Validate sleeve→engine mapping and log audit (if policy enabled)
+        if engine_policy_v1_enabled and engine_policy_map is not None:
+            # Strategy is already extracted above, validate mapping
+            if hasattr(strategy, 'strategies') and hasattr(strategy, 'weights'):
+                # This is CombinedStrategy, validate all sleeves are mapped or exempt
+                sleeve_mapping = ExecSim._get_sleeve_to_engine_mapping()
+                exempt_sleeves = ExecSim._get_policy_exempt_sleeves()
+                
+                # Get enabled sleeves
+                enabled_sleeves = {name for name, weight in strategy.weights.items() if weight > 0}
+                
+                # Validate mapping
+                unmapped_sleeves = []
+                mapped_sleeves = {}
+                exempt_sleeves_found = []
+                
+                for sleeve_name in enabled_sleeves:
+                    if sleeve_name in exempt_sleeves:
+                        exempt_sleeves_found.append(sleeve_name)
+                    elif sleeve_name in sleeve_mapping:
+                        engine_name = sleeve_mapping[sleeve_name]
+                        mapped_sleeves[sleeve_name] = engine_name
+                    else:
+                        unmapped_sleeves.append(sleeve_name)
+                
+                # Hard-fail if unmapped sleeves exist (Phase-3A strictness)
+                if unmapped_sleeves:
+                    raise ValueError(
+                        f"[ExecSim] Policy enabled but unmapped sleeves found: {unmapped_sleeves}\n"
+                        f"Sleeves must be either mapped to a policy engine or explicitly exempt.\n"
+                        f"Add mapping in ExecSim._get_sleeve_to_engine_mapping() or exempt in ExecSim._get_policy_exempt_sleeves()."
+                    )
+                
+                # Log mapping audit
+                logger.info("[ExecSim] ========================================")
+                logger.info("[ExecSim] ENGINE POLICY MAPPING AUDIT")
+                logger.info("[ExecSim] ========================================")
+                logger.info(f"[ExecSim] Enabled sleeves: {len(enabled_sleeves)}")
+                logger.info(f"[ExecSim] Mapped to policy engines:")
+                for sleeve_name, engine_name in sorted(mapped_sleeves.items()):
+                    multiplier_col = f"{engine_name}_multiplier"
+                    logger.info(f"[ExecSim]   {sleeve_name:30s} → {engine_name:10s} → {multiplier_col}")
+                if exempt_sleeves_found:
+                    logger.info(f"[ExecSim] Explicitly exempt (no policy):")
+                    for sleeve_name in sorted(exempt_sleeves_found):
+                        logger.info(f"[ExecSim]   {sleeve_name:30s} → (exempt)")
+                logger.info("[ExecSim] ========================================")
+                
+                # Count rebalances with policy binding (multiplier < 1.0)
+                if engine_policy_map:
+                    binding_count = 0
+                    for date, multipliers in engine_policy_map.items():
+                        trend_mult = multipliers.get('trend_multiplier', 1.0)
+                        vrp_mult = multipliers.get('vrp_multiplier', 1.0)
+                        if trend_mult < 0.999 or vrp_mult < 0.999:
+                            binding_count += 1
+                    logger.info(f"[ExecSim] Policy binding summary: {binding_count}/{len(engine_policy_map)} rebalances with multiplier < 1.0")
         
         # Initialize tracking
         weights_history = []
@@ -431,6 +688,10 @@ class ExecSim:
         risk_scalar_computed_history = []  # Track computed scalars (for diagnostics)
         weights_raw_history = []  # Track pre-scaling weights (for diagnostics)
         rebalance_dates_history = []  # Track dates when rebalances occurred
+        
+        # Engine Policy: Track pre-policy and post-policy components for layered weights trace
+        components_pre_policy_history = []  # Track components before policy application
+        components_post_policy_history = []  # Track components after policy application
         
         prev_weights = None
         prev_risk_scalar = None  # Track previous scalar for lag
@@ -476,8 +737,75 @@ class ExecSim:
             logger.debug(f"[ExecSim] Rebalance {i+1}/{len(rebalance_dates)}: {date}")
             
             try:
-                # Step 1: Get strategy signals
-                signals = strategy.signals(market, date)
+                # Step 1: Get strategy signals (with policy application if enabled)
+                signals = None
+                components_pre_policy = None
+                components_post_policy = None
+                
+                # If policy enabled and CombinedStrategy, use components for policy application
+                if (engine_policy_v1_enabled and engine_policy_map is not None and 
+                    hasattr(strategy, 'strategies') and hasattr(strategy, 'weights')):
+                    # Request components from CombinedStrategy
+                    signals, components_pre_policy = strategy.signals(market, date, return_components=True)
+                    
+                    # Test 1: Blend equivalence check (first 3 rebalances only)
+                    # Verify that sum(components) == blended to ensure we're not changing portfolio construction
+                    if i < 3:
+                        blended_from_components = pd.Series(0.0, index=market.universe)
+                        for component_sigs in components_pre_policy.values():
+                            blended_from_components = blended_from_components + component_sigs
+                        # Ensure same index order
+                        blended_from_components = blended_from_components.reindex(market.universe, fill_value=0.0)
+                        signals_reindexed = signals.reindex(market.universe, fill_value=0.0)
+                        
+                        # Check equality (allow small numerical differences)
+                        max_diff = (signals_reindexed - blended_from_components).abs().max()
+                        if max_diff > 1e-6:
+                            raise RuntimeError(
+                                f"[ExecSim] Blend equivalence check FAILED at rebalance {i+1} (date {date}):\n"
+                                f"max difference: {max_diff:.2e}\n"
+                                f"signals from strategy.signals(): {signals_reindexed.head().to_dict()}\n"
+                                f"signals from sum(components): {blended_from_components.head().to_dict()}\n"
+                                f"This indicates components are not pre-weighted signals that can be summed.\n"
+                                f"Policy application logic must use CombinedStrategy's internal blend method, not sum()."
+                            )
+                        else:
+                            logger.debug(f"[ExecSim] Blend equivalence check PASSED at rebalance {i+1}: max_diff={max_diff:.2e}")
+                    
+                    # Apply policy multipliers to components
+                    multipliers = engine_policy_map.get(date, {})
+                    trend_mult = multipliers.get('trend_multiplier', 1.0)
+                    vrp_mult = multipliers.get('vrp_multiplier', 1.0)
+                    
+                    components_post_policy = {}
+                    sleeve_mapping = ExecSim._get_sleeve_to_engine_mapping()
+                    for sleeve_name, component_sigs in components_pre_policy.items():
+                        policy_engine = ExecSim._map_sleeve_to_policy_engine(sleeve_name, mapping=sleeve_mapping)
+                        if policy_engine == 'trend':
+                            components_post_policy[sleeve_name] = component_sigs * trend_mult
+                        elif policy_engine == 'vrp':
+                            components_post_policy[sleeve_name] = component_sigs * vrp_mult
+                        else:
+                            # No policy mapping, keep as-is
+                            components_post_policy[sleeve_name] = component_sigs.copy()
+                    
+                    # Re-blend components (sum them, as CombinedStrategy does internally)
+                    signals = pd.Series(0.0, index=market.universe)
+                    for component_sigs in components_post_policy.values():
+                        signals = signals + component_sigs
+                    
+                    # Track components for artifacts
+                    components_pre_policy_history.append({
+                        'date': date,
+                        'components': {k: v.copy() for k, v in components_pre_policy.items()}
+                    })
+                    components_post_policy_history.append({
+                        'date': date,
+                        'components': {k: v.copy() for k, v in components_post_policy.items()}
+                    })
+                else:
+                    # Policy not enabled or not CombinedStrategy, use normal path
+                    signals = strategy.signals(market, date)
                 
                 # Stage 4A: Capture per-sleeve signals if CombinedStrategy
                 if hasattr(strategy, 'strategies') and hasattr(strategy, 'weights'):
@@ -1294,7 +1622,7 @@ class ExecSim:
                     'risk_scalar_computed': risk_scalar_computed_history,
                     'risk_scalar_applied': risk_scalar_applied_history
                 }, index=weights_panel.index)
-                scalars_df.to_csv(run_dir / 'allocator_scalars_at_rebalances.csv')
+                scalars_df.to_csv(run_dir / 'allocator_scalars_at_rebalances.csv', index_label='rebalance_date')
                 logger.info(f"[ExecSim] Saved allocator_scalars_at_rebalances.csv")
             
             # Stage 5.5: Precomputed mode artifacts
@@ -1308,7 +1636,7 @@ class ExecSim:
                     used_scalars_df = pd.DataFrame({
                         'risk_scalar_used': risk_scalar_applied_history
                     }, index=weights_panel.index)
-                    used_scalars_df.to_csv(run_dir / 'allocator_risk_v1_applied_used.csv')
+                    used_scalars_df.to_csv(run_dir / 'allocator_risk_v1_applied_used.csv', index_label='rebalance_date')
                     logger.info(f"[ExecSim] Saved allocator_risk_v1_applied_used.csv (actually applied)")
                 
                 # Save metadata for precomputed mode

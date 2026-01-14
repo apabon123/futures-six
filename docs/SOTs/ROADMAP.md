@@ -78,6 +78,16 @@ Sharpe improvement happens in Post-Production Expansion Cycles.
 
 *Note: All canonical metrics computed on canonical evaluation window (2020-01-06 to 2025-10-31). See `configs/canonical_window.yaml` for the authoritative window definition. See STRATEGY.md § "Baseline Evolution Summary" for full Core v3-v9 comparison table.*
 
+### Phase-3 Status Note
+
+As of Phase-3A, Futures-Six maintains a formal set of pinned baseline runs used for:
+
+- Attribution
+- Ablation testing
+- Regression tracking
+
+Performance improvements beyond this point are evaluated only relative to pinned baselines, ensuring controlled, auditable progress.
+
 ### Core v7 Upgrade — VRP-Alt Integration (15%)
 
 **Completed**: Phase-0, Phase-1, Phase-2, and scaling analysis for VRP-Alt.
@@ -653,6 +663,7 @@ Futures-Six intentionally launches with a minimum viable but architecturally com
    - Sleeve-level loss attribution
    - Allocator behavior under stress
    - Correlation spikes and path-dependent drawdowns
+   - Tooling hardening: committee-pack generator + batch generator + pinned baselines for ablation matrix
 
 4. **Production freeze (Core v9)**
    - Freeze production engines

@@ -1628,7 +1628,31 @@ Record these decisions and their rationale in `SOTs/STRATEGY.md` (or a dedicated
 
 ---
 
-## 11. Quick Reference Checklist
+## 11. Phase-3 / Phase-B Run Discipline
+
+**Purpose:** Prevent "oops I compared to the wrong thing" errors by establishing clear rules for run validity.
+
+For any run whose purpose is:
+
+- Attribution
+- Ablation
+- Engine refinement
+- Portfolio construction changes
+
+The following checklist must be satisfied:
+
+- The comparison baseline is listed in `reports/_PINNED/README.md`
+- The new run has canonical diagnostics generated
+- The run intent is documented (engine change, control ablation, etc.)
+- No other system components are modified unless explicitly stated
+
+Runs that do not meet these criteria must not be used for conclusions.
+
+This locks down the "many runs" problem and ensures comparisons are valid and auditable.
+
+---
+
+## 12. Quick Reference Checklist
 
 When you do anything, ask:
 
@@ -1767,6 +1791,34 @@ When a parked sleeve is re-tested:
 - **SOTs/STRATEGY.md**: Update status (if re-test passes, move from PARKED to active)
 - **Research docs** (e.g., `TREND_RESEARCH.md`): Add new Phase-0/Phase-1 results section
 - **SOTs/PROCEDURES.md**: Note the trigger that caused re-test (for audit trail)
+
+---
+
+## 13. Phase 3A: Diagnosis Sprint — Operational Steps
+
+**Purpose:** Establish a procedural workflow for post-run diagnosis and decision-making.
+
+After any ablation run or baseline run:
+
+1. **Generate Committee Pack:**
+   ```bash
+   python scripts/diagnostics/generate_canonical_diagnostics.py --run_id <run_id>
+   ```
+   This generates `canonical_diagnostics.json` and `canonical_diagnostics.md` (Tool Class 1 outputs).
+
+2. **Verify Required Artifacts Present:**
+   - Required artifacts: `portfolio_returns.csv`, `equity_curve.csv`, `weights*.csv`, `meta.json`
+   - Use batch script for bulk validation: `python scripts/diagnostics/batch_generate_canonical_diagnostics.py --run_ids <run_id>`
+
+3. **Add to _PINNED if Baseline / Decision Run:**
+   - If the run is a baseline or decision run, document it in `reports/_PINNED/README.md`
+   - Include run_id, purpose, and status
+
+4. **Review Dashboard:**
+   - Only after committee pack is generated and artifacts verified
+   - Use dashboard for interactive exploration and validation
+
+This workflow maintains the "measure → attribute → decide" loop and ensures all decision runs have complete diagnostics.
 
 ---
 

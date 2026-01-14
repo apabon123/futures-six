@@ -506,11 +506,16 @@ engine_policy_v1:
 ```
 
 **Artifacts (saved to `reports/runs/{run_id}/`):**
-- `engine_policy_state_v1.csv` — Daily: date, engine, feature_value, policy_state, policy_multiplier
-- `engine_policy_applied_v1.csv` — Rebalance-level: rebalance_date, engine, policy_multiplier_used, source_run_id
+- `engine_policy_state_v1.csv` — Daily: date, engine, stress_value, stress_percentile, policy_state, policy_multiplier
+- `engine_policy_applied_v1.csv` — Rebalance-level (pivot format): rebalance_date, trend_multiplier, vrp_multiplier
 - `engine_policy_v1_meta.json` — Config snapshot, version, determinism hash (compute mode) or source_determinism_hash + applied_csv_hash (precomputed mode)
 - **Core run artifacts always generated:** `portfolio_returns.csv`, `equity_curve.csv`, `weights.csv`, `meta.json` (regardless of mode)
 - **Meta.json includes:** `engine_policy_source_run_id` linking precomputed runs to their compute baseline
+
+**Artifact Contract:**
+- **Compute mode**: Must write `engine_policy_applied_v1.csv` (pivot format: rebalance_date, trend_multiplier, vrp_multiplier)
+- **Precomputed mode**: Must materialize (copy) `engine_policy_applied_v1.csv` from source run to target run directory (self-contained)
+- **Diagnostics**: Reports `policy_artifact_missing: false` if artifact exists, `policy_gated_trend_pct` and `policy_gated_vrp_pct` as numeric (0.0 if no binding, not NaN)
 
 **Stack Integration:**
 - Inserted between Engine Signals (Layer 1) and Portfolio Construction (Layer 3)
@@ -857,6 +862,7 @@ Allocator v1 is the first production implementation of the allocator architectur
 - No ML or optimization (rule-based only)
 - Fully reproducible
 - Auditable at every step
+- Auditability includes not only deterministic computation, but also explicit identification of which historical runs constitute the system's performance reference points
 
 **3. Stickiness**
 - Hysteresis prevents thrashing

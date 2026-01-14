@@ -413,14 +413,23 @@ class EnginePolicyV1:
             f"{n_gated} gated OFF ({pct_gated:.1f}%)"
         )
         
-        # Write artifact
+        # Write artifact in canonical pivot format
         if self.artifact_writer is not None:
+            # Transform long format to pivot format for canonical artifact
+            canonical_df = self._to_canonical_pivot_format(applied_df)
+            artifact_path = self.artifact_writer.get_path("engine_policy_applied_v1.csv")
             self.artifact_writer.write_csv(
                 "engine_policy_applied_v1.csv",
-                applied_df,
+                canonical_df,
                 mode="overwrite"
             )
-            self._logger.info("[EnginePolicyV1] Saved engine_policy_applied_v1.csv")
+            # Soft assert: verify artifact was written (hard requirement for compute mode)
+            if self.mode == 'compute' and not artifact_path.exists():
+                raise RuntimeError(
+                    f"[EnginePolicyV1] Artifact write failed: {artifact_path} does not exist after write. "
+                    f"This is a hard requirement for compute mode."
+                )
+            self._logger.info("[EnginePolicyV1] Saved engine_policy_applied_v1.csv (canonical pivot format)")
         
         return applied_df
     
@@ -641,6 +650,78 @@ class EnginePolicyV1:
             self._logger.info("[EnginePolicyV1] Saved engine_policy_v1_meta.json")
         
         self._meta_written = True
+    
+    def _to_canonical_pivot_format(self, long_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Transform long format DataFrame to canonical pivot format.
+        
+        Long format: rebalance_date, engine, policy_multiplier_used, source_run_id
+        Pivot format: rebalance_date, trend_multiplier, vrp_multiplier
+        
+        Args:
+            long_df: DataFrame in long format
+            
+        Returns:
+            DataFrame in pivot format (canonical artifact format)
+        """
+        if long_df.empty:
+            return pd.DataFrame(columns=['rebalance_date', 'trend_multiplier', 'vrp_multiplier'])
+        
+        # Pivot to wide format: one row per rebalance_date, one column per engine
+        pivot_df = long_df.pivot_table(
+            index='rebalance_date',
+            columns='engine',
+            values='policy_multiplier_used',
+            aggfunc='first'  # Should be unique, but use first to handle duplicates
+        )
+        
+        # Rename columns to canonical format: trend_multiplier, vrp_multiplier
+        # Map common engine name patterns to canonical names
+        canonical_df = pd.DataFrame(index=pivot_df.index)
+        canonical_df['rebalance_date'] = pivot_df.index
+        
+        # Map engine names to canonical multiplier columns
+        engine_mapping = {
+            'trend': 'trend_multiplier',
+            'tsmom_multihorizon': 'trend_multiplier',
+            'vrp': 'vrp_multiplier',
+        }
+        
+        for engine_col in pivot_df.columns:
+            # Find matching canonical column
+            canonical_col = None
+            engine_lower = str(engine_col).lower()
+            if 'trend' in engine_lower:
+                canonical_col = 'trend_multiplier'
+            elif 'vrp' in engine_lower:
+                canonical_col = 'vrp_multiplier'
+            
+            if canonical_col and canonical_col not in canonical_df.columns:
+                canonical_df[canonical_col] = pivot_df[engine_col]
+            elif canonical_col:
+                # If column already exists (e.g., multiple trend engines), use max (shouldn't happen in v1)
+                canonical_df[canonical_col] = canonical_df[canonical_col].combine(
+                    pivot_df[engine_col], max, fill_value=1.0
+                )
+        
+        # Ensure required columns exist (default to 1.0 if missing)
+        if 'trend_multiplier' not in canonical_df.columns:
+            canonical_df['trend_multiplier'] = 1.0
+        if 'vrp_multiplier' not in canonical_df.columns:
+            canonical_df['vrp_multiplier'] = 1.0
+        
+        # Fill NaN with 1.0 (default: policy ON)
+        canonical_df['trend_multiplier'] = canonical_df['trend_multiplier'].fillna(1.0)
+        canonical_df['vrp_multiplier'] = canonical_df['vrp_multiplier'].fillna(1.0)
+        
+        # Reset index first (rebalance_date is in the index from pivot_df)
+        canonical_df = canonical_df.reset_index(drop=True)
+        
+        # Reorder columns: rebalance_date, trend_multiplier, vrp_multiplier
+        canonical_df = canonical_df[['rebalance_date', 'trend_multiplier', 'vrp_multiplier']].copy()
+        canonical_df = canonical_df.sort_values('rebalance_date').reset_index(drop=True)
+        
+        return canonical_df
     
     def _get_feature(
         self,
