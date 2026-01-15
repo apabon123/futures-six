@@ -158,18 +158,41 @@ def main():
         features_cfg = config.get("features", {}) if config else {}
         
         # 1. Initialize MarketData
-        logger.info("\n[1/8] Initializing MarketData broker...")
+        logger.info("\n[1/9] Initializing MarketData broker...")
         market = MarketData()
         logger.info(f"  Universe: {market.universe}")
         logger.info(f"  Table: {market.table_name}")
         
-        # 1b. Initialize FeatureService
-        logger.info("\n[2/8] Initializing FeatureService...")
+        # 1b. Build Policy Features (upstream of EnginePolicyV1)
+        logger.info("\n[2/9] Building Policy Features...")
+        from src.agents.policy_feature_builder import PolicyFeatureBuilder
+        
+        # Check if engine policy is enabled (if so, we need policy features)
+        engine_policy_cfg = config.get("engine_policy_v1", {}) if config else {}
+        engine_policy_enabled = engine_policy_cfg.get("enabled", False)
+        
+        if engine_policy_enabled:
+            policy_builder = PolicyFeatureBuilder(market)
+            try:
+                policy_features = policy_builder.build(
+                    start_date=start_date,
+                    end_date=end_date,
+                    attach_to_market=True
+                )
+                logger.info(f"  Policy features built: {list(policy_features.keys())}")
+            except Exception as e:
+                logger.error(f"  Error building policy features: {e}")
+                logger.warning("  Continuing without policy features (EnginePolicyV1 may fail)")
+        else:
+            logger.info("  Engine Policy disabled, skipping policy features")
+        
+        # 1c. Initialize FeatureService
+        logger.info("\n[3/9] Initializing FeatureService...")
         feature_service = FeatureService(market, config=features_cfg)
         logger.info("  FeatureService initialized")
         
         # 2. Initialize individual strategies
-        logger.info("\n[3/8] Initializing strategy sleeves...")
+        logger.info("\n[4/9] Initializing strategy sleeves...")
         strategy_instances = {}
         strategy_weights = {}
         
@@ -617,7 +640,7 @@ def main():
             logger.info(f"    Computed features: {list(features_dict.keys())}")
         
         # 3. Initialize CombinedStrategy
-        logger.info("\n[4/8] Initializing CombinedStrategy...")
+        logger.info("\n[5/9] Initializing CombinedStrategy...")
         strategy = CombinedStrategy(
             strategies=strategy_instances,
             weights=strategy_weights,
@@ -629,7 +652,7 @@ def main():
         # 4. Initialize MacroRegimeFilter (if enabled)
         macro_enabled = macro_cfg.get("enabled", True)
         if macro_enabled:
-            logger.info("\n[5/8] Initializing MacroRegimeFilter...")
+            logger.info("\n[6/9] Initializing MacroRegimeFilter...")
             fred_series = macro_cfg.get("fred_series")
             if fred_series and isinstance(fred_series, list):
                 fred_series = tuple(fred_series)
@@ -647,21 +670,21 @@ def main():
             )
             logger.info(f"  Config: {macro_overlay.describe()}")
         else:
-            logger.info("\n[5/8] MacroRegimeFilter disabled (enabled: false)")
+            logger.info("\n[6/9] MacroRegimeFilter disabled (enabled: false)")
             macro_overlay = None
         
         # 5. Initialize RiskVol (needed by VolManaged)
-        logger.info("\n[6/8] Initializing RiskVol agent...")
+        logger.info("\n[7/9] Initializing RiskVol agent...")
         risk = RiskVol()
         logger.info(f"  Config: {risk.describe()}")
         
         # 6. Initialize VolManaged Overlay
-        logger.info("\n[7/8] Initializing VolManaged overlay...")
+        logger.info("\n[8/9] Initializing VolManaged overlay...")
         vol_overlay = VolManagedOverlay(risk_vol=risk)
         logger.info(f"  Config: {vol_overlay.describe()}")
         
         # 7. Initialize Risk Targeting Layer (Layer 5)
-        logger.info("\n[8/9] Initializing Risk Targeting Layer...")
+        logger.info("\n[9/10] Initializing Risk Targeting Layer...")
         risk_targeting_cfg = config.get('risk_targeting', {})
         risk_targeting_enabled = risk_targeting_cfg.get('enabled', False)
         risk_targeting_layer = None
@@ -686,7 +709,7 @@ def main():
             logger.info("  Risk Targeting disabled (enabled: false)")
         
         # 8. Initialize Allocator
-        logger.info("\n[9/9] Initializing Allocator...")
+        logger.info("\n[10/10] Initializing Allocator...")
         allocator = Allocator()
         logger.info(f"  Config: {allocator.describe()}")
         

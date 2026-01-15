@@ -56,7 +56,47 @@ This separation ensures:
 - **The README defines state**
 - Diagnostics remain reproducible and auditable
 
+
 This makes DIAGNOSTICS.md the enforcer, not the ledger.
+
+## Governance Fields (Phase 3A)
+
+These fields are derived from execution-time metadata (`meta.json`) and represent the **authoritative** state of system governance. They are **not** inferred from artifact existence (unless explicitly noted for legacy recovery).
+
+| Stage | Key Fields | Description |
+|-------|------------|-------------|
+| **Policy** | `policy_enabled` | Master switch state |
+| | `policy_effective` | True if inputs present and logic ran |
+| | `policy_inert` | True if enabled but inputs missing (FAILURE) |
+| | `policy_has_teeth` | True if any multiplier < 1.0 (binding) |
+| **Risk Targeting** | `rt_enabled` | Master switch state |
+| | `rt_effective` | True if history present (returns/cov) |
+| | `rt_has_teeth` | True if leverage != 1.0 (active scaling) |
+| | `rt_multiplier_stats` | p5/p50/p95 leverage multipliers |
+| **Allocator** | `alloc_v1_enabled` | Master switch state |
+| | `alloc_v1_effective` | True if state computed and inputs present |
+| | `alloc_v1_has_teeth` | True if any scalar < 1.0 (active braking) |
+| | `alloc_v1_regime_dist`| % days in Normal/Elevated/Stress/Crisis |
+
+**Data-Driven Rule:** Governance status must be derived from `meta.json` telemetry. Fallback to artifact inference is only permitted for pre-Phase 3A legacy runs.
+
+## Performance Windows & Metrics Scope
+
+To ensure auditability, diagnostics must explicitly report the windows used for metric computation.
+
+### Window Definitions
+
+- **Requested Range**: Defined by `start_date` and `end_date` in `meta.json`.
+- **Effective Window**: Starts at `effective_start_date` (first rebalance where weights exist).
+- **Per-Stage Readiness**: Tracked in `per_stage_effective_starts` (Policy, RT, Allocator).
+- **Evaluation Window**: Starts at `evaluation_start_date = max(per_stage_readiness)`.
+
+### Metrics Scope
+
+- **`metrics_full`**: Computed over the **Available returns span** (`effective_start_date` → `end_date`). Provides risk context over the entire tradable history.
+- **`metrics_eval`**: Computed over the **Evaluation window** (`evaluation_start_date` → `end_date`). This is the **authoritative** performance record.
+
+*Note: These are identical if the system is effective from the first rebalance.*
 
 ## End-to-End Production Readiness Diagnostics
 

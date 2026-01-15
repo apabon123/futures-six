@@ -98,6 +98,22 @@ The allocator does not:
 - Predict markets
 - Override engine direction
 - Optimize Sharpe
+
+---
+
+## 4. Evaluation Window Contract
+
+Evaluation windows in Futures-Six are **computed**, not chosen. This ensures that performance figures are anchored in technical reality, not cherry-picked start dates.
+
+### Contract Rules
+
+1. **The system does not trade until `effective_start_date`**: Weights are undefined or zero until the system is thermally stable (warmup complete).
+2. **Authoritative performance begins at `evaluation_start_date`**: This date marks when all enabled governance stages (Policy, Risk Targeting, Allocator) are fully effective (not in inert or defaulted state).
+3. **Dual metrics exist for auditability**:
+   - **"Available returns span"** (`metrics_full`): Context for the entire path from the first weight.
+   - **"Evaluation window"** (`metrics_eval`): The authoritative baseline for system comparison.
+
+This data-driven anchoring prevents the "warmup bias" where early, under-diversified returns can distort full-run Sharpe ratios.
 - Learn directly from P&L
 
 ---
@@ -121,6 +137,31 @@ The canonical execution stack is:
 7. **Margin & Execution Constraints**
 
 **This ordering is authoritative. All future development must preserve these boundaries.**
+
+### Stage Effectiveness Contract (Phase 3A Governance)
+
+A stage in the canonical stack is considered **Effective** if and only if:
+1. The stage is **enabled** in configuration.
+2. All required inputs are **present** and have valid data.
+3. The stage produces a **non-default** output when conditions require it.
+
+If a stage is enabled but missing required inputs (e.g., missing history for volatility calculation), it is classified as **INERT**.
+
+**Governance Rule:**
+- **"Effective" ≠ "Binding"**: A stage can be effective but non-binding (e.g., policy multiplier = 1.0 because no stress is detected). This is valid.
+- **"Inert" is NOT Acceptable**: An inert stage means the system is flying blind. Runs with inert stages are **ineligible** for attribution or ablation analysis.
+
+### System-Level Evaluation Window
+
+Futures-Six inherits feature warm-up and minimum history requirements from its constituent sleeves (Phase 0–2 promotion criteria).
+
+System-level performance evaluation begins on the first date at which all promoted sleeves and required policy / risk / allocator features are fully formed and stable.
+
+This date is determined programmatically from feature readiness and is fixed prior to Phase 3A attribution and paper-trading decisions.
+
+**See:**
+- Sleeve Phase 0–2 promotion rules (`PROCEDURES.md`)
+- Feature warm-up requirements (Individual Sleeve READMEs)
 
 ---
 

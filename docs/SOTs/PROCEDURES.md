@@ -230,6 +230,46 @@ When you see diagnostic comparisons with mismatched row counts or start dates, *
 
 ---
 
+### 2.6 Phase 3A: Baseline Run Definition
+
+**Purpose**: Define the rules for establishing and validating Phase 3A statistical baselines with full governance (Policy + Risk Targeting + Allocator).
+
+#### Baseline Run Rules
+
+- **Data range vs effective_start_date (first weights)**:
+  - `start_date` / `end_date`: Requested data range.
+  - `effective_start_date`: The first date where weights exist (after warmup).
+  - The system does not trade before `effective_start_date` (weights undefined).
+
+- **evaluation_start_date = max(per_stage_effective_starts)**:
+  - Computed as the maximum of all enabled, required governance stages.
+  - `policy_effective_start`: First date policy features are present and valid.
+  - `rt_effective_start`: First date Risk Targeting has covariance available.
+  - `alloc_effective_start`: First date Allocator has state/scalars computed.
+  - Note: These often coincide with `effective_start_date` if everything is ready simultaneously.
+
+#### Metrics Reporting Rule
+
+- **metrics_full**: "Available returns span" (computed from `effective_start_date` to `end_date`).
+- **metrics_eval**: "Evaluation window" (computed from `evaluation_start_date` to `end_date`).
+- Note: If `effective_start_date == evaluation_start_date`, these will be identical.
+
+#### Precomputed Lineage Rule
+
+- Precomputed Allocator v1 MUST have `allocator_source_run_id` (non-null) and `allocator_source_valid = true`.
+- If validation fails (source ID mismatch or missing), the allocator is marked as **not-effective**, and the run is not baseline-eligible.
+
+#### Pinned Entry Requirements
+
+A pinned baseline entry must include:
+- Data range (requested start/end)
+- Effective start (first weights)
+- Evaluation start (all governance effective)
+- Metric scope labels ("Available returns span" vs "Evaluation window")
+- Run lineage: Compute ID -> Precomputed ID
+
+---
+
 ## 3. Data Expansion Protocol
 
 ### Canonical Research Window vs Structural Validation Window
@@ -267,7 +307,35 @@ This rule prevents overfitting to expanded historical windows. The goal is to va
 
 ---
 
-## 4. Change Types (Taxonomy)
+## 4. Phase 3A Pre-Flight Gate (Governance)
+
+Before any attribution ablation runs:
+
+1.  **Governed Baseline Must Exist**: A compute+precomputed baseline pair must be established.
+2.  **Effectiveness Check**:
+    *   **Engine Policy**: Must be enabled, effective (inputs present), and non-inert.
+    *   **Risk Targeting**: Must be enabled, effective (history present), and non-inert.
+    *   **Allocator**: Must be enabled, effective (state computed), and non-inert.
+3.  **Validation**: `validate_phase3a_policy_baseline.py` must PASS.
+
+**Runs failing this gate must not be used for attribution analysis.**
+
+### Ablation Eligibility Rule
+
+Only runs where all **enabled** stages are **effective** and **non-inert** may be used for attribution analysis.
+Ablations intentionally disabling a stage must record `*_enabled=false` and must not be classified as inert. "Inert" implies "intended to work but failed," which invalidates the experiment.
+
+### Validation Tooling Reference
+
+| Scope | Script | Purpose |
+|-------|--------|---------|
+| **Phase 2 Policy** | `scripts/diagnostics/validate_phase2_policy_v1.py` | Verify policy gates logic & artifacts |
+| **Phase 3A Baseline** | `scripts/diagnostics/validate_phase3a_policy_baseline.py` | Verify governed baseline integrity |
+| **Governance Checks** | `scripts/diagnostics/check_governance.py` | Verify meta.json governance fields |
+
+---
+
+## 5. Change Types (Taxonomy)
 
 Every change falls into one of these buckets:
 
@@ -1794,11 +1862,17 @@ When a parked sleeve is re-tested:
 
 ---
 
-## 13. Phase 3A: Diagnosis Sprint — Operational Steps
+## 13. Phase 3A: Policy Features Governance & Acceptance
 
-**Purpose:** Establish a procedural workflow for post-run diagnosis and decision-making.
+**Purpose:** Enforce "Policy Features Present + Policy Has Teeth" gate to prevent silent regression.
 
-After any ablation run or baseline run:
+### Phase 3A Acceptance Criteria
+
+**A. Phase 2 "Teeth" Criteria (Must be true again on canonical baseline):**
+1. ✅ **Weights differ vs baseline when stress triggers:** Compare baseline vs policy-enabled run — weights differ on at least one rebalance when stress triggers
+2. ✅ **Gating counts non-zero in at least one stress window:** Policy gating percentages (`policy_gated_trend_pct`, `policy_gated_vrp_pct`) must be > 0.0 (not all zero)
+
+**B. Phase 3A Operational Procedure (What you do after each run):**
 
 1. **Generate Committee Pack:**
    ```bash
@@ -1810,15 +1884,69 @@ After any ablation run or baseline run:
    - Required artifacts: `portfolio_returns.csv`, `equity_curve.csv`, `weights*.csv`, `meta.json`
    - Use batch script for bulk validation: `python scripts/diagnostics/batch_generate_canonical_diagnostics.py --run_ids <run_id>`
 
-3. **Add to _PINNED if Baseline / Decision Run:**
+3. **Check Policy-Inert Classification:**
+   - Review `canonical_diagnostics.json` → `constraint_binding` section:
+     - `policy_enabled`: bool (from config)
+     - `policy_inputs_present`: dict (per-feature bools: `gamma_stress_proxy`, `vx_backwardation`, `vrp_stress_proxy`)
+     - `policy_inputs_missing`: bool
+     - `policy_effective`: bool (enabled AND inputs present)
+     - `policy_inert`: bool
+     - `policy_inert_reason`: str (if inert)
+   - **Practical rule:** If `engine_policy_v1.enabled=true` and `policy_inputs_missing=true`, the run is **Policy-Inert** and cannot be used for attribution/ablations.
+
+4. **Add to _PINNED if Baseline / Decision Run:**
    - If the run is a baseline or decision run, document it in `reports/_PINNED/README.md`
    - Include run_id, purpose, and status
+   - **Only pin if policy is effective (not Policy-Inert)**
 
-4. **Review Dashboard:**
+5. **Review Dashboard:**
    - Only after committee pack is generated and artifacts verified
    - Use dashboard for interactive exploration and validation
 
-This workflow maintains the "measure → attribute → decide" loop and ensures all decision runs have complete diagnostics.
+### Phase 3A Re-Freeze Baseline Sequence
+
+**See `docs/PHASE_3A_BASELINE_REFREEZE.md` for the complete step-by-step command sequence.**
+
+**Quick Reference:**
+
+1. **Compute Mode Baseline:**
+   ```bash
+   python scripts/run_canonical_frozen_stack.py \
+       --strategy_profile core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro \
+       --compute_run_id canonical_frozen_stack_compute_phase3a_<timestamp>
+   
+   python scripts/diagnostics/generate_canonical_diagnostics.py \
+       --run_id canonical_frozen_stack_compute_phase3a_<timestamp>
+   
+   python scripts/diagnostics/validate_phase3a_policy_baseline.py \
+       canonical_frozen_stack_compute_phase3a_<timestamp>
+   ```
+
+2. **Precomputed Mode Baseline:**
+   ```bash
+   python scripts/run_canonical_frozen_stack.py \
+       --strategy_profile core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro \
+       --skip_compute \
+       --existing_compute_run_id canonical_frozen_stack_compute_phase3a_<timestamp> \
+       --precomputed_run_id canonical_frozen_stack_precomputed_phase3a_<timestamp>
+   
+   python scripts/diagnostics/generate_canonical_diagnostics.py \
+       --run_id canonical_frozen_stack_precomputed_phase3a_<timestamp>
+   
+   python scripts/diagnostics/validate_phase3a_policy_baseline.py \
+       canonical_frozen_stack_precomputed_phase3a_<timestamp>
+   ```
+
+3. **Pin Only If Both Pass:**
+   - ✅ `policy_inert=false` (both runs)
+   - ✅ `policy_effective=true` (both runs)
+   - ✅ `stress_value` not-all-NaN for Trend and VRP engines
+   - ✅ At least one multiplier=0 OR explicit zero gating justification
+   - Add to `reports/_PINNED/README.md` per template in `docs/PHASE_3A_BASELINE_REFREEZE.md`
+
+**Once pinned, Phase 3A ablations are unblocked.**
+
+This workflow maintains the "measure → attribute → decide" loop and ensures all decision runs have complete diagnostics with explicit Policy-Inert classification.
 
 ---
 

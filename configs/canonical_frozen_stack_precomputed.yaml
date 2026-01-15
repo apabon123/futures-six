@@ -1,7 +1,7 @@
 engine_policy_v1:
   enabled: true
   mode: precomputed
-  precomputed_run_id: canonical_frozen_stack_compute_20260114_1300
+  precomputed_run_id: phase3a_baseline_compute_20251031
   lag_rebalances: 1
   apply_missing_multiplier_as: 1.0
   engines:
@@ -43,7 +43,7 @@ allocator_v1:
   enabled: true
   mode: precomputed
   profile: H
-  precomputed_run_id: canonical_frozen_stack_compute_20260114_1300
+  precomputed_run_id: phase3a_baseline_compute_20251031
   precomputed_scalar_filename: allocator_risk_v1_applied.csv
   apply_missing_scalar_as: 1.0
   state_version: v1.0

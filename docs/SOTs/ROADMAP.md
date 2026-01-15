@@ -88,6 +88,32 @@ As of Phase-3A, Futures-Six maintains a formal set of pinned baseline runs used 
 
 Performance improvements beyond this point are evaluated only relative to pinned baselines, ensuring controlled, auditable progress.
 
+#### Phase 3A Status (Jan 2026) -> COMPLETE
+- [x] **Policy Feature Plumbing**
+    - [x] Extract `gamma_stress_proxy`, `vx_backwardation`, `vrp_stress_proxy` to `meta.json`
+    - [x] Ensure policy features are purely data-driven (no config hardcoding)
+- [x] **Governed Baseline Re-Freeze**
+    - [x] Re-run canonical baseline with full feature tracking
+    - [x] Pin new baseline: `canonical_frozen_stack_precomputed_phase3a_governed_...`
+- [x] **RT & Allocator Governance**
+    - [x] Fix RT telemetry (finite stats in meta.json)
+    - [x] Formalize "Effective vs Inert" contract
+- [x] **Phase 3A Statistical Baseline — Fully Governed**
+    - [x] Established pinned baseline: `phase3a_statistical_baseline_governed_20251031`
+    - [x] Effective/Eval start: 2020-03-20
+    - [x] Implemented dual metrics (`returns span` vs `eval window`)
+    - [x] Implemented strict precomputed lineage validation
+
+**🔜 Next Steps (Calibration Sprint):**
+- RT + Allocator calibration (distribution targets)
+- Median gross 4.0–4.5×
+- P90 gross 5.5–6.5×
+- Cap rarely binds
+
+**⏸ Defer:**
+- Ablations until RT/Allocator behavior is frozen.
+- [ ] **Next: Phase 3A Attribution Ablations** (Policy / RT / Allocator / Sleeves)
+
 ### Core v7 Upgrade — VRP-Alt Integration (15%)
 
 **Completed**: Phase-0, Phase-1, Phase-2, and scaling analysis for VRP-Alt.

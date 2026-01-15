@@ -137,11 +137,36 @@ def compute_core_metrics(run: RunData) -> Dict[str, float]:
     
     # CAGR
     equity = run.equity_curve
+    r = run.portfolio_returns
+
+    # Filtering for Evaluation Window if present
+    eval_start_str = run.meta.get('evaluation_start_date')
+    if eval_start_str:
+        eval_start = pd.Timestamp(eval_start_str)
+        # Ensure we have data after this date
+        if eval_start > r.index[-1]:
+             # Fallback if evaluation starts after data ends (shouldn't happen in valid run)
+             pass
+        else:
+             original_len = len(r)
+             r = r[r.index >= eval_start]
+             equity = equity[equity.index >= eval_start]
+             # Renormalize equity to start at 1.0
+             if not equity.empty:
+                equity = equity / equity.iloc[0]
+             
+             # print(f"DEBUG: Applied Evaluation Window: {eval_start_str} -> End. Days: {original_len} -> {len(r)}")
+
     if len(equity) < 2:
         cagr = float('nan')
     else:
         equity_start = equity.iloc[0]
         equity_end = equity.iloc[-1]
+        
+        # Calculate years based on actual sliced data length
+        n_days = len(r)
+        years = n_days / 252.0
+
         if equity_start > 0 and years > 0:
             cagr = (equity_end / equity_start) ** (1 / years) - 1
         else:

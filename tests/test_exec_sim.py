@@ -27,6 +27,7 @@ class MockMarketData:
     
     def __init__(self, returns_df: pd.DataFrame, universe: tuple):
         self.returns_df = returns_df
+        self.returns_cont = returns_df  # ExecSim expects continuous returns
         self.universe = universe
         self.asof = None
     
@@ -81,7 +82,7 @@ class MockRiskVol:
     def __init__(self, universe: tuple):
         self.universe = universe
     
-    def mask(self, market, date):
+    def mask(self, market, date, signals=None):
         """Return tradable symbols."""
         return pd.Index(self.universe)
     
@@ -89,7 +90,7 @@ class MockRiskVol:
         """Return constant volatilities."""
         return pd.Series(0.15, index=self.universe)
     
-    def covariance(self, market, date):
+    def covariance(self, market, date, signals=None):
         """Return identity covariance matrix."""
         n = len(self.universe)
         cov = np.eye(n) * 0.15**2

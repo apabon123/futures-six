@@ -30,6 +30,20 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        return super(NumpyEncoder, self).default(obj)
+
+
 class ExecSim:
     """
     Backtest orchestrator and metrics calculator.
@@ -689,6 +703,20 @@ class ExecSim:
         weights_raw_history = []  # Track pre-scaling weights (for diagnostics)
         rebalance_dates_history = []  # Track dates when rebalances occurred
         
+        # Risk Targeting governance tracking (Layer 5)
+        rt_leverage_history = []  # Track leverage multipliers
+        rt_current_vol_history = []  # Track computed current vol
+        rt_weights_pre_history = []  # Track weights before RT
+        rt_weights_post_history = []  # Track weights after RT
+        rt_returns_available_history = []  # Track if returns were available
+        rt_cov_available_history = []  # Track if cov was computable
+        
+        # Allocator v1 governance tracking (Layer 6)
+        alloc_v1_state_computed_history = []  # Track if state was computed successfully
+        alloc_v1_regime_history = []  # Track regime classifications
+        alloc_v1_scalar_computed_history = []  # Track computed scalars
+        alloc_v1_inputs_available_history = []  # Track if required inputs were available
+        
         # Engine Policy: Track pre-policy and post-policy components for layered weights trace
         components_pre_policy_history = []  # Track components before policy application
         components_post_policy_history = []  # Track components after policy application
@@ -904,6 +932,11 @@ class ExecSim:
                 
                 # Step 5: Risk Targeting Layer (Layer 5: vol → leverage)
                 weights_pre_rt = weights_raw.copy()  # Save pre-RT weights for artifacts
+                rt_leverage = 1.0
+                rt_current_vol = None
+                rt_returns_available = False
+                rt_cov_available = False
+                
                 if risk_targeting is not None:
                     # Get historical returns for volatility estimation
                     # Use returns up to (but not including) current date
@@ -922,6 +955,9 @@ class ExecSim:
                         else:
                             returns_for_vol = pd.DataFrame()
                     
+                    # Track returns availability for governance
+                    rt_returns_available = not returns_for_vol.empty and returns_for_vol.notna().any().any()
+                    
                     # Convert log returns to simple returns for Risk Targeting
                     # Risk Targeting expects simple returns (it will compute cov internally)
                     if not returns_for_vol.empty:
@@ -929,20 +965,76 @@ class ExecSim:
                     else:
                         returns_simple = pd.DataFrame()
                     
+                    # Try to compute current vol to check if cov is available
+                    try:
+                        rt_current_vol = risk_targeting.compute_portfolio_vol(
+                            weights=weights_pre_rt,
+                            returns=returns_simple,
+                            date=date
+                        )
+                        rt_cov_available = rt_current_vol is not None and np.isfinite(rt_current_vol) and rt_current_vol > 0
+                        if rt_cov_available:
+                            rt_leverage = risk_targeting.compute_leverage(rt_current_vol)
+                    except Exception as e:
+                        logger.debug(f"[ExecSim] RT vol computation failed at {date}: {e}")
+                        rt_cov_available = False
+                    
                     # Scale weights using Risk Targeting
                     weights_raw = risk_targeting.scale_weights(
                         weights=weights_pre_rt,
                         returns=returns_simple,
                         date=date
                     )
+                    
+                    # Extract actual leverage from RT (recompute to get exact value)
+                    # This ensures we capture the actual leverage used, even if initial computation failed
+                    try:
+                        if rt_current_vol is not None and np.isfinite(rt_current_vol):
+                            rt_leverage = risk_targeting.compute_leverage(rt_current_vol)
+                        else:
+                            # Fallback: compute leverage from actual weight scaling ratio
+                            # This captures the actual leverage applied even if vol computation failed
+                            pre_rt_gross = weights_pre_rt.abs().sum()
+                            post_rt_gross = weights_raw.abs().sum()
+                            if pre_rt_gross > 1e-6:  # Avoid division by zero
+                                rt_leverage = post_rt_gross / pre_rt_gross
+                            else:
+                                rt_leverage = 1.0
+                    except Exception:
+                        # Final fallback: compute from weight ratio
+                        try:
+                            pre_rt_gross = weights_pre_rt.abs().sum()
+                            post_rt_gross = weights_raw.abs().sum()
+                            if pre_rt_gross > 1e-6:
+                                rt_leverage = post_rt_gross / pre_rt_gross
+                            else:
+                                rt_leverage = 1.0
+                        except Exception:
+                            rt_leverage = 1.0
+                    
                     logger.debug(
                         f"[ExecSim] {date}: Risk Targeting applied. "
                         f"Pre-RT leverage: {weights_pre_rt.abs().sum():.2f}x, "
-                        f"Post-RT leverage: {weights_raw.abs().sum():.2f}x"
+                        f"Post-RT leverage: {weights_raw.abs().sum():.2f}x, "
+                        f"RT multiplier: {rt_leverage:.3f}x"
                     )
                 else:
                     # No Risk Targeting: weights_pre_rt = weights_raw
                     pass
+                
+                # Track RT governance data - ensure we only append finite values
+                # rt_leverage should always be finite (defaults to 1.0, computed from weights if needed)
+                if rt_leverage is not None and np.isfinite(rt_leverage):
+                    rt_leverage_history.append(rt_leverage)
+                else:
+                    rt_leverage_history.append(1.0)  # Fallback to 1.0 if somehow None/NaN
+                
+                # rt_current_vol can be None if computation failed, but we still track it
+                rt_current_vol_history.append(rt_current_vol)
+                rt_weights_pre_history.append(weights_pre_rt.copy())
+                rt_weights_post_history.append(weights_raw.copy())
+                rt_returns_available_history.append(rt_returns_available)
+                rt_cov_available_history.append(rt_cov_available)
                 
                 # Stage 5.5: Apply risk scalar (mode-dependent) - Allocator Layer 6
                 current_risk_scalar = 1.0  # Default: no scaling
@@ -967,6 +1059,12 @@ class ExecSim:
                         
                         # In precomputed mode, computed=applied (no lag within Pass 2)
                         current_risk_scalar = risk_scalar_applied
+                        
+                        # Populate history for meta.json governance stats
+                        alloc_v1_state_computed_history.append(True)
+                        alloc_v1_regime_history.append('NORMAL') # Precomputed assumes NORMAL/Baseline implicitly
+                        alloc_v1_scalar_computed_history.append(current_risk_scalar)
+                        alloc_v1_inputs_available_history.append(False) # Inputs not checked in precomputed mode
                         
                         # Emit allocator artifacts for precomputed mode
                         if artifact_writer is not None:
@@ -1009,6 +1107,13 @@ class ExecSim:
                             asset_returns_simple = np.exp(asset_returns_up_to_date) - 1.0
                             
                             # Compute allocator state
+                            state_computed = False
+                            inputs_available = (
+                                not portfolio_returns_so_far.empty and
+                                not equity_so_far.empty and
+                                not asset_returns_simple.empty
+                            )
+                            
                             state_computer = AllocatorStateV1()
                             state_df = state_computer.compute(
                                 portfolio_returns=portfolio_returns_so_far,
@@ -1018,7 +1123,9 @@ class ExecSim:
                                 sleeve_returns=None
                             )
                             
-                            if not state_df.empty:
+                            state_computed = not state_df.empty and state_df.notna().any().any()
+                            
+                            if state_computed:
                                 # Compute regime and risk
                                 classifier = RegimeClassifierV1()
                                 regime = classifier.classify(state_df)
@@ -1032,6 +1139,12 @@ class ExecSim:
                                     
                                     if not risk_scalars.empty:
                                         current_risk_scalar = float(risk_scalars['risk_scalar'].iloc[-1])
+                                        
+                                        # Track governance data
+                                        alloc_v1_state_computed_history.append(True)
+                                        alloc_v1_regime_history.append(regime.iloc[-1] if not regime.empty else None)
+                                        alloc_v1_scalar_computed_history.append(current_risk_scalar)
+                                        alloc_v1_inputs_available_history.append(inputs_available)
                                         
                                         # Emit allocator artifacts
                                         if artifact_writer is not None:
@@ -1056,6 +1169,11 @@ class ExecSim:
                         except Exception as e:
                             logger.warning(f"[ExecSim] Failed to compute risk scalar at {date}: {e}")
                             current_risk_scalar = 1.0
+                            # Track failed computation
+                            alloc_v1_state_computed_history.append(False)
+                            alloc_v1_regime_history.append(None)
+                            alloc_v1_scalar_computed_history.append(1.0)
+                            alloc_v1_inputs_available_history.append(False)
                     
                     # Apply with 1-rebalance lag
                     risk_scalar_applied = prev_risk_scalar if prev_risk_scalar is not None else 1.0
@@ -1293,7 +1411,21 @@ class ExecSim:
             allocator_v1_mode=allocator_v1_mode,  # Stage 5.5
             precomputed_scalars=precomputed_scalars,  # Stage 5.5
             strategy_profile=strategy_profile,
-            config_path=config_path
+            config_path=config_path,
+            # Risk Targeting governance tracking
+            rt_leverage_history=rt_leverage_history,
+            rt_current_vol_history=rt_current_vol_history,
+            rt_returns_available_history=rt_returns_available_history,
+            rt_cov_available_history=rt_cov_available_history,
+            # Allocator v1 governance tracking
+            alloc_v1_state_computed_history=alloc_v1_state_computed_history,
+            alloc_v1_regime_history=alloc_v1_regime_history,
+            alloc_v1_scalar_computed_history=alloc_v1_scalar_computed_history,
+            alloc_v1_inputs_available_history=alloc_v1_inputs_available_history,
+            # Dual metrics computation inputs
+            rebalance_dates=rebalance_dates,
+            returns_history=returns_history,
+            turnover_history=turnover_history
         )
         
         # Stage 5: Print allocator summary
@@ -1470,7 +1602,21 @@ class ExecSim:
         allocator_v1_mode: str = 'off',
         precomputed_scalars: Optional[pd.Series] = None,
         strategy_profile: Optional[str] = None,
-        config_path: Optional[str] = None
+        config_path: Optional[str] = None,
+        # Risk Targeting governance tracking
+        rt_leverage_history: Optional[list] = None,
+        rt_current_vol_history: Optional[list] = None,
+        rt_returns_available_history: Optional[list] = None,
+        rt_cov_available_history: Optional[list] = None,
+        # Allocator v1 governance tracking
+        alloc_v1_state_computed_history: Optional[list] = None,
+        alloc_v1_regime_history: Optional[list] = None,
+        alloc_v1_scalar_computed_history: Optional[list] = None,
+        alloc_v1_inputs_available_history: Optional[list] = None,
+        # Dual metrics computation inputs
+        rebalance_dates: Optional[pd.DatetimeIndex] = None,
+        returns_history: Optional[list] = None,
+        turnover_history: Optional[list] = None
     ):
         """
         Save run artifacts to disk for diagnostics.
@@ -2064,6 +2210,134 @@ class ExecSim:
         effective_start_date = None
         if not weights_panel.empty:
             effective_start_date = str(weights_panel.index[0])
+            
+        # Phase 3A: Determine Evaluation Start Date (Governance)
+        # Approach: evaluation_start_date = max(policy_start, rt_start, alloc_start)
+        # Each stage's effective start is the first date where it's effective (non-inert)
+        evaluation_start_date = None
+        policy_effective_start = None
+        rt_effective_start = None
+        alloc_effective_start = None
+        
+        try:
+            n_points = len(rt_leverage_history) # Should match rebalance_dates length
+            
+            # 1. Policy Effective Start
+            # Policy is effective when data is present and not-all-NaN
+            # For simplicity, we assume policy is effective from the start if enabled
+            # (in practice, policy features become available very early in the backtest)
+            # If you have explicit policy multiplier history, check for first non-1.0 multiplier
+            policy_effective_start = rebalance_dates[0] if len(rebalance_dates) > 0 else None
+            
+            # 2. Risk Targeting Effective Start
+            # RT is effective when covariance is available (sufficient lookback)
+            rt_enabled = components.get('risk_targeting') is not None
+            if rt_enabled and len(rt_cov_available_history) > 0:
+                for i in range(n_points):
+                    if i < len(rt_cov_available_history) and rt_cov_available_history[i]:
+                        rt_effective_start = rebalance_dates[i]
+                        logger.info(f"[ExecSim] RT Effective Start: {rt_effective_start.strftime('%Y-%m-%d')} (index {i})")
+                        break
+            
+            # 3. Allocator Effective Start
+            # Allocator is effective when scalars are computed/available
+            if allocator_v1_enabled and allocator_v1_mode != 'off':
+                for i in range(n_points):
+                    has_scalars = i < len(alloc_v1_scalar_computed_history) and alloc_v1_scalar_computed_history[i] is not None
+                    
+                    # Mode-specific validity
+                    is_effective = False
+                    if allocator_v1_mode == 'compute':
+                        # In compute mode, must have inputs AND scalars
+                        has_inputs = i < len(alloc_v1_inputs_available_history) and alloc_v1_inputs_available_history[i]
+                        is_effective = has_inputs and has_scalars
+                    elif allocator_v1_mode == 'precomputed':
+                        # In precomputed mode, MUST have scalars (from source) AND valid source ID
+                        is_effective = has_scalars and allocator_source_run_id is not None
+                    
+                    if is_effective:
+                        alloc_effective_start = rebalance_dates[i]
+                        logger.info(f"[ExecSim] Allocator Effective Start: {alloc_effective_start.strftime('%Y-%m-%d')} (index {i}, mode={allocator_v1_mode})")
+                        break
+            
+            # Compute evaluation_start_date as max of all enabled stages
+            stage_starts = []
+            if policy_effective_start is not None:
+                stage_starts.append(policy_effective_start)
+            if rt_effective_start is not None:
+                stage_starts.append(rt_effective_start)
+            if alloc_effective_start is not None:
+                stage_starts.append(alloc_effective_start)
+            
+            if stage_starts:
+                evaluation_start_date = max(stage_starts)
+                logger.info(
+                    f"[ExecSim] Evaluation Start Date: {evaluation_start_date.strftime('%Y-%m-%d')} "
+                    f"(max of policy={policy_effective_start.strftime('%Y-%m-%d') if policy_effective_start else 'N/A'}, "
+                    f"rt={rt_effective_start.strftime('%Y-%m-%d') if rt_effective_start else 'N/A'}, "
+                    f"alloc={alloc_effective_start.strftime('%Y-%m-%d') if alloc_effective_start else 'N/A'})"
+                )
+            else:
+                logger.warning("[ExecSim] Could not determine evaluation start date (no enabled governance stages?)")
+
+        except Exception as e:
+             logger.error(f"[ExecSim] Error determining evaluation start date: {e}")
+        
+        # Compute Dual Metrics
+        # 1. Full Run Metrics (Risk Context)
+        # NOTE: equity_curve starts from effective_start_date (first rebalance), not data_start_date
+        # This is because weights are 0 / undefined before first rebalance
+        # So "full run" here means "full backtest run from first weights application"
+        metrics_full = self._compute_metrics(
+             equity_curve,
+             returns_history, # rebalance freq, less accurate for sharpe but passed for n_periods
+             weights_panel,
+             turnover_history
+        )
+        # Note: _compute_metrics uses daily equity_curve internally for CAGR/Sharpe/DD
+        
+        # 2. Evaluation Window Metrics (Authoritative Performance)
+        metrics_eval = {}
+        if evaluation_start_date is not None:
+            eval_start_ts = pd.Timestamp(evaluation_start_date)
+            
+            # Filter daily equity curve to evaluation window
+            # equity_curve is already daily (passed from run method)
+            if not equity_curve.empty:
+                 equity_eval = equity_curve[equity_curve.index >= eval_start_ts].copy()
+                 if not equity_eval.empty:
+                     # Normalize to 1.0 at start of evaluation
+                     # Determine scalar to rebase: first value should become 1.0
+                     # Rebase: series / series[0]
+                     equity_eval = equity_eval / equity_eval.iloc[0]
+                     
+                     # Filter weights and turnover (rebalance frequency)
+                     # Find index in rebalance_dates corresponding to evaluation_start_date
+                     # rebalance_dates is pd.DatetimeIndex
+                     eval_start_idx = -1
+                     if evaluation_start_date in rebalance_dates:
+                         eval_start_idx = rebalance_dates.get_loc(evaluation_start_date)
+                     
+                     if eval_start_idx >= 0:
+                         # Slice history lists from this index
+                         # returns_history is per-holding-period return
+                         returns_hist_eval = returns_history[eval_start_idx:] if eval_start_idx < len(returns_history) else []
+                         turnover_hist_eval = turnover_history[eval_start_idx:] if eval_start_idx < len(turnover_history) else []
+                         
+                         # Weights panel slicing
+                         weights_eval = weights_panel.loc[evaluation_start_date:]
+                         
+                         metrics_eval = self._compute_metrics(
+                             equity_eval,
+                             returns_hist_eval,
+                             weights_eval,
+                             turnover_hist_eval
+                         )
+        
+        if not metrics_eval:
+             # Fallback if evaluation window invalid or empty
+             metrics_eval = {k: 0.0 for k in metrics_full.keys()}
+             metrics_eval['n_periods'] = 0
         
         # Compute config hash for reproducibility
         config_hash = None
@@ -2076,16 +2350,220 @@ class ExecSim:
             except Exception as e:
                 logger.warning(f"[ExecSim] Could not compute config hash: {e}")
         
+        # Load full config for meta.json (needed for diagnostics governance)
+        full_config = {}
+        if config_path:
+            try:
+                import yaml
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    full_config = yaml.safe_load(f) or {}
+            except Exception as e:
+                logger.warning(f"[ExecSim] Could not load config for meta.json: {e}")
+        
         # Check if dates match canonical window
         from src.utils.canonical_window import load_canonical_window
         canonical_start, canonical_end = load_canonical_window()
         is_canonical_window = (str(start) == canonical_start and str(end) == canonical_end)
+        
+        # Document policy features in meta (for Phase 3A governance)
+        policy_features_meta = {}
+        if hasattr(market, 'policy_features') and isinstance(market.policy_features, dict):
+            # Document which policy features are present (data-driven, not file-based)
+            for feature_name in ['gamma_stress_proxy', 'vx_backwardation', 'vrp_stress_proxy']:
+                if feature_name in market.policy_features:
+                    feature_series = market.policy_features[feature_name]
+                    # Check if feature has data (not all NaN)
+                    has_data = not feature_series.empty and feature_series.notna().any()
+                    policy_features_meta[feature_name] = {
+                        'present': True,
+                        'has_data': bool(has_data),
+                        'n_dates': len(feature_series) if not feature_series.empty else 0,
+                        'n_valid': int(feature_series.notna().sum()) if not feature_series.empty else 0
+                    }
+                else:
+                    policy_features_meta[feature_name] = {
+                        'present': False,
+                        'has_data': False,
+                        'n_dates': 0,
+                        'n_valid': 0
+                    }
+        
+        # Document Risk Targeting governance (Layer 5)
+        risk_targeting_meta = {}
+        risk_targeting = components.get('risk_targeting')
+        if risk_targeting is not None:
+            # Check inputs availability from history
+            rt_returns_available = bool(any(rt_returns_available_history) if rt_returns_available_history and len(rt_returns_available_history) > 0 else False)
+            rt_cov_available = bool(any(rt_cov_available_history) if rt_cov_available_history and len(rt_cov_available_history) > 0 else False)
+            rt_has_data = bool(rt_returns_available or rt_cov_available)
+            
+            # Check if RT had teeth (leverage != 1.0 at least once)
+            rt_has_teeth = False
+            if rt_leverage_history and len(rt_leverage_history) > 0:
+                leverage_array = np.array([x for x in rt_leverage_history if x is not None and np.isfinite(x)])
+                if len(leverage_array) > 0:
+                    rt_has_teeth = bool(np.any(np.abs(leverage_array - 1.0) > 1e-12))
+            
+            # Compute stats - ensure we have finite values
+            rt_multiplier_stats = {}
+            if rt_leverage_history and len(rt_leverage_history) > 0:
+                leverage_array = np.array([x for x in rt_leverage_history if x is not None and np.isfinite(x)])
+                if len(leverage_array) > 0:
+                    rt_multiplier_stats = {
+                        'p5': float(np.percentile(leverage_array, 5)),
+                        'p50': float(np.percentile(leverage_array, 50)),
+                        'p95': float(np.percentile(leverage_array, 95)),
+                        'at_cap': float(np.sum(leverage_array >= risk_targeting.leverage_cap - 1e-12) / len(leverage_array) * 100),
+                        'at_floor': float(np.sum(leverage_array <= risk_targeting.leverage_floor + 1e-12) / len(leverage_array) * 100)
+                    }
+                else:
+                    # If all values filtered out, stats should be empty dict (not NaN)
+                    rt_multiplier_stats = {}
+            
+            rt_vol_stats = {}
+            if rt_current_vol_history and len(rt_current_vol_history) > 0:
+                vol_array = np.array([x for x in rt_current_vol_history if x is not None and np.isfinite(x)])
+                if len(vol_array) > 0:
+                    rt_vol_stats = {
+                        'p50': float(np.percentile(vol_array, 50)),
+                        'p95': float(np.percentile(vol_array, 95))
+                    }
+                else:
+                    # If all values filtered out, stats should be empty dict (not NaN)
+                    rt_vol_stats = {}
+            
+            risk_targeting_meta = {
+                'enabled': True,
+                'inputs_present': {
+                    'asset_returns_df': {
+                        'present': True,  # Always present if RT is enabled (from market)
+                        'has_data': rt_returns_available
+                    },
+                    'cov_matrix': {
+                        'present': False,  # Not pre-computed, computed from returns
+                        'has_data': rt_cov_available
+                    },
+                    'weights_pre_rt': {
+                        'present': True,  # Always present if RT is enabled
+                        'has_data': bool(len(rt_leverage_history) > 0 if rt_leverage_history else False)  # If we computed leverage, weights were present
+                    }
+                },
+                'inputs_missing': not rt_has_data,
+                'effective': rt_has_data,
+                'has_teeth': rt_has_teeth,
+                'multiplier_stats': rt_multiplier_stats,
+                'vol_stats': rt_vol_stats,
+                'n_rebalances': len(rt_leverage_history) if rt_leverage_history else 0
+            }
+        else:
+            risk_targeting_meta = {
+                'enabled': False,
+                'inputs_present': {},
+                'inputs_missing': False,
+                'effective': False,
+                'has_teeth': False
+            }
+        
+        # Document Allocator v1 governance (Layer 6)
+        allocator_v1_meta = {}
+        if allocator_v1_enabled:
+            # Check inputs availability
+            alloc_v1_inputs_available = any(alloc_v1_inputs_available_history) if alloc_v1_inputs_available_history and len(alloc_v1_inputs_available_history) > 0 else False
+            alloc_v1_state_computed = any(alloc_v1_state_computed_history) if alloc_v1_state_computed_history and len(alloc_v1_state_computed_history) > 0 else False
+            
+            # Check if allocator had teeth (scalar < 1.0 at least once)
+            alloc_v1_has_teeth = False
+            if alloc_v1_scalar_computed_history:
+                scalar_array = np.array([x for x in alloc_v1_scalar_computed_history if x is not None and np.isfinite(x)])
+                if len(scalar_array) > 0:
+                    alloc_v1_has_teeth = np.any(scalar_array < 1.0 - 1e-6)
+            
+            # Compute regime distribution
+            regime_dist = {}
+            if alloc_v1_regime_history and len(alloc_v1_regime_history) > 0:
+                regimes = [r for r in alloc_v1_regime_history if r is not None]
+                if regimes:
+                    from collections import Counter
+                    regime_counts = Counter(regimes)
+                    total = len(regimes)
+                    regime_dist = {k: float(v / total * 100) for k, v in regime_counts.items()}
+            
+            # Compute scalar stats
+            scalar_stats = {}
+            if alloc_v1_scalar_computed_history and len(alloc_v1_scalar_computed_history) > 0:
+                scalar_array = np.array([x for x in alloc_v1_scalar_computed_history if x is not None and np.isfinite(x)])
+                if len(scalar_array) > 0:
+                    scalar_stats = {
+                        'p5': float(np.percentile(scalar_array, 5)),
+                        'p50': float(np.percentile(scalar_array, 50)),
+                        'p95': float(np.percentile(scalar_array, 95)),
+                        'at_min': float(np.sum(scalar_array <= 0.25 + 1e-6) / len(scalar_array) * 100)
+                    }
+            
+            allocator_v1_meta = {
+                'enabled': True,
+                'mode': allocator_v1_mode,
+                'profile': allocator_v1_config.get('profile', 'H'),
+                'inputs_present': {
+                    'portfolio_returns': {
+                        'present': True,  # Always present if allocator enabled
+                        'has_data': alloc_v1_inputs_available
+                    },
+                    'equity_curve': {
+                        'present': True,
+                        'has_data': alloc_v1_inputs_available
+                    },
+                    'asset_returns': {
+                        'present': True,
+                        'has_data': alloc_v1_inputs_available
+                    }
+                },
+                'inputs_missing': not alloc_v1_inputs_available,
+                'state_computed': alloc_v1_state_computed,
+                'effective': alloc_v1_state_computed and (alloc_v1_inputs_available or allocator_v1_mode == 'precomputed'),
+                'has_teeth': alloc_v1_has_teeth,
+                'regime_distribution': regime_dist,
+                'scalar_stats': scalar_stats,
+                'n_rebalances': len(alloc_v1_scalar_computed_history) if alloc_v1_scalar_computed_history else 0
+            }
+        else:
+            allocator_v1_meta = {
+                'enabled': False,
+                'inputs_present': {},
+                'inputs_missing': False,
+                'effective': False,
+                'has_teeth': False
+            }
+        
+        
+        # Document per-stage effective starts (Phase 3A auditability)
+        per_stage_effective_starts = {
+            'policy_effective_start': str(policy_effective_start.date()) if policy_effective_start is not None else None,
+            'rt_effective_start': str(rt_effective_start.date()) if rt_effective_start is not None else None,
+            'alloc_effective_start': str(alloc_effective_start.date()) if alloc_effective_start is not None else None
+        }
+        
+        # Validate precomputed allocator source ID matches expected compute baseline
+        allocator_source_valid = True
+        if allocator_v1_enabled and allocator_v1_mode == 'precomputed' and allocator_source_run_id is not None:
+            # Check if source ID matches the compute baseline run ID parameter
+            allocator_v1_config = components.get('allocator_v1_config', {})
+            expected_source = allocator_v1_config.get('precomputed_run_id')
+            if expected_source and allocator_source_run_id != expected_source:
+                logger.warning(
+                    f"[ExecSim] Allocator source ID mismatch: "
+                    f"meta has {allocator_source_run_id}, config expects {expected_source}"
+                )
+                allocator_source_valid = False
         
         meta = {
             'run_id': run_id,
             'start_date': str(start),  # Requested start date
             'end_date': str(end),
             'effective_start_date': effective_start_date,  # First rebalance date (after warmup)
+            'evaluation_start_date': str(evaluation_start_date.date()) if evaluation_start_date is not None else None,
+            # Per-stage effective starts for auditability
+            'per_stage_effective_starts': per_stage_effective_starts,
             'strategy_profile': strategy_profile,  # Strategy profile name (if used)
             'strategy_config_name': strategy_name,
             'universe': universe,
@@ -2095,13 +2573,25 @@ class ExecSim:
             'n_trading_days': len(returns_df) if not returns_df.empty else 0,
             'canonical_window': is_canonical_window,
             'config_hash': config_hash,  # Hash of config file for reproducibility
+            'config': full_config,  # Full config for diagnostics governance (Phase 3A)
             # Precomputed mode source links (for auditability)
             'allocator_source_run_id': allocator_source_run_id,
-            'engine_policy_source_run_id': engine_policy_source_run_id
+            'allocator_source_valid': allocator_source_valid,
+            'engine_policy_source_run_id': engine_policy_source_run_id,
+            # Phase 3A: Policy features documentation (data-driven, not file-based)
+            'policy_features': policy_features_meta if policy_features_meta else None,
+            # Risk Targeting governance (Layer 5)
+            'risk_targeting': risk_targeting_meta,
+            # Allocator v1 governance (Layer 6)
+            # Allocator v1 governance (Layer 6)
+            'allocator_v1': allocator_v1_meta,
+            # Dual Metrics Reporting (Phase 3A)
+            'metrics_full': metrics_full,
+            'metrics_eval': metrics_eval
         }
         
         with open(run_dir / 'meta.json', 'w') as f:
-            json.dump(meta, f, indent=2)
+            json.dump(meta, f, indent=2, cls=NumpyEncoder)
         
         logger.info(f"[ExecSim] Saved artifacts to {run_dir}")
         

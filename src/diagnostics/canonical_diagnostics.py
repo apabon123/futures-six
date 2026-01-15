@@ -156,6 +156,9 @@ def load_run_artifacts(run_dir: Path) -> Dict:
     else:
         artifacts['meta'] = {}
     
+    # Store run_dir in artifacts for use in compute_constraint_binding
+    artifacts['_run_dir'] = run_dir
+    
     return artifacts
 
 
@@ -360,7 +363,7 @@ def compute_engine_sharpe_contribution(artifacts: Dict) -> pd.DataFrame:
     return df
 
 
-def compute_constraint_binding(artifacts: Dict) -> Dict:
+def compute_constraint_binding(artifacts: Dict, run_dir: Optional[Path] = None) -> Dict:
     """
     Compute constraint binding report:
     - % of days allocator < 1.0
@@ -413,6 +416,10 @@ def compute_constraint_binding(artifacts: Dict) -> Dict:
         'vol_below_target_pct': float(np.nan),
     }
     
+    # System Level Evaluation Window (Phase 3A)
+    binding['evaluation_start_date'] = meta.get('evaluation_start_date')
+    binding['effective_start_date'] = meta.get('effective_start_date')
+    
     # Allocator binding
     if allocator_scalar is not None and isinstance(allocator_scalar, pd.Series) and not allocator_scalar.empty:
         active_mask = allocator_scalar < 0.999  # Slightly below 1.0 to account for rounding
@@ -425,6 +432,182 @@ def compute_constraint_binding(artifacts: Dict) -> Dict:
             binding['allocator_avg_scalar_when_active'] = float(avg_scalar)
     
     # Policy gating (canonical pivot format: rebalance_date, trend_multiplier, vrp_multiplier)
+    # Phase 3A: Policy-Inert classification governance hooks
+    meta = artifacts.get('meta', {})
+    engine_policy_config = meta.get('config', {}).get('engine_policy_v1', {})
+    engine_policy_enabled = engine_policy_config.get('enabled', False)
+    
+    # Check for required policy features in meta (if available)
+    # Phase 3A: Policy-Inert classification is data-driven (market object / meta), NOT file-based
+    # This is the "don't regress" principle: check data presence, not optional file existence
+    policy_features_meta = meta.get('policy_features', {})
+    
+    # Required policy features for EnginePolicyV1
+    required_policy_features = {
+        'gamma_stress_proxy': False,
+        'vx_backwardation': False,
+        'vrp_stress_proxy': False
+    }
+    
+    # Check if features are present (from meta - data-driven check)
+    if policy_features_meta:
+        for feature_name in required_policy_features.keys():
+            # Check if feature is documented in meta with has_data=True
+            if feature_name in policy_features_meta:
+                feature_info = policy_features_meta[feature_name]
+                # Feature is present if documented AND has data (not all NaN)
+                if isinstance(feature_info, dict):
+                    required_policy_features[feature_name] = feature_info.get('present', False) and feature_info.get('has_data', False)
+                elif isinstance(feature_info, bool):
+                    # Legacy format: just bool
+                    required_policy_features[feature_name] = feature_info
+    
+    # Fallback: If policy state artifact exists, check for stress_value data
+    # This is a secondary check - primary is meta.policy_features (data-driven)
+    if run_dir is None:
+        # Try to infer run_dir from artifacts if available
+        run_dir = artifacts.get('_run_dir')
+    
+    if run_dir is not None:
+        engine_policy_state_file = Path(run_dir) / "engine_policy_state_v1.csv"
+        if engine_policy_state_file.exists() and engine_policy_enabled:
+            try:
+                state_df = pd.read_csv(engine_policy_state_file, parse_dates=['date'])
+                # Check if state has non-NaN stress_value for Trend and VRP engines
+                for engine_name in ['trend', 'vrp']:
+                    engine_state = state_df[state_df['engine'] == engine_name] if 'engine' in state_df.columns else pd.DataFrame()
+                    if not engine_state.empty and 'stress_value' in engine_state.columns:
+                        has_stress_data = engine_state['stress_value'].notna().any()
+                        # If we have state data, infer feature was present (conservative)
+                        if has_stress_data and engine_name == 'trend' and not required_policy_features['gamma_stress_proxy']:
+                            required_policy_features['gamma_stress_proxy'] = True
+                        if has_stress_data and engine_name == 'vrp' and not required_policy_features['vrp_stress_proxy']:
+                            required_policy_features['vrp_stress_proxy'] = True
+                        # VX backwardation is used by VRP, so if VRP has data, backwardation was likely present
+                        if has_stress_data and engine_name == 'vrp' and not required_policy_features['vx_backwardation']:
+                            required_policy_features['vx_backwardation'] = True
+            except Exception as e:
+                logger.warning(f"[Diagnostics] Could not check policy state artifact for feature presence: {e}")
+    
+    # Compute policy inputs status
+    policy_inputs_present = required_policy_features.copy()
+    policy_inputs_missing = not all(required_policy_features.values())
+    policy_effective = engine_policy_enabled and not policy_inputs_missing
+    
+    # Determine policy_inert_reason
+    policy_inert_reason = None
+    if engine_policy_enabled:
+        if policy_inputs_missing:
+            missing_features = [name for name, present in required_policy_features.items() if not present]
+            policy_inert_reason = f"Missing policy features: {', '.join(missing_features)}"
+        elif engine_policy is None or (isinstance(engine_policy, pd.DataFrame) and engine_policy.empty):
+            policy_inert_reason = "Policy enabled but artifact missing"
+        else:
+            # Policy is effective - check if it has teeth
+            if 'trend_multiplier' in engine_policy.columns and 'vrp_multiplier' in engine_policy.columns:
+                total_rebalances = len(engine_policy)
+                trend_gated = (engine_policy['trend_multiplier'] < 0.999).sum()
+                vrp_gated = (engine_policy['vrp_multiplier'] < 0.999).sum()
+                if trend_gated == 0 and vrp_gated == 0:
+                    policy_inert_reason = "Policy enabled but never gated (no teeth)"
+    
+    # Add governance hooks to binding dict
+    binding['policy_enabled'] = engine_policy_enabled
+    binding['policy_inputs_present'] = policy_inputs_present
+    binding['policy_inputs_missing'] = policy_inputs_missing
+    binding['policy_effective'] = policy_effective
+    if policy_inert_reason:
+        binding['policy_inert_reason'] = policy_inert_reason
+        binding['policy_inert'] = True
+    else:
+        binding['policy_inert'] = False
+    
+    # Risk Targeting governance (Layer 5)
+    risk_targeting_meta = meta.get('risk_targeting', {})
+    rt_enabled = risk_targeting_meta.get('enabled', False)
+    rt_inputs_present = risk_targeting_meta.get('inputs_present', {})
+    rt_inputs_missing = risk_targeting_meta.get('inputs_missing', False)
+    rt_effective = risk_targeting_meta.get('effective', False)
+    rt_has_teeth = risk_targeting_meta.get('has_teeth', False)
+    
+    rt_inert_reason = None
+    if rt_enabled:
+        if rt_inputs_missing:
+            missing_inputs = [k for k, v in rt_inputs_present.items() if isinstance(v, dict) and not v.get('has_data', False)]
+            rt_inert_reason = f"Missing RT inputs: {', '.join(missing_inputs)}" if missing_inputs else "RT inputs missing"
+        elif not rt_has_teeth:
+            rt_inert_reason = "RT enabled but leverage always 1.0 (no teeth)"
+    
+    rt_inert = rt_enabled and (not rt_effective or rt_inert_reason is not None)
+    
+    binding['rt_enabled'] = rt_enabled
+    binding['rt_inputs_present'] = rt_inputs_present
+    binding['rt_inputs_missing'] = rt_inputs_missing
+    binding['rt_effective'] = rt_effective
+    binding['rt_has_teeth'] = rt_has_teeth
+    binding['rt_inert'] = rt_inert
+    if rt_inert_reason:
+        binding['rt_inert_reason'] = rt_inert_reason
+    
+    # Add RT stats if available
+    rt_multiplier_stats = risk_targeting_meta.get('multiplier_stats', {})
+    if rt_multiplier_stats:
+        binding['rt_multiplier_p50'] = rt_multiplier_stats.get('p50')
+        binding['rt_multiplier_p95'] = rt_multiplier_stats.get('p95')
+        binding['rt_multiplier_at_cap_pct'] = rt_multiplier_stats.get('at_cap', 0.0)
+        binding['rt_multiplier_at_floor_pct'] = rt_multiplier_stats.get('at_floor', 0.0)
+    
+    rt_vol_stats = risk_targeting_meta.get('vol_stats', {})
+    if rt_vol_stats:
+        binding['rt_current_vol_p50'] = rt_vol_stats.get('p50')
+        binding['rt_current_vol_p95'] = rt_vol_stats.get('p95')
+    
+    # Allocator v1 governance (Layer 6)
+    allocator_v1_meta = meta.get('allocator_v1', {})
+    alloc_v1_enabled = allocator_v1_meta.get('enabled', False)
+    alloc_v1_inputs_present = allocator_v1_meta.get('inputs_present', {})
+    alloc_v1_inputs_missing = allocator_v1_meta.get('inputs_missing', False)
+    alloc_v1_state_computed = allocator_v1_meta.get('state_computed', False)
+    alloc_v1_effective = allocator_v1_meta.get('effective', False)
+    alloc_v1_has_teeth = allocator_v1_meta.get('has_teeth', False)
+    
+    alloc_v1_inert_reason = None
+    if alloc_v1_enabled:
+        if alloc_v1_inputs_missing:
+            missing_inputs = [k for k, v in alloc_v1_inputs_present.items() if isinstance(v, dict) and not v.get('has_data', False)]
+            alloc_v1_inert_reason = f"Missing Allocator v1 inputs: {', '.join(missing_inputs)}" if missing_inputs else "Allocator v1 inputs missing"
+        elif not alloc_v1_state_computed:
+            alloc_v1_inert_reason = "Allocator v1 state computation failed"
+        elif not alloc_v1_has_teeth:
+            alloc_v1_inert_reason = "Allocator v1 enabled but scalar always 1.0 (no teeth)"
+    
+    alloc_v1_inert = alloc_v1_enabled and (not alloc_v1_effective or alloc_v1_inert_reason is not None)
+    
+    binding['alloc_v1_enabled'] = alloc_v1_enabled
+    binding['alloc_v1_inputs_present'] = alloc_v1_inputs_present
+    binding['alloc_v1_inputs_missing'] = alloc_v1_inputs_missing
+    binding['alloc_v1_state_computed'] = alloc_v1_state_computed
+    binding['alloc_v1_effective'] = alloc_v1_effective
+    binding['alloc_v1_has_teeth'] = alloc_v1_has_teeth
+    binding['alloc_v1_inert'] = alloc_v1_inert
+    if alloc_v1_inert_reason:
+        binding['alloc_v1_inert_reason'] = alloc_v1_inert_reason
+    
+    # Add Allocator v1 stats if available
+    alloc_v1_regime_dist = allocator_v1_meta.get('regime_distribution', {})
+    if alloc_v1_regime_dist:
+        binding['alloc_v1_regime_normal_pct'] = alloc_v1_regime_dist.get('NORMAL', 0.0)
+        binding['alloc_v1_regime_elevated_pct'] = alloc_v1_regime_dist.get('ELEVATED', 0.0)
+        binding['alloc_v1_regime_stress_pct'] = alloc_v1_regime_dist.get('STRESS', 0.0)
+        binding['alloc_v1_regime_crisis_pct'] = alloc_v1_regime_dist.get('CRISIS', 0.0)
+    
+    alloc_v1_scalar_stats = allocator_v1_meta.get('scalar_stats', {})
+    if alloc_v1_scalar_stats:
+        binding['alloc_v1_scalar_p50'] = alloc_v1_scalar_stats.get('p50')
+        binding['alloc_v1_scalar_p95'] = alloc_v1_scalar_stats.get('p95')
+        binding['alloc_v1_scalar_at_min_pct'] = alloc_v1_scalar_stats.get('at_min', 0.0)
+    
+    # Policy gating percentages (must be numeric, 0.0 not NaN per SYSTEM_CONSTRUCTION)
     if engine_policy is not None and isinstance(engine_policy, pd.DataFrame) and not engine_policy.empty:
         # Check for canonical pivot format (trend_multiplier, vrp_multiplier columns)
         if 'trend_multiplier' in engine_policy.columns and 'vrp_multiplier' in engine_policy.columns:
@@ -448,9 +631,15 @@ def compute_constraint_binding(artifacts: Dict) -> Dict:
             vrp_mask = engine_policy['engine'].str.contains('vrp', case=False, na=False)
             vrp_gated = (vrp_mask & gated_mask).sum()
             binding['policy_gated_vrp_pct'] = float(vrp_gated / total_rebalances * 100) if total_rebalances > 0 else 0.0
+        else:
+            # Policy artifact exists but format unknown
+            binding['policy_gated_trend_pct'] = 0.0
+            binding['policy_gated_vrp_pct'] = 0.0
     else:
         # Policy artifact missing
         binding['policy_artifact_missing'] = True
+        binding['policy_gated_trend_pct'] = 0.0
+        binding['policy_gated_vrp_pct'] = 0.0
     
     # Exposure capped by leverage
     if weights is not None and isinstance(weights, pd.DataFrame) and not weights.empty:
@@ -655,14 +844,24 @@ def generate_canonical_diagnostics(run_id: str, run_dir: Optional[Path] = None) 
     engine_metrics = compute_engine_sharpe_contribution(artifacts)
     
     logger.info("Computing Constraint Binding Report...")
-    constraint_binding = compute_constraint_binding(artifacts)
+    constraint_binding = compute_constraint_binding(artifacts, run_dir=run_dir)
     
     logger.info("Computing Path Diagnostics...")
     path_diagnostics = compute_path_diagnostics(artifacts)
     
+    
+    # Load meta.json for metrics (Phase 3A dual metrics)
+    meta = {}
+    meta_file = run_dir / 'meta.json'
+    if meta_file.exists():
+        with open(meta_file, 'r') as f:
+            meta = json.load(f)
+    
     report = {
         'run_id': run_id,
         'generated_at': datetime.now().isoformat(),
+        'metrics_eval': meta.get('metrics_eval', {}),
+        'metrics_full': meta.get('metrics_full', {}),
         'performance_decomposition': decomposition,
         'engine_sharpe_contribution': engine_metrics.to_dict('index') if not engine_metrics.empty else {},
         'constraint_binding': constraint_binding,
@@ -699,6 +898,30 @@ def generate_markdown_report(report: Dict) -> str:
     lines.append("")
     lines.append("---")
     lines.append("")
+    
+    # Performance Metrics (Dual Reporting)
+    if 'metrics_eval' in report or 'metrics_full' in report:
+        lines.append("## Performance Metrics")
+        lines.append("")
+        lines.append("> **Evaluation Window Metrics**: Authoritative performance computed over the evaluation window only.")
+        lines.append("> **Full Run Metrics**: Risk context metrics computed over the entire run (including warmup).")
+        lines.append("")
+        
+        # Metrics Table
+        lines.append("| Metric | Evaluation Window | Full Run |")
+        lines.append("|---|---:|---:|")
+        
+        metrics_eval = report.get('metrics_eval', {})
+        metrics_full = report.get('metrics_full', {})
+        
+        if metrics_eval and metrics_full:
+            lines.append(f"| CAGR | {metrics_eval.get('cagr', 0):.2%} | {metrics_full.get('cagr', 0):.2%} |")
+            lines.append(f"| Volatility | {metrics_eval.get('vol', 0):.2%} | {metrics_full.get('vol', 0):.2%} |")
+            lines.append(f"| Sharpe | {metrics_eval.get('sharpe', 0):.2f} | {metrics_full.get('sharpe', 0):.2f} |")
+            lines.append(f"| Max DD | {metrics_eval.get('max_drawdown', 0):.2%} | {metrics_full.get('max_drawdown', 0):.2%} |")
+            lines.append(f"| Hit Rate | {metrics_eval.get('hit_rate', 0):.2%} | {metrics_full.get('hit_rate', 0):.2%} |")
+            lines.append(f"| Avg Turnover | {metrics_eval.get('avg_turnover', 0):.2f} | {metrics_full.get('avg_turnover', 0):.2f} |")
+        lines.append("")
     
     # Performance Decomposition
     lines.append("## A. Performance Decomposition")
@@ -738,6 +961,119 @@ def generate_markdown_report(report: Dict) -> str:
     lines.append("## C. Constraint Binding Report")
     lines.append("")
     binding = report['constraint_binding']
+    
+    # Phase 3A: Policy-Inert Classification
+    if 'policy_enabled' in binding:
+        lines.append("### Policy Status (Phase 3A Governance)")
+        lines.append("")
+        policy_enabled = binding.get('policy_enabled', False)
+        policy_effective = binding.get('policy_effective', False)
+        policy_inert = binding.get('policy_inert', False)
+        
+        lines.append(f"- **Policy Enabled:** {policy_enabled}")
+        lines.append(f"- **Policy Effective:** {policy_effective}")
+        lines.append(f"- **Policy Inert:** {policy_inert}")
+        
+        if policy_inert:
+            policy_inert_reason = binding.get('policy_inert_reason', 'Unknown reason')
+            lines.append(f"- **⚠️ Policy-Inert Reason:** {policy_inert_reason}")
+            lines.append("")
+            lines.append("**⚠️ WARNING: This run is Policy-Inert and cannot be used for attribution/ablations.**")
+            lines.append("")
+        
+        if 'policy_inputs_present' in binding:
+            lines.append("**Policy Inputs Present:**")
+            for feature_name, present in binding['policy_inputs_present'].items():
+                # Use text status for Windows compatibility (avoid Unicode emoji encoding issues)
+                status = "[OK]" if present else "[MISSING]"
+                lines.append(f"  - {status} `{feature_name}`")
+            lines.append("")
+        
+        if policy_enabled and not policy_effective:
+            lines.append("**⚠️ Policy is enabled but not effective. Check policy inputs.**")
+            lines.append("")
+    
+    # Risk Targeting governance (Layer 5)
+    if 'rt_enabled' in binding:
+        lines.append("### Risk Targeting Status (Layer 5 Governance)")
+        lines.append("")
+        rt_enabled = binding.get('rt_enabled', False)
+        rt_effective = binding.get('rt_effective', False)
+        rt_inert = binding.get('rt_inert', False)
+        rt_has_teeth = binding.get('rt_has_teeth', False)
+        
+        lines.append(f"- **Risk Targeting Enabled:** {rt_enabled}")
+        lines.append(f"- **Risk Targeting Effective:** {rt_effective}")
+        lines.append(f"- **Risk Targeting Inert:** {rt_inert}")
+        lines.append(f"- **Risk Targeting Has Teeth:** {rt_has_teeth}")
+        
+        if rt_inert:
+            rt_inert_reason = binding.get('rt_inert_reason', 'Unknown reason')
+            lines.append(f"- **[WARN] Risk Targeting Inert Reason:** {rt_inert_reason}")
+            lines.append("")
+            lines.append("**[WARN] WARNING: Risk Targeting is inert and may not be functioning correctly.**")
+            lines.append("")
+        
+        if 'rt_inputs_present' in binding:
+            lines.append("**Risk Targeting Inputs Present:**")
+            for input_name, input_info in binding['rt_inputs_present'].items():
+                if isinstance(input_info, dict):
+                    has_data = input_info.get('has_data', False)
+                    status = "[OK]" if has_data else "[MISSING]"
+                    lines.append(f"  - {status} `{input_name}`")
+            lines.append("")
+        
+        if rt_enabled and rt_has_teeth:
+            if 'rt_multiplier_p50' in binding:
+                lines.append(f"- **RT Leverage Multiplier (p50):** {binding['rt_multiplier_p50']:.3f}")
+            if 'rt_multiplier_at_cap_pct' in binding:
+                lines.append(f"- **RT Multiplier at Cap:** {binding['rt_multiplier_at_cap_pct']:.1f}%")
+            if 'rt_multiplier_at_floor_pct' in binding:
+                lines.append(f"- **RT Multiplier at Floor:** {binding['rt_multiplier_at_floor_pct']:.1f}%")
+            lines.append("")
+    
+    # Allocator v1 governance (Layer 6)
+    if 'alloc_v1_enabled' in binding:
+        lines.append("### Allocator v1 Status (Layer 6 Governance)")
+        lines.append("")
+        alloc_v1_enabled = binding.get('alloc_v1_enabled', False)
+        alloc_v1_effective = binding.get('alloc_v1_effective', False)
+        alloc_v1_inert = binding.get('alloc_v1_inert', False)
+        alloc_v1_has_teeth = binding.get('alloc_v1_has_teeth', False)
+        
+        lines.append(f"- **Allocator v1 Enabled:** {alloc_v1_enabled}")
+        lines.append(f"- **Allocator v1 Effective:** {alloc_v1_effective}")
+        lines.append(f"- **Allocator v1 Inert:** {alloc_v1_inert}")
+        lines.append(f"- **Allocator v1 Has Teeth:** {alloc_v1_has_teeth}")
+        
+        if alloc_v1_inert:
+            alloc_v1_inert_reason = binding.get('alloc_v1_inert_reason', 'Unknown reason')
+            lines.append(f"- **[WARN] Allocator v1 Inert Reason:** {alloc_v1_inert_reason}")
+            lines.append("")
+            lines.append("**[WARN] WARNING: Allocator v1 is inert and may not be functioning correctly.**")
+            lines.append("")
+        
+        if 'alloc_v1_inputs_present' in binding:
+            lines.append("**Allocator v1 Inputs Present:**")
+            for input_name, input_info in binding['alloc_v1_inputs_present'].items():
+                if isinstance(input_info, dict):
+                    has_data = input_info.get('has_data', False)
+                    status = "[OK]" if has_data else "[MISSING]"
+                    lines.append(f"  - {status} `{input_name}`")
+            lines.append("")
+        
+        if alloc_v1_enabled and alloc_v1_has_teeth:
+            if 'alloc_v1_regime_normal_pct' in binding:
+                lines.append("**Regime Distribution:**")
+                lines.append(f"  - NORMAL: {binding.get('alloc_v1_regime_normal_pct', 0.0):.1f}%")
+                lines.append(f"  - ELEVATED: {binding.get('alloc_v1_regime_elevated_pct', 0.0):.1f}%")
+                lines.append(f"  - STRESS: {binding.get('alloc_v1_regime_stress_pct', 0.0):.1f}%")
+                lines.append(f"  - CRISIS: {binding.get('alloc_v1_regime_crisis_pct', 0.0):.1f}%")
+            if 'alloc_v1_scalar_p50' in binding:
+                lines.append(f"- **Allocator v1 Scalar (p50):** {binding['alloc_v1_scalar_p50']:.3f}")
+            if 'alloc_v1_scalar_at_min_pct' in binding:
+                lines.append(f"- **Allocator v1 Scalar at Min (0.25):** {binding['alloc_v1_scalar_at_min_pct']:.1f}%")
+            lines.append("")
     
     lines.append("| Constraint | % of Time Binding | Additional Info |")
     lines.append("|---|---:|---:|")
