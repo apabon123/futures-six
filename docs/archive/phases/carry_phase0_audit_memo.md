@@ -146,7 +146,7 @@ Per Step 3 protocol: **"If audit truly shows a key missing → escalate with exa
 
 ## Artifacts Generated
 
-- ✅ `carry_inputs_coverage.json` — Full audit results
+- ✅ `docs/carry_inputs_coverage.json` — Full audit results
 - ✅ `carry_phase0_audit_memo.md` — This memo
 
 ---

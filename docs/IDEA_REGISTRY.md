@@ -813,7 +813,7 @@ Active overlay in system. MACRO_REGIME_FILTER.md: "Successfully implemented a co
 **Source Files:**
 - `docs/SOTs/ROADMAP.md` (lines 793-799)
 - `docs/SOTs/STRATEGY.md` (lines 478-481)
-- `carry_phase0_run_memo.md`
+- `archive/phases/carry_phase0_run_memo.md`
 
 **Asset Class:** FX (6E, 6B, 6J), Commodities (CL, GC)
 
@@ -868,9 +868,9 @@ Explicitly failed Phase-0. ROADMAP.md: "FX/Commodity Carry: Parked for redesign 
 **Title:** Equity Index Implied Dividend Carry
 
 **Source Files:**
-- `equity_carry_forensic_memo.md`
-- `carry_equity_carry_fix_memo.md`
-- `carry_phase0_run_memo.md`
+- `archive/phases/equity_carry_forensic_memo.md`
+- `archive/phases/carry_equity_carry_fix_memo.md`
+- `archive/phases/carry_phase0_run_memo.md`
 - `src/agents/feature_equity_carry.py`
 
 **Asset Class:** Equity indices (ES, NQ, RTY)
@@ -900,7 +900,7 @@ Captures implied dividend yield from equity index futures vs spot. Formula: d_im
 ❌ **Likely obsolete or superseded** — Non-admissible as Engine v1 return source
 
 **Classification Justification:**
-Explicitly excluded from Carry Meta v1. equity_carry_forensic_memo.md: "CONCLUSION: Equity carry is NON-ADMISSIBLE as an Engine v1 return source." Recommendation: "Exclude Equity from Carry Meta v1" and "Treat Equity Implied Dividends as Policy Feature."
+Explicitly excluded from Carry Meta v1. `archive/phases/equity_carry_forensic_memo.md`: "CONCLUSION: Equity carry is NON-ADMISSIBLE as an Engine v1 return source." Recommendation: "Exclude Equity from Carry Meta v1" and "Treat Equity Implied Dividends as Policy Feature."
 
 **Extraction Confidence:** High
 

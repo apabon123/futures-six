@@ -146,7 +146,7 @@ Carry Meta-Sleeve v1 Phase-0 backtest completed successfully. All required data 
 - ✅ `phase0_analysis_summary.json`
 
 **Coverage Audit**:
-- ✅ `carry_inputs_coverage.json` (root directory)
+- ✅ `carry_inputs_coverage.json` (in `docs/`)
 
 ---
 

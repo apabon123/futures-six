@@ -72,7 +72,7 @@ python scripts/diagnostics/run_carry_phase1_v1.py \
 
 ### 4. 📝 Document Phase-1 Results
 
-**Create**: `carry_phase1_run_memo.md` (similar to Phase-0 memo)
+**Create**: `archive/phases/carry_phase1_run_memo.md` (similar to Phase-0 memo)
 
 **Include**:
 - Performance metrics vs Phase-0

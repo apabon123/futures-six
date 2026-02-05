@@ -163,9 +163,9 @@ python scripts/diagnostics/test_determinism.py
 
 **Official Phase-0 Run**: `carry_phase0_v1_20260121_143130`
 
-- ✅ Memo saved: `carry_phase0_run_memo.md`
+- ✅ Memo saved: `archive/phases/carry_phase0_run_memo.md`
 - ✅ Artifacts: `reports/runs/carry_phase0_v1_20260121_143130/`
-- ✅ Coverage audit: `carry_inputs_coverage.json`
+- ✅ Coverage audit: `docs/carry_inputs_coverage.json`
 
 **No re-running Phase-0** unless engine definition changes.
 

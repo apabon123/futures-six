@@ -7,12 +7,15 @@ Run this script to verify:
 3. Data can be loaded
 4. All major APIs work
 """
+from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent))
+# Ensure repo root is on sys.path so `import src...` works when run as a script.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from src.agents import MarketData
 

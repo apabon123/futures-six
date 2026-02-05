@@ -216,7 +216,7 @@ If Phase-1 degrades vs Phase-0:
 ## Documentation
 
 **Phase-1 Artifacts**:
-- `carry_phase1_run_memo.md` (similar to Phase-0 memo)
+- `archive/phases/carry_phase1_run_memo.md` (similar to Phase-0 memo)
 - `reports/runs/carry_phase1_v1_*/` (full run artifacts)
 - Asset-class contribution analysis
 - Correlation analysis vs Trend/VRP

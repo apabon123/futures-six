@@ -54,9 +54,17 @@ Strategy implementation documentation:
 - `TREND_RESEARCH.md` - Trend Meta-Sleeve research notebook (structured research document with Phase-0/1/2 results)
 - `DEPLOYMENT_SUMMARY_20251119.md` - Deployment summary
 
+### 📋 Carry and idea registry (docs root)
+**Carry Meta-Sleeve governance, phase plans, and idea registry:**
+- `CARRY_META_V1_IMPLEMENTATION.md`, `CARRY_META_V1_QUICK_START.md` - Carry implementation and quick start
+- `CARRY_GOVERNANCE_SPLIT.md`, `CARRY_GOVERNANCE_SUMMARY.md`, `CARRY_NEXT_ACTIONS.md` - Governance and next steps
+- `CARRY_PHASE1_PLAN.md`, `CARRY_PHASE1_IMPLEMENTATION.md`, `CARRY_PHASE1_READY.md` - Phase-1 plan and status
+- `IDEA_REGISTRY.md` - Idea and sleeve registry
+- `carry_inputs_coverage.json` - Carry inputs coverage audit output (from `scripts/diagnostics/audit_carry_inputs_coverage.py`)
+
 ### 📦 Archive/
 **Historical and completed phase documentation:**
-- `archive/phases/` - Completed phase documentation (Phase 1C, etc.)
+- `archive/phases/` - Completed phase documentation (Phase 1C, Carry phase memos, etc.)
 - `archive/RT_BUG_FOUND.md` - Historical bug documentation
 
 ### 🗄️ Legacy/

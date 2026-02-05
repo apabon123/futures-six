@@ -96,7 +96,7 @@ python scripts/diagnostics/test_decoupling.py
 
 3. **Lock Phase-0**
    - [ ] Mark `carry_phase0_v1_20260121_143130` as official baseline
-   - [ ] Save memo: `carry_phase0_run_memo.md`
+   - [ ] Save memo: `archive/phases/carry_phase0_run_memo.md`
    - [ ] No re-running Phase-0 unless engine definition changes
 
 ### Phase-1 (✅ COMPLETE)
@@ -119,8 +119,8 @@ python scripts/diagnostics/test_decoupling.py
 
 1. **`CARRY_GOVERNANCE_SPLIT.md`**: Change classification and commit instructions
 2. **`CARRY_PHASE1_PLAN.md`**: Phase-1 implementation plan
-3. **`carry_phase0_run_memo.md`**: Phase-0 results and analysis
-4. **`carry_inputs_coverage.json`**: Database audit results
+3. **`archive/phases/carry_phase0_run_memo.md`**: Phase-0 results and analysis
+4. **`carry_inputs_coverage.json`**: Database audit results (in `docs/`)
 
 ---
 
