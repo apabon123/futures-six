@@ -1,0 +1,345 @@
+{
+  "db_path": "C:/Users/alexp/OneDrive/Gdrive/Trading/GitHub Projects/databento-es-options/data/silver",
+  "canonical_window": {
+    "start": "2020-01-01",
+    "end": "2025-10-31"
+  },
+  "all_symbols_count": 70,
+  "required_keys": {
+    "equity_spot": [
+      {
+        "symbol": "SP500",
+        "exists": true,
+        "min_date": "2016-01-21",
+        "max_date": "2026-01-21",
+        "row_count": 2610,
+        "rows_in_window": 1523,
+        "coverage_pct": 100.0,
+        "error": null,
+        "table_found": "f_fred_observations"
+      },
+      {
+        "symbol": "NASDAQ100",
+        "exists": true,
+        "min_date": "1990-01-02",
+        "max_date": "2026-01-21",
+        "row_count": 9407,
+        "rows_in_window": 1523,
+        "coverage_pct": 100.0,
+        "error": null,
+        "table_found": "f_fred_observations"
+      },
+      {
+        "symbol": "RUT_SPOT",
+        "exists": true,
+        "min_date": "2020-01-02",
+        "max_date": "2026-01-20",
+        "row_count": 1520,
+        "rows_in_window": 1467,
+        "coverage_pct": 96.32304661851609,
+        "error": null,
+        "table_found": "f_fred_observations"
+      }
+    ],
+    "equity_futures": [
+      {
+        "symbol": "ES_FRONT_CALENDAR_2D",
+        "exists": true,
+        "min_date": "2020-01-01",
+        "max_date": "2025-11-05",
+        "row_count": 1777,
+        "rows_in_window": 1774,
+        "coverage_pct": 116.4806303348654,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      },
+      {
+        "symbol": "NQ_FRONT_CALENDAR_2D",
+        "exists": true,
+        "min_date": "2020-01-01",
+        "max_date": "2025-11-05",
+        "row_count": 1777,
+        "rows_in_window": 1774,
+        "coverage_pct": 116.4806303348654,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      },
+      {
+        "symbol": "RTY_FRONT_CALENDAR_2D",
+        "exists": true,
+        "min_date": "2020-01-01",
+        "max_date": "2025-11-07",
+        "row_count": 1528,
+        "rows_in_window": 1523,
+        "coverage_pct": 100.0,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      }
+    ],
+    "funding": [
+      {
+        "symbol": "SOFR",
+        "exists": true,
+        "min_date": "2020-01-02",
+        "max_date": "2026-01-21",
+        "row_count": 1580,
+        "rows_in_window": 1522,
+        "coverage_pct": 99.93434011818779,
+        "error": null,
+        "table_found": "f_fred_observations"
+      }
+    ],
+    "rates_rank1": [
+      {
+        "symbol": "ZT_RANK_1_VOLUME",
+        "exists": true,
+        "min_date": "2020-01-05",
+        "max_date": "2025-06-30",
+        "row_count": 1268,
+        "rows_in_window": 1268,
+        "coverage_pct": 83.25673013788575,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      },
+      {
+        "symbol": "ZF_RANK_1_VOLUME",
+        "exists": true,
+        "min_date": "2020-01-02",
+        "max_date": "2025-06-30",
+        "row_count": 1311,
+        "rows_in_window": 1311,
+        "coverage_pct": 86.08010505581089,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      },
+      {
+        "symbol": "ZN_RANK_1_VOLUME",
+        "exists": true,
+        "min_date": "2020-01-02",
+        "max_date": "2025-06-30",
+        "row_count": 1602,
+        "rows_in_window": 1602,
+        "coverage_pct": 105.18713066316481,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      },
+      {
+        "symbol": "UB_RANK_1_VOLUME",
+        "exists": true,
+        "min_date": "2020-01-10",
+        "max_date": "2025-06-18",
+        "row_count": 1013,
+        "rows_in_window": 1013,
+        "coverage_pct": 66.51346027577151,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      }
+    ],
+    "rates_front": [
+      {
+        "symbol": "ZT_FRONT_VOLUME",
+        "exists": true,
+        "min_date": "2020-01-01",
+        "max_date": "2025-11-07",
+        "row_count": 1809,
+        "rows_in_window": 1804,
+        "coverage_pct": 118.45042678923178,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      },
+      {
+        "symbol": "ZF_FRONT_VOLUME",
+        "exists": true,
+        "min_date": "2020-01-01",
+        "max_date": "2025-11-07",
+        "row_count": 1809,
+        "rows_in_window": 1804,
+        "coverage_pct": 118.45042678923178,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      },
+      {
+        "symbol": "ZN_FRONT_VOLUME",
+        "exists": true,
+        "min_date": "2020-01-01",
+        "max_date": "2025-11-05",
+        "row_count": 1819,
+        "rows_in_window": 1815,
+        "coverage_pct": 119.17268548916613,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      },
+      {
+        "symbol": "UB_FRONT_VOLUME",
+        "exists": true,
+        "min_date": "2020-01-01",
+        "max_date": "2025-11-07",
+        "row_count": 1810,
+        "rows_in_window": 1805,
+        "coverage_pct": 118.51608667104398,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      }
+    ],
+    "fx_front": [
+      {
+        "symbol": "6E_FRONT_CALENDAR",
+        "exists": true,
+        "min_date": "2020-01-02",
+        "max_date": "2025-06-30",
+        "row_count": 1657,
+        "rows_in_window": 1657,
+        "coverage_pct": 108.79842416283651,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      },
+      {
+        "symbol": "6B_FRONT_CALENDAR",
+        "exists": true,
+        "min_date": "2020-01-01",
+        "max_date": "2025-06-30",
+        "row_count": 1603,
+        "rows_in_window": 1603,
+        "coverage_pct": 105.25279054497703,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      },
+      {
+        "symbol": "6J_FRONT_CALENDAR",
+        "exists": true,
+        "min_date": "2020-01-02",
+        "max_date": "2025-06-30",
+        "row_count": 1633,
+        "rows_in_window": 1633,
+        "coverage_pct": 107.22258699934339,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      }
+    ],
+    "fx_rank1": [
+      {
+        "symbol": "6E_RANK_1_CALENDAR",
+        "exists": true,
+        "min_date": "2020-01-02",
+        "max_date": "2025-06-30",
+        "row_count": 1648,
+        "rows_in_window": 1648,
+        "coverage_pct": 108.20748522652659,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      },
+      {
+        "symbol": "6B_RANK_1_CALENDAR",
+        "exists": true,
+        "min_date": "2020-01-02",
+        "max_date": "2025-06-30",
+        "row_count": 1590,
+        "rows_in_window": 1590,
+        "coverage_pct": 104.39921208141824,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      },
+      {
+        "symbol": "6J_RANK_1_CALENDAR",
+        "exists": true,
+        "min_date": "2020-01-02",
+        "max_date": "2025-06-30",
+        "row_count": 1635,
+        "rows_in_window": 1635,
+        "coverage_pct": 107.35390676296784,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      }
+    ],
+    "commodity_front": [
+      {
+        "symbol": "CL_FRONT_VOLUME",
+        "exists": true,
+        "min_date": "2020-01-01",
+        "max_date": "2025-11-07",
+        "row_count": 1819,
+        "rows_in_window": 1813,
+        "coverage_pct": 119.0413657255417,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      },
+      {
+        "symbol": "GC_FRONT_VOLUME",
+        "exists": true,
+        "min_date": "2020-01-01",
+        "max_date": "2025-11-07",
+        "row_count": 1818,
+        "rows_in_window": 1812,
+        "coverage_pct": 118.97570584372947,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      }
+    ],
+    "commodity_rank1": [
+      {
+        "symbol": "CL_RANK_1_VOLUME",
+        "exists": true,
+        "min_date": "2020-01-01",
+        "max_date": "2025-06-30",
+        "row_count": 1707,
+        "rows_in_window": 1707,
+        "coverage_pct": 112.08141825344715,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      },
+      {
+        "symbol": "GC_RANK_1_VOLUME",
+        "exists": true,
+        "min_date": "2020-01-01",
+        "max_date": "2025-06-30",
+        "row_count": 1705,
+        "rows_in_window": 1705,
+        "coverage_pct": 111.95009848982271,
+        "error": null,
+        "table_found": "g_continuous_bar_daily"
+      }
+    ],
+    "foreign_rates": [
+      {
+        "symbol": "ECBDFR",
+        "exists": true,
+        "min_date": "2020-01-01",
+        "max_date": "2026-01-21",
+        "row_count": 1581,
+        "rows_in_window": 1523,
+        "coverage_pct": 100.0,
+        "error": null,
+        "table_found": "f_fred_observations"
+      },
+      {
+        "symbol": "IRSTCI01JPM156N",
+        "exists": true,
+        "min_date": "2020-01-01",
+        "max_date": "2026-01-21",
+        "row_count": 1581,
+        "rows_in_window": 1523,
+        "coverage_pct": 100.0,
+        "error": null,
+        "table_found": "f_fred_observations"
+      },
+      {
+        "symbol": "IUDSOIA",
+        "exists": true,
+        "min_date": "2020-01-02",
+        "max_date": "2026-01-21",
+        "row_count": 1580,
+        "rows_in_window": 1522,
+        "coverage_pct": 99.93434011818779,
+        "error": null,
+        "table_found": "f_fred_observations"
+      }
+    ]
+  },
+  "missing_keys": [],
+  "partial_coverage_keys": [
+    {
+      "key": "UB_RANK_1_VOLUME",
+      "coverage_pct": 66.51346027577151
+    }
+  ]
+}

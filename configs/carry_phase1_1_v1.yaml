@@ -1,0 +1,58 @@
+# Carry Meta-Sleeve v1 — Phase-1.1 Configuration
+# Asset-class risk parity (25% per class) with mild vol scaling within class
+
+start_date: "2020-01-01"
+end_date: "2025-10-31"
+
+# Strategy configuration
+strategies:
+  carry_meta_v1:
+    enabled: true
+    weight: 1.0
+    params:
+      phase: 1.1  # Phase-1.1: Asset-class risk parity
+      window: 252  # Rolling window for z-score
+      clip: 3.0    # Z-score clipping bounds
+      enabled_asset_classes: ["equity", "fx", "rates", "commodity"]
+
+# Disable all other strategies
+  tsmom:
+    enabled: false
+    weight: 0.0
+  tsmom_med:
+    enabled: false
+    weight: 0.0
+  tsmom_short:
+    enabled: false
+    weight: 0.0
+  tsmom_multihorizon:
+    enabled: false
+    weight: 0.0
+  vrp:
+    enabled: false
+    weight: 0.0
+  csmom:
+    enabled: false
+    weight: 0.0
+
+# Engine Policy: OFF (Phase-1.1 is engine-only)
+engine_policy_v1:
+  enabled: false
+
+# Risk Targeting: OFF
+risk_targeting:
+  enabled: false
+
+# Allocator: OFF
+allocator_v1:
+  enabled: false
+
+# Vol Overlay: OFF
+vol_overlay:
+  enabled: false
+
+# Rebalance: Daily
+rebalance: "D"
+
+# Slippage
+slippage_bps: 0.5

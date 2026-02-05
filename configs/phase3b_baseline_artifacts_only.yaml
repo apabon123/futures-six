@@ -1,0 +1,62 @@
+engine_policy_v1:
+  enabled: true
+  mode: precomputed
+  precomputed_run_id: canonical_frozen_stack_compute_20260116_134905
+  lag_rebalances: 1
+  apply_missing_multiplier_as: 1.0
+  engines:
+    trend:
+      enabled: true
+      rule: gamma_vol_stress_gate_v1
+      feature: gamma_stress_proxy
+      threshold: 1
+      invert: false
+    vrp:
+      enabled: true
+      rule: vrp_extreme_stress_gate_v1
+      feature: vrp_stress_proxy
+      threshold: 1
+      invert: false
+    csmom:
+      enabled: false
+    csmom_meta:
+      enabled: false
+    vrp_core_meta:
+      enabled: false
+    vrp_convergence_meta:
+      enabled: false
+    vrp_alt_meta:
+      enabled: false
+    vx_calendar_carry:
+      enabled: false
+    sr3_curve_rv_meta:
+      enabled: false
+risk_targeting:
+  enabled: true
+  target_vol: 0.42
+  leverage_cap: 7.0
+  leverage_floor: 1.0
+  vol_floor: 0.05
+  vol_lookback: 63
+  update_frequency: static
+allocator_v1:
+  enabled: true
+  mode: precomputed
+  profile: H
+  precomputed_run_id: canonical_frozen_stack_compute_20260116_134905
+  precomputed_scalar_filename: allocator_risk_v1_applied.csv
+  apply_missing_scalar_as: 1.0
+  apply_enabled: false  # Phase 3B: Artifacts-only baseline (allocator computed but not applied)
+  state_version: v1.0
+  regime_version: v1.0
+  risk_version: v1.0
+exec:
+  rebalance: W-FRI
+  slippage_bps: 0.5
+  commission_per_contract: 0.0
+  position_notional_scale: 1.0
+risk_vol:
+  cov_lookback: 252
+  nan_policy: mask-asset
+  shrinkage: lw
+  vol_lookback: 63
