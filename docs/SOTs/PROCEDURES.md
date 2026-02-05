@@ -77,6 +77,32 @@ Sharpe ratio is explicitly not a Phase-0 gating metric for Crisis sleeves.
 
 ---
 
+## 1.1 Local Setup and Execution Environment
+
+### Local database path resolution
+
+- The futures database location is configured in:
+  **configs/data.yaml**
+
+- The canonical project-relative path is:
+  **../databento-es-options/data/silver**
+
+- The repository assumes the following sibling layout:
+
+  ```
+  <workspace>/
+    futures-six/
+    databento-es-options/
+  ```
+
+- This layout is valid for both macOS and Windows when the two repositories are checked out side-by-side.
+
+- If a user has a different local layout, they may change `db.path` in **configs/data.yaml**.
+
+- **matplotlib** is a required runtime dependency for diagnostics and chart generation.
+
+---
+
 ## 2. Run Consistency Contract ⚠️
 
 **CRITICAL:** All runs, diagnostics, and comparisons must follow these rules to ensure valid, apples-to-apples performance comparisons.

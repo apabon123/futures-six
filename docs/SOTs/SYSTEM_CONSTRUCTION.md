@@ -163,6 +163,10 @@ This date is determined programmatically from feature readiness and is fixed pri
 - Sleeve Phase 0–2 promotion rules (`PROCEDURES.md`)
 - Feature warm-up requirements (Individual Sleeve READMEs)
 
+### Infrastructure: External Data Source and Path
+
+Futures-Six consumes read-only continuous futures data produced by the external project **databento-es-options**. The location of that data is resolved via **configs/data.yaml** → `db.path`. The canonical infrastructure assumption is **../databento-es-options/data/silver** (project-relative path with sibling-repo layout).
+
 ---
 
 ### 1️⃣ Engine Signals (Alpha Generation)
