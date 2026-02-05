@@ -2,7 +2,10 @@
 # Read-only connection to continuous futures OHLCV database
 
 db:
-  path: "C:/Users/alexp/OneDrive/Gdrive/Trading/GitHub Projects/databento-es-options/data/silver"
+  # Use relative path from project root (sibling project)
+  # Windows: C:/Users/alexp/OneDrive/Gdrive/Trading/GitHub Projects/databento-es-options/data/silver
+  # macOS: ../databento-es-options/data/silver
+  path: "../databento-es-options/data/silver"
   engine: "auto"  # auto-detect: duckdb or sqlite
 
 # Universe: Thirteen continuous futures

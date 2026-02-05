@@ -23,6 +23,9 @@ pytest-cov>=4.1.0
 streamlit>=1.28.0
 plotly>=5.17.0
 
+# Visualization
+matplotlib>=3.8.0
+
 # Logging (standard library, but documenting for reference)
 # logging
 
