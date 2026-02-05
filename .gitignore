@@ -208,3 +208,6 @@ __marimo__/
 
 # Reports (generated backtest artifacts)
 /reports
+
+# Diagnostics / generated backtest artifacts
+/data/diagnostics/
