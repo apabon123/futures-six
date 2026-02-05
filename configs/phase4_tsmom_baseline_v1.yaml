@@ -1,0 +1,253 @@
+# ============================================================================
+# Phase 4 TSMOM Baseline v1 — Frozen Research Baseline
+# ============================================================================
+#
+# Purpose: Define the canonical TSMOM (Trend Meta-Sleeve) configuration for
+#          Phase 4 belief autopsy and engine research.
+#
+# Governance:
+#   - This is the ONLY admissible comparator for TSMOM Phase 4 research
+#   - Mirrors the production Core v9 tsmom_multihorizon configuration
+#   - Frozen at Phase 4 entry (January 2026)
+#
+# Research Protocol Reference:
+#   - docs/PHASE4_ENGINE_RESEARCH_PROTOCOL.md
+#   - docs/SOTs/ROADMAP.md § "Phase 4 Entry Criteria"
+#
+# Run Instructions:
+#   python run_strategy.py --config configs/phase4_tsmom_baseline_v1.yaml \
+#       --start 2020-03-20 --end 2025-10-31 \
+#       --output_dir reports/runs/phase4_tsmom_baseline_v1
+#
+# ============================================================================
+
+# Inherit base strategy config
+_base_config: "configs/strategies.yaml"
+
+# Run metadata
+run_name: "phase4_tsmom_baseline_v1"
+description: "Phase 4 TSMOM Baseline — Trend Meta-Sleeve only, frozen for belief autopsy"
+research_phase: "phase4"
+research_purpose: "belief_autopsy_baseline"
+
+# ============================================================================
+# CANONICAL EVALUATION WINDOW
+# ============================================================================
+# Same window as CSMOM Phase 4 for cross-engine comparison
+start_date: "2020-03-20"
+end_date: "2025-10-31"
+
+# ============================================================================
+# STRATEGY CONFIGURATION — TSMOM ONLY
+# ============================================================================
+# Trend Meta-Sleeve in isolation, no CSMOM, no VRP, no other sleeves
+# This tests pure trend-following belief quality
+
+strategies:
+  # TSMOM Multi-Horizon (Trend Meta-Sleeve) — ENABLED
+  tsmom_multihorizon:
+    enabled: true
+    weight: 1.0  # 100% weight (standalone)
+    params:
+      # =========================================
+      # HORIZON WEIGHTS (Layer 2 — across atomic sleeves)
+      # =========================================
+      # Production Core v9 configuration
+      # These define relative importance of each atomic trend sleeve
+      horizon_weights:
+        long_252: 0.50       # Long-term (252d) horizon — 50%
+        med_84: 0.30         # Medium-term (84/126d) horizon — 30%
+        short_21: 0.20       # Short-term (21d) horizon — 20%
+        # Note: breakout_mid_50_100 disabled for baseline (0% weight)
+        # Note: residual_252_21 disabled for baseline (0% weight)
+
+      # =========================================
+      # FEATURE WEIGHTS (Layer 1 — inside each atomic sleeve)
+      # =========================================
+      # Production configuration with legacy medium/short weights
+      feature_weights:
+        # Long-term features (252d) — Legacy weights
+        # Note: Production Core v9 uses legacy here (0.5/0.3/0.2)
+        long:
+          ret_252: 0.5           # 252-day return momentum
+          breakout_252: 0.3      # 252-day breakout strength
+          slope_slow: 0.2        # Slow trend slope (EMA_63 - EMA_252)
+
+        # Medium-term features (84/126d) — Legacy weights
+        med:
+          ret_84: 0.4            # 84-day return momentum
+          breakout_126: 0.3      # 126-day breakout strength
+          slope_med: 0.2         # Medium trend slope (EMA_20 - EMA_84)
+          persistence: 0.1       # Trend persistence
+
+        # Short-term features (21d) — Legacy weights
+        short:
+          ret_21: 0.5            # 21-day return momentum
+          breakout_21: 0.3       # 21-day breakout strength
+          slope_fast: 0.2        # Fast trend slope (EMA_10 - EMA_40)
+          reversal: 0.0          # Reversal filter (disabled)
+
+        # Breakout Mid (50-100d) — Reference only (not used in baseline)
+        breakout_mid_50_100:
+          breakout_50: 0.7       # 50-day breakout
+          breakout_100: 0.3      # 100-day breakout
+
+      # =========================================
+      # SIGNAL PROCESSING
+      # =========================================
+      signal_cap: 3.0            # Clip at ±3.0 standard deviations
+      rebalance: "W-FRI"         # Weekly Friday rebalance
+
+      # =========================================
+      # VOLATILITY NORMALIZATION
+      # =========================================
+      # EWMA vol normalization within Trend Meta-Sleeve
+      vol_normalization:
+        enabled: true
+        halflife_days: 63        # EWMA half-life (standard CTA choice)
+        sigma_floor_annual: 0.05 # Minimum annualized vol floor (5%)
+        risk_scale: 0.2          # Global scale factor for risk-normalized signals
+
+  # =========================================
+  # ALL OTHER SLEEVES DISABLED
+  # =========================================
+  # Clean isolation of Trend Meta-Sleeve for belief autopsy
+
+  csmom_meta:
+    enabled: false
+    weight: 0.0
+
+  vrp_core_meta:
+    enabled: false
+    weight: 0.0
+
+  vrp_convergence_meta:
+    enabled: false
+    weight: 0.0
+
+  vrp_alt_meta:
+    enabled: false
+    weight: 0.0
+
+  vx_calendar_carry:
+    enabled: false
+    weight: 0.0
+
+  sr3_curve_rv_meta:
+    enabled: false
+    weight: 0.0
+
+  tsmom:
+    enabled: false
+    weight: 0.0
+
+  tsmom_med:
+    enabled: false
+    weight: 0.0
+
+  tsmom_short:
+    enabled: false
+    weight: 0.0
+
+  sr3_carry_curve:
+    enabled: false
+    weight: 0.0
+
+  rates_curve:
+    enabled: false
+    weight: 0.0
+
+  fx_commod_carry:
+    enabled: false
+    weight: 0.0
+
+  residual_trend:
+    enabled: false
+    weight: 0.0
+
+  persistence:
+    enabled: false
+    weight: 0.0
+
+# ============================================================================
+# OVERLAY CONFIGURATION — DISABLED
+# ============================================================================
+# No macro overlay for baseline (pure engine belief)
+macro_regime:
+  enabled: false
+
+# ============================================================================
+# CONSTRUCTION/RT/ALLOCATOR — FROZEN
+# ============================================================================
+# Phase 4 Rule: Only engines may change. Construction/RT/Allocator are frozen.
+
+# Risk Targeting — Enabled (frozen configuration)
+risk_targeting:
+  enabled: true
+  target_vol: 0.20            # 20% annualized target
+  vol_lookback: 63            # Rolling window for vol estimation
+  leverage_cap: 7.0           # Maximum leverage
+  leverage_floor: 1.0         # Minimum leverage
+  vol_floor: 0.05             # Minimum vol estimate
+  update_frequency: "static"
+
+# Allocator v1 — Artifacts only mode (no weight modification)
+allocator_v1:
+  enabled: true
+  mode: "off"                 # Compute artifacts only, no weight scaling
+  profile: "H"                # High risk tolerance profile
+  precomputed_run_id: null
+
+# Engine Policy v1 — Disabled for baseline
+engine_policy_v1:
+  enabled: false
+  mode: "off"
+
+# ============================================================================
+# EXECUTION CONFIGURATION
+# ============================================================================
+exec:
+  rebalance: "W-FRI"
+  slippage_bps: 0.5
+  commission_per_contract: 0.0
+  position_notional_scale: 1.0
+
+# ============================================================================
+# FROZEN BASELINE MANIFEST
+# ============================================================================
+# This section documents the exact configuration for reproducibility
+#
+# TSMOM Multi-Horizon Configuration Summary:
+#   Atomic Sleeves:
+#     1. Long-term (252d):
+#        - Lookback: 252 days
+#        - Skip: 21 days (built into features)
+#        - Features: ret_252, breakout_252, slope_slow
+#        - Feature weights: 0.5 / 0.3 / 0.2
+#        - Vol lookback: 63 days
+#        - Horizon weight: 50%
+#
+#     2. Medium-term (84d):
+#        - Lookback: 84 days
+#        - Skip: 10 days (built into features)
+#        - Features: ret_84, breakout_126, slope_med, persistence
+#        - Feature weights: 0.4 / 0.3 / 0.2 / 0.1
+#        - Vol lookback: 63 days
+#        - Horizon weight: 30%
+#
+#     3. Short-term (21d):
+#        - Lookback: 21 days
+#        - Skip: 5 days (built into features)
+#        - Features: ret_21, breakout_21, slope_fast
+#        - Feature weights: 0.5 / 0.3 / 0.2
+#        - Vol lookback: 20 days
+#        - Horizon weight: 20%
+#
+#   Signal Processing:
+#     - Cross-sectional z-score: Yes
+#     - Signal cap: ±3.0
+#     - EWMA vol normalization: Enabled (halflife=63d, floor=5%, scale=0.2)
+#     - Rebalance: Weekly Friday
+#
+# This baseline captures Core v9 TSMOM configuration in isolation.
+# ============================================================================

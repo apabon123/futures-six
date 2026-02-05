@@ -1,0 +1,18 @@
+# Phase 4 Research: VRP Meta-Sleeve WITHOUT Convergence
+#
+# Hypothesis: VRP-Convergence is a net-negative belief component
+#             and should be removed from the VRP Meta-Sleeve.
+#
+# Baseline: phase4_vrp_baseline_v1 (Sharpe 0.469)
+#   - VRP-Core: 30% weight, 79.5% contribution, Sharpe 0.405
+#   - VRP-Convergence: 10% weight, -2.3% contribution, Sharpe -0.253 (NEGATIVE)
+#   - VRP-Alt: 60% weight, 22.8% contribution, Sharpe 0.926
+#
+# Variant: Remove VRP-Convergence, renormalize weights
+#   - VRP-Core: 30 / 90 = 33.3%
+#   - VRP-Alt: 60 / 90 = 66.7%
+#
+# Evaluation: Post-Construction only
+# Success Criterion: Sharpe improvement (e.g. 0.52-0.55+), no tail deterioration
+
+# This config is for documentation only - actual evaluation uses Phase-1 timeseries

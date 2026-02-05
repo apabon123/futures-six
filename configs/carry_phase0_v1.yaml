@@ -1,0 +1,91 @@
+# Carry Meta-Sleeve v1 — Phase-0 Configuration
+# Purpose: Sanity check to validate economic edge of carry signals
+# Date: January 2026
+#
+# Phase-0 Contract (from canonical spec):
+# - Sign-only signals: sign(raw_carry)
+# - Equal-weight per asset
+# - Daily rebalance
+# - No z-scoring
+# - No overlays
+# - No vol normalization
+# - No gating
+# - No cross-sectional ranking
+# - No allocator
+# - No policy
+#
+# Pass Criteria:
+# - Portfolio Sharpe ≥ 0.2
+# - At least one asset class positive
+# - No pathological tail blowups
+
+# Override strategy profile with carry-only configuration
+strategies:
+  # Disable all other strategies
+  tsmom:
+    enabled: false
+    weight: 0.0
+  
+  tsmom_med:
+    enabled: false
+    weight: 0.0
+  
+  tsmom_short:
+    enabled: false
+    weight: 0.0
+  
+  tsmom_multihorizon:
+    enabled: false
+    weight: 0.0
+  
+  csmom_meta:
+    enabled: false
+    weight: 0.0
+  
+  # Enable ONLY carry meta-sleeve v1
+  carry_meta_v1:
+    enabled: true
+    weight: 1.0  # 100% weight (only strategy enabled)
+    params:
+      phase: 0  # Phase-0: Sign-only, equal-weight
+      enabled_asset_classes: ["equity", "fx", "rates", "commodity"]
+      equity_symbols: ["ES", "NQ", "RTY"]
+      fx_symbols: ["6E", "6B", "6J"]
+      rates_symbols: ["ZT", "ZF", "ZN", "UB"]
+      commodity_symbols: ["CL", "GC"]
+      window: 252  # Unused in Phase-0, but required for Phase-1+
+      clip: 3.0    # Unused in Phase-0, but required for Phase-1+
+      rebalance: "D"  # Daily rebalance
+
+# Engine Policy: Disabled for Phase-0
+engine_policy_v1:
+  enabled: false
+  mode: "off"
+
+# Risk Targeting: Disabled for Phase-0
+risk_targeting:
+  enabled: false
+
+# Allocator: Disabled for Phase-0
+allocator_v1:
+  enabled: false
+  mode: "off"
+
+# Overlays: Disabled for Phase-0
+vol_overlay:
+  enabled: false
+
+# Run Parameters
+run:
+  start_date: "2018-01-01"
+  end_date: "2025-12-31"
+  rebalance: "D"  # Daily rebalance
+  initial_capital: 1000000
+  gross_cap: 1.0  # Unit gross (no leverage in Phase-0)
+  
+# Output
+output:
+  save_weights: true
+  save_returns: true
+  save_diagnostics: true
+  run_id_prefix: "carry_phase0_v1"

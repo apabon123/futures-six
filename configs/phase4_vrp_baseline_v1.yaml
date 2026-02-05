@@ -1,0 +1,161 @@
+# Phase 4 Research: VRP Meta-Sleeve Standalone Baseline
+#
+# Purpose: Evaluate VRP as a Meta-Sleeve ensemble belief object
+# 
+# This config isolates VRP Meta-Sleeve for Phase 4 Belief Autopsy:
+# - VRP-Core (6.555% normalized)
+# - VRP-Convergence (2.185% normalized)  
+# - VRP-Alt (13.11% normalized)
+#
+# All other engines DISABLED:
+# - Trend: disabled
+# - CSMOM: disabled
+# - VX Carry: disabled
+# - Curve RV: disabled
+#
+# Evaluation: Post-Construction (RT/Allocator artifacts only, not applied)
+#
+# Reference: CSMOM autopsy pattern (phase4_csmom_skip_v1.yaml)
+
+# ENGINE POLICY V1 (Layer 2) - COMPUTE MODE
+engine_policy_v1:
+  enabled: true
+  mode: "compute"
+  precomputed_run_id: null
+  lag_rebalances: 1
+  apply_missing_multiplier_as: 1.0
+  engines:
+    trend:
+      enabled: false  # DISABLED for VRP standalone
+    vrp:
+      enabled: true
+      rule: "vrp_extreme_stress_gate_v1"
+      feature: "vrp_stress_proxy"
+      threshold: 1
+      invert: false
+    csmom:
+      enabled: false
+    csmom_meta:
+      enabled: false
+    vrp_core_meta:
+      enabled: false  # Policy handled at vrp level
+    vrp_convergence_meta:
+      enabled: false
+    vrp_alt_meta:
+      enabled: false
+    vx_calendar_carry:
+      enabled: false
+    sr3_curve_rv_meta:
+      enabled: false
+
+# RISK TARGETING LAYER (Layer 5) - FROZEN
+risk_targeting:
+  enabled: true
+  target_vol: 0.42
+  leverage_cap: 7.0
+  leverage_floor: 1.0
+  vol_floor: 0.05
+  vol_lookback: 63
+  update_frequency: "static"
+
+# ALLOCATOR V1 (Layer 6) - ARTIFACTS ONLY MODE for clean comparison
+allocator_v1:
+  enabled: true
+  mode: "off"  # Artifacts only for Phase 4 comparison
+  profile: "H"
+  precomputed_run_id: null
+  precomputed_scalar_filename: "allocator_risk_v1_applied.csv"
+  apply_missing_scalar_as: 1.0
+  state_version: "v1.0"
+  regime_version: "v1.0"
+  risk_version: "v1.0"
+
+# Execution settings
+exec:
+  rebalance: "W-FRI"
+  slippage_bps: 0.5
+  commission_per_contract: 0.0
+  position_notional_scale: 1.0
+
+# Risk volatility settings
+risk_vol:
+  cov_lookback: 252
+  nan_policy: "mask-asset"
+  shrinkage: "lw"
+  vol_lookback: 63
+
+# Strategy profile: VRP-only (custom inline definition)
+# We don't use a predefined profile - we define strategies inline
+
+strategies:
+  # TREND - DISABLED
+  tsmom_multihorizon:
+    enabled: false
+    weight: 0.0
+  
+  # CSMOM - DISABLED
+  csmom_meta:
+    enabled: false
+    weight: 0.0
+  
+  # VRP-Core - ENABLED (normalized weight)
+  # Original Core v9 weight: 6.555%, normalized: 6.555 / 21.85 = 30.0%
+  vrp_core_meta:
+    enabled: true
+    weight: 0.30
+    params:
+      rv_lookback: 21
+      zscore_window: 252
+      clip: 3.0
+      signal_mode: "zscore"
+  
+  # VRP-Convergence - ENABLED (normalized weight)
+  # Original Core v9 weight: 2.185%, normalized: 2.185 / 21.85 = 10.0%
+  vrp_convergence_meta:
+    enabled: true
+    weight: 0.10
+    params:
+      zscore_window: 252
+      clip: 3.0
+      signal_mode: "zscore"
+      target_vol: 0.10
+      vol_lookback: 63
+      vol_floor: 0.05
+  
+  # VRP-Alt - ENABLED (normalized weight)
+  # Original Core v9 weight: 13.11%, normalized: 13.11 / 21.85 = 60.0%
+  vrp_alt_meta:
+    enabled: true
+    weight: 0.60
+    params:
+      zscore_window: 252
+      clip: 3.0
+      signal_mode: "zscore"
+      target_vol: 0.10
+      vol_lookback: 63
+      vol_floor: 0.05
+  
+  # VX Calendar Carry - DISABLED
+  vx_calendar_carry:
+    enabled: false
+    weight: 0.0
+  
+  # Curve RV - DISABLED
+  sr3_curve_rv_meta:
+    enabled: false
+    weight: 0.0
+  
+  # Other sleeves - DISABLED
+  long_only:
+    enabled: false
+    weight: 0.0
+  long_momentum:
+    enabled: false
+    weight: 0.0
+  residual_trend:
+    enabled: false
+    weight: 0.0
+
+# Macro regime - DISABLED
+macro_regime:
+  enabled: false

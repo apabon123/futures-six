@@ -1,0 +1,100 @@
+# Phase 4 Research: CSMOM_skip_v1 Phase 2 Integration Test
+#
+# Hypothesis ID: CSMOM-H001
+# Single Change: Add skip windows (5, 10, 21) to CSMOM lookbacks (63, 126, 252)
+# 
+# This config is IDENTICAL to canonical_frozen_stack_compute.yaml EXCEPT:
+# - csmom_meta.params.skips = [5, 10, 21]
+#
+# All other parameters are frozen:
+# - Same engines, same weights
+# - Same RT (target_vol=0.42)
+# - Same Allocator (Profile H)
+# - Same evaluation window
+
+# ENGINE POLICY V1 (Layer 2) - COMPUTE MODE
+engine_policy_v1:
+  enabled: true
+  mode: "compute"
+  precomputed_run_id: null
+  lag_rebalances: 1
+  apply_missing_multiplier_as: 1.0
+  engines:
+    trend:
+      enabled: true
+      rule: "gamma_vol_stress_gate_v1"
+      feature: "gamma_stress_proxy"
+      threshold: 1
+      invert: false
+    vrp:
+      enabled: true
+      rule: "vrp_extreme_stress_gate_v1"
+      feature: "vrp_stress_proxy"
+      threshold: 1
+      invert: false
+    csmom:
+      enabled: false
+    csmom_meta:
+      enabled: false
+    vrp_core_meta:
+      enabled: false
+    vrp_convergence_meta:
+      enabled: false
+    vrp_alt_meta:
+      enabled: false
+    vx_calendar_carry:
+      enabled: false
+    sr3_curve_rv_meta:
+      enabled: false
+
+# RISK TARGETING LAYER (Layer 5) - FROZEN
+risk_targeting:
+  enabled: true
+  target_vol: 0.42
+  leverage_cap: 7.0
+  leverage_floor: 1.0
+  vol_floor: 0.05
+  vol_lookback: 63
+  update_frequency: "static"
+
+# ALLOCATOR V1 (Layer 6) - ARTIFACTS ONLY MODE for clean comparison
+allocator_v1:
+  enabled: true
+  mode: "off"  # Artifacts only for Phase 2 comparison
+  profile: "H"
+  precomputed_run_id: null
+  precomputed_scalar_filename: "allocator_risk_v1_applied.csv"
+  apply_missing_scalar_as: 1.0
+  state_version: "v1.0"
+  regime_version: "v1.0"
+  risk_version: "v1.0"
+
+# Execution settings
+exec:
+  rebalance: "W-FRI"
+  slippage_bps: 0.5
+  commission_per_contract: 0.0
+  position_notional_scale: 1.0
+
+# Risk volatility settings
+risk_vol:
+  cov_lookback: 252
+  nan_policy: "mask-asset"
+  shrinkage: "lw"
+  vol_lookback: 63
+
+# Strategy profile: Core v9 with CSMOM_skip_v1
+strategy_profile: "core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro"
+
+# CSMOM skip override - THE ONLY CHANGE
+strategies:
+  csmom_meta:
+    enabled: true
+    params:
+      lookbacks: [63, 126, 252]
+      skips: [5, 10, 21]  # <-- THE SINGLE CHANGE (CSMOM_skip_v1)
+      horizon_weights: [0.4, 0.35, 0.25]
+      vol_lookback: 63
+      rebalance: "D"
+      neutralize_cross_section: true
+      clip: 3.0
