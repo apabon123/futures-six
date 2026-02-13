@@ -1,0 +1,10 @@
+{
+  "run_id": "phase3a_statistical_baseline_governed_20251031",
+  "cagr": 0.07184981515054822,
+  "vol": 0.08862355849196348,
+  "sharpe": 0.6760034113042528,
+  "maxdd": -0.12004480246312978,
+  "cum_return": null,
+  "turnover": null,
+  "hit_rate": 0.5285062713797035
+}

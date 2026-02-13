@@ -232,9 +232,10 @@ def build_runs_dashboard(site_dir: Path, runs: list) -> None:
     for r in runs:
         rid = r["run_id"]
         display = r.get("display_name") or r.get("label") or rid
-        sleeves = r.get("sleeves", {}).get("metasleeves", [])
-        sleeves_s = ", ".join(f"{s.get('name','')} ({s.get('weight',0)})" for s in sleeves[:5])
-        if len(sleeves) > 5:
+        metasleeves = r.get("sleeves", {}).get("metasleeves", [])
+        # Dashboard shows metasleeves only (VRP once, not vrp_core/vrp_convergence/vrp_alt)
+        sleeves_s = ", ".join(f"{s.get('name','')} ({s.get('weight',0)})" for s in metasleeves[:5])
+        if len(metasleeves) > 5:
             sleeves_s += "…"
         cards.append(f"""
 <div class="card">
@@ -328,9 +329,19 @@ def build_run_detail(site_dir: Path, run: dict) -> None:
                 metrics_block += f"<li><strong>{k}</strong>: {v}</li>"
         metrics_block += "</ul>"
 
-    sleeves = run.get("sleeves", {}).get("metasleeves", [])
-    sleeves_rows = "".join(f"<tr><td>{s.get('name','')}</td><td>{s.get('weight','')}</td></tr>" for s in sleeves)
-    sleeves_table = f"<table><thead><tr><th>Sleeve</th><th>Weight</th></tr></thead><tbody>{sleeves_rows}</tbody></table>" if sleeves_rows else ""
+    metasleeves = run.get("sleeves", {}).get("metasleeves", [])
+    sleeves_rows = []
+    for s in metasleeves:
+        name = s.get("name", "")
+        weight = s.get("weight", "")
+        atomics = s.get("atomic_sleeves", [])
+        atomics_str = ", ".join(str(a) for a in atomics) if atomics else "—"
+        sleeves_rows.append(f"<tr><td>{name}</td><td>{weight}</td><td>{atomics_str}</td></tr>")
+    sleeves_table = (
+        "<table><thead><tr><th>Metasleeve</th><th>Weight</th><th>Atomic sleeves</th></tr></thead><tbody>"
+        + "".join(sleeves_rows)
+        + "</tbody></table>"
+    ) if sleeves_rows else ""
 
     reproduce = summary_md
     m = re.search(r"```bash\n(.*?)\n```", reproduce, re.DOTALL)

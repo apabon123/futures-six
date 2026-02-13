@@ -1,0 +1,10 @@
+{
+  "run_id": "trend_plus_vrp_canonical_2020_2024",
+  "cagr": 0.008614650231414611,
+  "vol": 0.10949552427128581,
+  "sharpe": 0.11774189127644545,
+  "maxdd": -0.18759147958939595,
+  "cum_return": null,
+  "turnover": null,
+  "hit_rate": 0.5069674850696748
+}

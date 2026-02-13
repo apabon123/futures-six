@@ -1,0 +1,122 @@
+# Pinned Runs Registry — Single source of truth for the Project Hub dashboard
+# Edit this file to add/update pinned runs. Run build_site.py to refresh the HTML.
+#
+# Sleeves structure: metasleeves are level-1 (trend, csmom, vrp, vx_carry, curve_rv).
+# VRP atomic sleeves (vrp_core, vrp_convergence, vrp_alt) are grouped under vrp metasleeve.
+# vrp_core, vrp_convergence, vrp_alt must never appear at metasleeve level.
+
+runs:
+  - run_id: phase3b_baseline_traded_20260120_093953
+    label: "Phase 3B traded baseline (post-allocator)"
+    display_name: "Core v9 – traded production baseline (post-allocator)"
+    category: production
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase3b_baseline_traded.yaml
+    git_commit: ""  # populated by extract_metrics if run artifacts exist
+    description: "Current reference baseline. Post-allocator traded curve; RT target_vol 0.42; allocator v1 precomputed applied."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.5244 }
+        - { name: csmom, weight: 0.2185 }
+        - { name: vrp, weight: 0.2185, atomic_sleeves: [vrp_core, vrp_convergence, vrp_alt] }
+        - { name: vx_carry, weight: 0.046 }
+        - { name: curve_rv, weight: 0.08 }
+    artifacts:
+      summary_md: docs/pinned/phase3b_baseline_traded_20260120_093953.md
+
+  - run_id: phase3b_baseline_artifacts_only_20260120_093953
+    label: "Phase 3B artifacts-only baseline"
+    display_name: "Core v9 – artifacts-only baseline"
+    category: production
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase3b_baseline_artifacts_only.yaml
+    git_commit: ""
+    description: "Pre-allocator reference; construction curve without allocator scaling."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.5244 }
+        - { name: csmom, weight: 0.2185 }
+        - { name: vrp, weight: 0.2185, atomic_sleeves: [vrp_core, vrp_convergence, vrp_alt] }
+        - { name: vx_carry, weight: 0.046 }
+        - { name: curve_rv, weight: 0.08 }
+    artifacts:
+      summary_md: docs/pinned/phase3b_baseline_artifacts_only_20260120_093953.md
+
+  - run_id: phase3a_statistical_baseline_governed_20251031
+    label: "Phase 3A statistical baseline (governed)"
+    display_name: "Phase-3A engine-quality statistical baseline"
+    category: engine_quality
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/canonical_frozen_stack_precomputed.yaml
+    git_commit: ""
+    description: "Phase 3A governed baseline; policy + RT + allocator governance; eval 2020-03-20 to 2025-10-31."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.5244 }
+        - { name: csmom, weight: 0.2185 }
+        - { name: vrp, weight: 0.2185, atomic_sleeves: [vrp_core, vrp_convergence, vrp_alt] }
+        - { name: vx_carry, weight: 0.046 }
+        - { name: curve_rv, weight: 0.08 }
+    artifacts:
+      summary_md: docs/pinned/phase3a_statistical_baseline_governed_20251031.md
+
+  - run_id: vrp_vxlegs_canonical
+    label: "VRP VX legs canonical (VX2–VX1 spread)"
+    display_name: "VRP VX legs canonical (VX2–VX1 spread)"
+    category: diagnostic
+    window:
+      start: "2020-01-01"
+      end: "2024-10-31"
+    config_path: configs/phase4_vrp_baseline_v1.yaml
+    git_commit: ""
+    description: "VRP-only canonical run with restored VX2–VX1 spread geometry for Convergence sleeve."
+    expected_universe: 13
+    sleeves:
+      metasleeves:
+        - { name: vrp, weight: 0.2185, atomic_sleeves: [vrp_core, vrp_convergence, vrp_alt] }
+    artifacts:
+      summary_md: docs/pinned/vrp_vxlegs_canonical.md
+
+  - run_id: trend_only_canonical_2020_2024
+    label: "Trend-only canonical (2020–2024)"
+    display_name: "Trend-only canonical (2020–2024)"
+    category: integration
+    window:
+      start: "2020-01-01"
+      end: "2024-10-31"
+    config_path: configs/phase4_trend_only_canonical_v1.yaml
+    git_commit: ""
+    description: "Trend (TSMOM) Meta-Sleeve only for apples-to-apples comparison vs Trend+VRP."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 1.0 }
+    artifacts:
+      summary_md: docs/pinned/trend_only_canonical_2020_2024.md
+
+  - run_id: trend_plus_vrp_canonical_2020_2024
+    label: "Trend+VRP canonical (2020–2024)"
+    display_name: "Trend + VRP canonical (2020–2024)"
+    category: integration
+    window:
+      start: "2020-01-01"
+      end: "2024-10-31"
+    config_path: configs/phase4_trend_plus_vrp_canonical_v1.yaml
+    git_commit: ""
+    description: "Trend + VRP Meta-Sleeves; VRP uses corrected VX2−VX1 convergence geometry."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.6 }
+        - { name: vrp, weight: 0.4, atomic_sleeves: [vrp_core, vrp_convergence, vrp_alt] }
+    artifacts:
+      summary_md: docs/pinned/trend_plus_vrp_canonical_2020_2024.md

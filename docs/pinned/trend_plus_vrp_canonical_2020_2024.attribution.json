@@ -1,0 +1,62 @@
+{
+  "run_id": "trend_plus_vrp_canonical_2020_2024",
+  "consistency_check": {
+    "passed": true,
+    "tolerance": 1e-08,
+    "max_abs_daily_residual": 2.7755575615628914e-17,
+    "cum_residual": -1.0381066394959254e-16
+  },
+  "atomic_summary": {
+    "tsmom_multihorizon": {
+      "cum_return": -0.6825696914636211,
+      "mean_daily_contrib": -0.0004526324213949742,
+      "mean_abs_daily_contrib": 0.004826046049664691,
+      "vol_of_contrib": 0.012061767039442539,
+      "max_dd_of_contrib": -0.706801819984228,
+      "hit_rate": 0.5070517125587642,
+      "active_days": 1496,
+      "no_signal_days": 12
+    },
+    "vrp_alt_meta": {
+      "cum_return": 0.44597305725796954,
+      "mean_daily_contrib": 0.0002957381016299533,
+      "mean_abs_daily_contrib": 0.0006265963968895923,
+      "vol_of_contrib": 0.006154403503836379,
+      "max_dd_of_contrib": -0.08638812286640496,
+      "hit_rate": 0.5489130434782609,
+      "active_days": 592,
+      "no_signal_days": 916
+    },
+    "vrp_convergence_meta": {
+      "cum_return": 0.027447137914012598,
+      "mean_daily_contrib": 1.820101983687838e-05,
+      "mean_abs_daily_contrib": 4.562772729458388e-05,
+      "vol_of_contrib": 0.0004520919234687221,
+      "max_dd_of_contrib": -0.00574065946916018,
+      "hit_rate": 0.5420393559928444,
+      "active_days": 886,
+      "no_signal_days": 622
+    },
+    "vrp_core_meta": {
+      "cum_return": 0.28624943556187343,
+      "mean_daily_contrib": 0.0001898205806113219,
+      "mean_abs_daily_contrib": 0.0010408605667761145,
+      "vol_of_contrib": 0.009285104432261609,
+      "max_dd_of_contrib": -0.2530852114871399,
+      "hit_rate": 0.506508875739645,
+      "active_days": 1346,
+      "no_signal_days": 162
+    }
+  },
+  "metasleeve_summary": [
+    {
+      "metasleeve": "tsmom_multihorizon",
+      "cum_return": -0.6825696914636213
+    },
+    {
+      "metasleeve": "vrp_combined",
+      "cum_return": 0.7596696307338553
+    }
+  ],
+  "correlation_matrix_path": "sleeve_contribution_correlation.csv"
+}

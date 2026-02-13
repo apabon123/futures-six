@@ -1,0 +1,28 @@
+{
+  "run_id": "trend_only_canonical_2020_2024",
+  "consistency_check": {
+    "passed": true,
+    "tolerance": 1e-08,
+    "max_abs_daily_residual": 6.938893903907228e-18,
+    "cum_residual": 6.345547324355591e-18
+  },
+  "atomic_summary": {
+    "tsmom_multihorizon": {
+      "cum_return": 0.12088218632230344,
+      "mean_daily_contrib": 8.016060100948504e-05,
+      "mean_abs_daily_contrib": 0.003934644487455146,
+      "vol_of_contrib": 0.005655864368156041,
+      "max_dd_of_contrib": -0.1392635351352569,
+      "hit_rate": 0.5139442231075697,
+      "active_days": 1508,
+      "no_signal_days": 0
+    }
+  },
+  "metasleeve_summary": [
+    {
+      "metasleeve": "tsmom_multihorizon",
+      "cum_return": 0.1208821863223034
+    }
+  ],
+  "correlation_matrix_path": "sleeve_contribution_correlation.csv"
+}

@@ -1,0 +1,10 @@
+{
+  "run_id": "trend_only_canonical_2020_2024",
+  "cagr": 0.02025631456364696,
+  "vol": 0.08980928038901266,
+  "sharpe": 0.22507097864962727,
+  "maxdd": -0.13217815747556516,
+  "cum_return": null,
+  "turnover": null,
+  "hit_rate": 0.5129396151293961
+}

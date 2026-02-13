@@ -1,0 +1,10 @@
+{
+  "run_id": "phase3b_baseline_artifacts_only_20260120_093953",
+  "cagr": 0.1720745126132095,
+  "vol": 0.17194962289324378,
+  "sharpe": 0.830796565259193,
+  "maxdd": -0.17836177131869274,
+  "cum_return": null,
+  "turnover": null,
+  "hit_rate": 0.523945267958951
+}

@@ -1,0 +1,10 @@
+{
+  "run_id": "phase3b_baseline_traded_20260120_093953",
+  "cagr": 0.1633784772797935,
+  "vol": 0.16682373900541655,
+  "sharpe": 0.8151040000873323,
+  "maxdd": -0.1783617713186681,
+  "cum_return": null,
+  "turnover": null,
+  "hit_rate": 0.523945267958951
+}
