@@ -396,3 +396,56 @@ def compute_vx_calendar_carry_phase1(
     finally:
         con.close()
 
+
+class VXCalendarCarryReturnsAdapter:
+    """
+    Adapter that exposes compute_returns(market, start, end) for ExecSim
+    sleeve_returns emission. Delegates to compute_vx_calendar_carry_phase1.
+    """
+    def __init__(
+        self,
+        db_path: str,
+        variant: str = "vx2_vx1_short",
+        mode: str = "phase1",
+        zscore_window: int = 90,
+        clip: float = 2.0,
+        target_vol: float = 0.10,
+        vol_lookback: int = 60,
+        min_vol_floor: float = 0.01,
+        max_leverage: float = 10.0,
+        lag: int = 1,
+    ):
+        self.db_path = db_path
+        self.variant = variant
+        self.mode = mode
+        self.zscore_window = zscore_window
+        self.clip = clip
+        self.target_vol = target_vol
+        self.vol_lookback = vol_lookback
+        self.min_vol_floor = min_vol_floor
+        self.max_leverage = max_leverage
+        self.lag = lag
+
+    def compute_returns(
+        self,
+        market,  # unused; VX data from db_path
+        start: str,
+        end: str
+    ) -> pd.Series:
+        """Return daily sleeve return series for attribution (index=date)."""
+        out = compute_vx_calendar_carry_phase1(
+            db_path=self.db_path,
+            variant=self.variant,
+            start_date=start,
+            end_date=end,
+            mode=self.mode,
+            zscore_window=self.zscore_window,
+            clip=self.clip,
+            target_vol=self.target_vol,
+            vol_lookback=self.vol_lookback,
+            min_vol_floor=self.min_vol_floor,
+            max_leverage=self.max_leverage,
+            lag=self.lag,
+        )
+        return out["portfolio_returns"]
+

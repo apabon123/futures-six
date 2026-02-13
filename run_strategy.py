@@ -557,6 +557,37 @@ def main():
             logger.info(f"    Weight: {curve_rv_weight}")
         else:
             logger.info("  SR3 Curve RV Meta-Sleeve disabled in config")
+
+        # VX Calendar Carry (sleeve returns for attribution; not in CombinedStrategy)
+        vx_calendar_carry_cfg = strategies_cfg.get("vx_calendar_carry", {})
+        vx_calendar_carry_meta = None
+        if vx_calendar_carry_cfg.get("enabled", False):
+            logger.info("  Initializing VX Calendar Carry (sleeve returns for attribution)...")
+            import yaml as _yaml
+            data_config_path = Path("configs/data.yaml")
+            db_path = None
+            if data_config_path.exists():
+                with open(data_config_path, 'r', encoding='utf-8') as f:
+                    data_config = _yaml.safe_load(f)
+                db_path = data_config.get('db', {}).get('path')
+            if db_path:
+                from src.strategies.carry.vx_calendar_carry import VXCalendarCarryReturnsAdapter
+                vx_params = vx_calendar_carry_cfg.get("params", {})
+                vx_calendar_carry_meta = VXCalendarCarryReturnsAdapter(
+                    db_path=db_path,
+                    variant=vx_params.get("variant", "vx2_vx1_short"),
+                    mode=vx_params.get("mode", "phase1"),
+                    zscore_window=vx_params.get("zscore_window", 90),
+                    clip=vx_params.get("clip", 2.0),
+                    target_vol=vx_params.get("target_vol", 0.10),
+                    vol_lookback=vx_params.get("vol_lookback", 60),
+                    min_vol_floor=vx_params.get("min_vol_floor", 0.01),
+                    max_leverage=vx_params.get("max_leverage", 10.0),
+                    lag=vx_params.get("lag", 1),
+                )
+                logger.info(f"    Config: variant={vx_params.get('variant')}, weight={vx_calendar_carry_cfg.get('weight', 0.0)}")
+            else:
+                logger.warning("  VX Calendar Carry enabled but db path not found in configs/data.yaml; sleeve returns will be omitted")
         
         # Residual Trend strategy
         residual_trend_cfg = strategies_cfg.get("residual_trend", {})
@@ -747,6 +778,7 @@ def main():
             'allocator': allocator,
             'curve_rv_meta': curve_rv_meta,  # Add Curve RV meta-sleeve if enabled
             'curve_rv_weight': curve_rv_weight,  # Add Curve RV weight
+            'vx_calendar_carry_meta': vx_calendar_carry_meta,  # For sleeve_returns attribution when enabled
             'allocator_v1_config': allocator_v1_config,  # Stage 4D: Allocator v1 config
             'engine_policy_v1_config': engine_policy_v1_config  # Phase 2: Engine Policy v1 config
         }

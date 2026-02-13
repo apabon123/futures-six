@@ -1,0 +1,56 @@
+{
+  "run_id": "carry_eq_trend_plus_carry_20200106_20251031_20260213_145229",
+  "consistency_check": {
+    "passed": true,
+    "tolerance": 1e-08,
+    "max_abs_daily_residual": 1.0408340855860843e-17,
+    "cum_residual": 5.9257683836082e-17
+  },
+  "atomic_summary": {
+    "sr3_carry_curve": {
+      "cum_return": -6.675391274291366e-08,
+      "mean_daily_contrib": -3.677901528535188e-11,
+      "mean_abs_daily_contrib": 7.646236499116695e-10,
+      "vol_of_contrib": 5.272716723853568e-09,
+      "max_dd_of_contrib": -2.8997660410875514e-07,
+      "hit_rate": 0.5026246719160105,
+      "active_days": 766,
+      "no_signal_days": 1049
+    },
+    "tsmom_multihorizon": {
+      "cum_return": 0.12192335691501945,
+      "mean_daily_contrib": 6.717540325896388e-05,
+      "mean_abs_daily_contrib": 0.003779611670796388,
+      "vol_of_contrib": 0.005625071414037204,
+      "max_dd_of_contrib": -0.16416581549871118,
+      "hit_rate": 0.5102379634753735,
+      "active_days": 1809,
+      "no_signal_days": 6
+    },
+    "vx_calendar_carry": {
+      "cum_return": -0.0037368398189181924,
+      "mean_daily_contrib": -2.0588649140045137e-06,
+      "mean_abs_daily_contrib": 0.00011631230816209244,
+      "vol_of_contrib": 0.0005372481154383409,
+      "max_dd_of_contrib": -0.02367441407501838,
+      "hit_rate": 0.5102040816326531,
+      "active_days": 1815,
+      "no_signal_days": 0
+    }
+  },
+  "metasleeve_summary": [
+    {
+      "metasleeve": "sr3_carry_curve",
+      "cum_return": -6.675391274291354e-08
+    },
+    {
+      "metasleeve": "tsmom_multihorizon",
+      "cum_return": 0.1219233569150193
+    },
+    {
+      "metasleeve": "vx_calendar_carry",
+      "cum_return": -0.0037368398189181
+    }
+  ],
+  "correlation_matrix_path": "sleeve_contribution_correlation.csv"
+}

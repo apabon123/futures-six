@@ -1,0 +1,84 @@
+{
+  "run_id": "carry_int_v1stack_no_vrp_plus_carry_20200106_20251031_20260213_150500",
+  "consistency_check": {
+    "passed": false,
+    "tolerance": 1e-08,
+    "max_abs_daily_residual": 4.722065332334731e-06,
+    "cum_residual": 4.722065332570473e-06
+  },
+  "atomic_summary": {
+    "csmom_meta": {
+      "cum_return": 0.0030203803116105317,
+      "mean_daily_contrib": 1.6641213838074554e-06,
+      "mean_abs_daily_contrib": 5.9718876437248886e-05,
+      "vol_of_contrib": 0.0003064928785297385,
+      "max_dd_of_contrib": -0.008588547797902864,
+      "hit_rate": 0.51300498063088,
+      "active_days": 1809,
+      "no_signal_days": 6
+    },
+    "sr3_carry_curve": {
+      "cum_return": -1.9426333053231585e-08,
+      "mean_daily_contrib": -1.0703213803433381e-11,
+      "mean_abs_daily_contrib": 3.137308988636591e-10,
+      "vol_of_contrib": 2.0563088798915606e-09,
+      "max_dd_of_contrib": -1.1996675949843384e-07,
+      "hit_rate": 0.5039370078740157,
+      "active_days": 766,
+      "no_signal_days": 1049
+    },
+    "sr3_curve_rv_meta": {
+      "cum_return": -0.016632459877550538,
+      "mean_daily_contrib": -9.163889739697266e-06,
+      "mean_abs_daily_contrib": 0.00016142074396135786,
+      "vol_of_contrib": 0.0006367923113664413,
+      "max_dd_of_contrib": -0.03987046204797384,
+      "hit_rate": 0.5143198090692124,
+      "active_days": 1677,
+      "no_signal_days": 138
+    },
+    "tsmom_multihorizon": {
+      "cum_return": 0.20721543531423028,
+      "mean_daily_contrib": 0.00011416828391968611,
+      "mean_abs_daily_contrib": 0.00327156850984942,
+      "vol_of_contrib": 0.004986544287662444,
+      "max_dd_of_contrib": -0.11871701896010703,
+      "hit_rate": 0.51300498063088,
+      "active_days": 1809,
+      "no_signal_days": 6
+    },
+    "vx_calendar_carry": {
+      "cum_return": 0.010485564756395005,
+      "mean_daily_contrib": 5.777170664680443e-06,
+      "mean_abs_daily_contrib": 0.00011667563176162033,
+      "vol_of_contrib": 0.00045179885252895997,
+      "max_dd_of_contrib": -0.01769892305186648,
+      "hit_rate": 0.5129619415333702,
+      "active_days": 1815,
+      "no_signal_days": 0
+    }
+  },
+  "metasleeve_summary": [
+    {
+      "metasleeve": "csmom_meta",
+      "cum_return": 0.0030203803116105
+    },
+    {
+      "metasleeve": "sr3_carry_curve",
+      "cum_return": -1.942633305323156e-08
+    },
+    {
+      "metasleeve": "sr3_curve_rv_meta",
+      "cum_return": -0.0166324598775505
+    },
+    {
+      "metasleeve": "tsmom_multihorizon",
+      "cum_return": 0.2072154353142306
+    },
+    {
+      "metasleeve": "vx_calendar_carry",
+      "cum_return": 0.0104855647563949
+    }
+  ],
+  "correlation_matrix_path": "sleeve_contribution_correlation.csv"
+}

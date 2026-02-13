@@ -701,6 +701,50 @@ class TestExecSimAPI:
         assert desc['position_notional_scale'] == 10000
 
 
+class TestSleeveReturnsEmission:
+    """Test that sleeve_returns.csv includes curve_rv and vx_calendar_carry when provided."""
+
+    def test_sleeve_returns_includes_curve_rv_and_vx_calendar_carry(self, tmp_path):
+        """Precomputed curve_rv and vx_calendar_carry returns are written as sleeve columns."""
+        dates = pd.bdate_range("2023-01-02", periods=20, freq="B")
+        returns_df = pd.DataFrame(
+            np.random.randn(len(dates), 2).astype(np.float64) * 0.01,
+            index=dates,
+            columns=["A", "B"],
+        )
+        curve_rv_returns = pd.Series(np.random.randn(len(dates)).astype(np.float64) * 0.005, index=dates)
+        vx_calendar_carry_returns = pd.Series(np.random.randn(len(dates)).astype(np.float64) * 0.005, index=dates)
+        equity = (1 + returns_df.sum(axis=1)).cumprod()
+        equity.iloc[0] = 1.0
+        weights_panel = pd.DataFrame(
+            {"A": [0.5] * 5, "B": [0.5] * 5},
+            index=pd.bdate_range("2023-01-02", periods=5, freq="B"),
+        )
+        components = {"strategy": None}
+        exec_sim = ExecSim()
+        run_id = "test_sleeve_emission"
+        exec_sim._save_run_artifacts(
+            run_id=run_id,
+            out_dir=str(tmp_path),
+            equity_curve=equity,
+            weights_panel=weights_panel,
+            returns_df=returns_df,
+            start="2023-01-02",
+            end=dates[-1].strftime("%Y-%m-%d"),
+            components=components,
+            market=MockMarketData(returns_df, tuple(returns_df.columns)),
+            curve_rv_returns=curve_rv_returns,
+            vx_calendar_carry_returns=vx_calendar_carry_returns,
+            returns_history=[],
+            turnover_history=[],
+        )
+        sleeve_path = tmp_path / run_id / "sleeve_returns.csv"
+        assert sleeve_path.exists(), "sleeve_returns.csv should be written when curve_rv/vx returns provided"
+        sleeve_df = pd.read_csv(sleeve_path, index_col=0, parse_dates=True)
+        assert "sr3_curve_rv_meta" in sleeve_df.columns
+        assert "vx_calendar_carry" in sleeve_df.columns
+
+
 if __name__ == "__main__":
     # Run tests with pytest
     pytest.main([__file__, "-v", "--tb=short"])

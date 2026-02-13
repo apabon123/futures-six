@@ -123,3 +123,77 @@ runs:
         - { name: vrp, atomic_sleeves: [{ name: vrp_core, weight: 0.1 }, { name: vrp_convergence, weight: 0.05 }, { name: vrp_alt, weight: 0.25 }] }
     artifacts:
       summary_md: docs/pinned/trend_plus_vrp_canonical_2020_2024.md
+
+  - run_id: vrp_eq_trend_plus_vrp_20200106_20251031_20260213_131905
+    label: "VRP engine-quality (Trend+VRP only)"
+    display_name: "VRP engine-quality – Trend + VRP only (2020-01-06 to 2025-10-31)"
+    category: engine_quality
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase4_trend_plus_vrp_canonical_v1.yaml
+    git_commit: ""
+    description: "Governed VRP evaluation run #1: Trend (control) + VRP only; strict_universe; canonical window."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.6 }
+        - { name: vrp, atomic_sleeves: [{ name: vrp_core, weight: 0.15 }, { name: vrp_convergence, weight: 0.05 }, { name: vrp_alt, weight: 0.2 }] }
+    artifacts:
+      summary_md: ""
+
+  - run_id: vrp_int_trend_plus_vrp_20200106_20251031_20260213_132033
+    label: "VRP integration (Trend+VRP only)"
+    display_name: "VRP integration – Trend + VRP only (2020-01-06 to 2025-10-31)"
+    category: integration
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase4_trend_plus_vrp_canonical_v1.yaml
+    git_commit: ""
+    description: "Governed VRP evaluation run #2: integration check; same composition as engine-quality run."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.6 }
+        - { name: vrp, atomic_sleeves: [{ name: vrp_core, weight: 0.15 }, { name: vrp_convergence, weight: 0.05 }, { name: vrp_alt, weight: 0.2 }] }
+    artifacts:
+      summary_md: ""
+
+  - run_id: carry_eq_trend_plus_carry_20200106_20251031_20260213_145229
+    label: "Carry V1 engine-quality (Trend+Carry only)"
+    display_name: "Carry V1 engine-quality – Trend + Carry (SR3 + VX) (2020-01-06 to 2025-10-31)"
+    category: engine_quality
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase4_trend_plus_carry_canonical_v1.yaml
+    git_commit: ""
+    description: "Carry V1 governed eval run #1: Trend + SR3 calendar carry + VX calendar carry only."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.75 }
+        - { name: vx_carry, weight: 0.10 }
+    artifacts:
+      summary_md: ""
+
+  - run_id: carry_int_v1stack_no_vrp_plus_carry_20200106_20251031_20260213_150500
+    label: "Carry V1 integration (V1 stack no VRP + Carry)"
+    display_name: "Carry V1 integration – Trend + CSMOM + Curve RV + Carry (2020-01-06 to 2025-10-31)"
+    category: integration
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase4_v1_stack_no_vrp_plus_carry.yaml
+    git_commit: ""
+    description: "Carry V1 governed eval run #2: trend + csmom + curve_rv + carry; no VRP."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.52 }
+        - { name: csmom, weight: 0.22 }
+        - { name: curve_rv, weight: 0.08 }
+        - { name: vx_carry, weight: 0.08 }
+    artifacts:
+      summary_md: ""

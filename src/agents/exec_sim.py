@@ -1302,6 +1302,18 @@ class ExecSim:
             except Exception as e:
                 logger.error(f"[ExecSim] Failed to compute Curve RV returns: {e}")
                 curve_rv_returns = None
+
+        vx_calendar_carry_returns = None
+        vx_calendar_carry_meta = components.get('vx_calendar_carry_meta')
+        if vx_calendar_carry_meta is not None:
+            logger.info("[ExecSim] Computing VX calendar carry returns...")
+            try:
+                vx_calendar_carry_returns = vx_calendar_carry_meta.compute_returns(market, start, end)
+                logger.info(f"[ExecSim] VX calendar carry returns: n={len(vx_calendar_carry_returns)}, "
+                           f"mean={vx_calendar_carry_returns.mean():.6f}, std={vx_calendar_carry_returns.std():.6f}")
+            except Exception as e:
+                logger.error(f"[ExecSim] Failed to compute VX calendar carry returns: {e}")
+                vx_calendar_carry_returns = None
         
         # Build results
         logger.info(f"[ExecSim] Completed {len(dates_history)} holding periods")
@@ -1421,6 +1433,8 @@ class ExecSim:
             components=components,
             market=market,
             sleeve_signals_history=sleeve_signals_history,  # Stage 4A
+            curve_rv_returns=curve_rv_returns,
+            vx_calendar_carry_returns=vx_calendar_carry_returns,
             risk_scalar_applied_history=risk_scalar_applied_history,  # Stage 5
             risk_scalar_computed_history=risk_scalar_computed_history,  # Stage 5
             weights_raw_history=weights_raw_history,  # Stage 5
@@ -1633,7 +1647,9 @@ class ExecSim:
         # Dual metrics computation inputs
         rebalance_dates: Optional[pd.DatetimeIndex] = None,
         returns_history: Optional[list] = None,
-        turnover_history: Optional[list] = None
+        turnover_history: Optional[list] = None,
+        curve_rv_returns: Optional[pd.Series] = None,
+        vx_calendar_carry_returns: Optional[pd.Series] = None
     ):
         """
         Save run artifacts to disk for diagnostics.
@@ -1850,50 +1866,51 @@ class ExecSim:
             except Exception as e:
                 logger.warning(f"[ExecSim] Failed to compute trend_unit_returns: {e}")
         
-        # 4B. Stage 4A: Sleeve Returns (optional, for allocator state)
+        # 4B. Stage 4A: Sleeve Returns (optional, for allocator state and attribution)
         sleeve_returns_df = None
-        if sleeve_signals_history and 'strategy' in components and hasattr(components['strategy'], 'strategies'):
+        if (sleeve_signals_history and 'strategy' in components and hasattr(components['strategy'], 'strategies')
+                or curve_rv_returns is not None or vx_calendar_carry_returns is not None):
             try:
                 logger.info("[ExecSim] Computing sleeve returns...")
-                
-                # Get the combined strategy
-                strategy = components['strategy']
-                
-                # For each sleeve, compute its return contribution
-                # This is an approximation: we attribute portfolio returns proportionally to each sleeve's signal contribution
                 sleeve_returns_data = {}
-                
-                for sleeve_name, sleeve_strategy in strategy.strategies.items():
-                    sleeve_weight = strategy.weights.get(sleeve_name, 0.0)
-                    if sleeve_weight > 0:
-                        # Get the sleeve's signals (if captured)
-                        if sleeve_name in sleeve_signals_history and len(sleeve_signals_history[sleeve_name]) > 0:
-                            # Reconstruct sleeve signals as a DataFrame
-                            sleeve_dates = [d for d, _ in sleeve_signals_history[sleeve_name]]
-                            sleeve_sigs_list = [s for _, s in sleeve_signals_history[sleeve_name]]
-                            
-                            if len(sleeve_sigs_list) > 0:
-                                sleeve_sigs_df = pd.DataFrame(sleeve_sigs_list, index=sleeve_dates)
+                strategy = components.get('strategy')
+                if sleeve_signals_history and strategy is not None and hasattr(strategy, 'strategies'):
+                    # For each sleeve, compute its return contribution
+                    for sleeve_name, sleeve_strategy in strategy.strategies.items():
+                        sleeve_weight = strategy.weights.get(sleeve_name, 0.0)
+                        if sleeve_weight > 0:
+                            # Get the sleeve's signals (if captured)
+                            if sleeve_name in sleeve_signals_history and len(sleeve_signals_history[sleeve_name]) > 0:
+                                # Reconstruct sleeve signals as a DataFrame
+                                sleeve_dates = [d for d, _ in sleeve_signals_history[sleeve_name]]
+                                sleeve_sigs_list = [s for _, s in sleeve_signals_history[sleeve_name]]
                                 
-                                # Forward-fill to daily frequency
-                                sleeve_sigs_daily = sleeve_sigs_df.reindex(returns_df.index).ffill().fillna(0.0)
-                                
-                                # Compute sleeve return as: sum(sleeve_signal[t-1] * asset_return[t])
-                                # This is an approximation of the sleeve's contribution
-                                sleeve_sigs_lagged = sleeve_sigs_daily.shift(1).fillna(0.0)
-                                
-                                # Align with asset returns
-                                common_assets = sleeve_sigs_lagged.columns.intersection(returns_df.columns)
-                                if len(common_assets) > 0:
-                                    sigs_aligned = sleeve_sigs_lagged[common_assets]
-                                    rets_aligned = returns_df[common_assets]
+                                if len(sleeve_sigs_list) > 0:
+                                    sleeve_sigs_df = pd.DataFrame(sleeve_sigs_list, index=sleeve_dates)
                                     
-                                    # Convert returns to simple
-                                    rets_simple = np.exp(rets_aligned) - 1.0
+                                    # Forward-fill to daily frequency
+                                    sleeve_sigs_daily = sleeve_sigs_df.reindex(returns_df.index).ffill().fillna(0.0)
                                     
-                                    # Sleeve return = weighted sum of (signal * return)
-                                    sleeve_returns_data[sleeve_name] = (sigs_aligned * rets_simple).sum(axis=1)
-                
+                                    # Compute sleeve return as: sum(sleeve_signal[t-1] * asset_return[t])
+                                    sleeve_sigs_lagged = sleeve_sigs_daily.shift(1).fillna(0.0)
+                                    
+                                    common_assets = sleeve_sigs_lagged.columns.intersection(returns_df.columns)
+                                    if len(common_assets) > 0:
+                                        sigs_aligned = sleeve_sigs_lagged[common_assets]
+                                        rets_aligned = returns_df[common_assets]
+                                        rets_simple = np.exp(rets_aligned) - 1.0
+                                        sleeve_returns_data[sleeve_name] = (sigs_aligned * rets_simple).sum(axis=1)
+
+                # Include precomputed sleeve returns for curve_rv and vx_calendar_carry (not from signals)
+                if curve_rv_returns is not None and len(curve_rv_returns) > 0:
+                    idx = returns_df.index if not returns_df.empty else curve_rv_returns.index
+                    aligned = curve_rv_returns.reindex(idx).fillna(0.0)
+                    sleeve_returns_data["sr3_curve_rv_meta"] = aligned
+                if vx_calendar_carry_returns is not None and len(vx_calendar_carry_returns) > 0:
+                    idx = returns_df.index if not returns_df.empty else vx_calendar_carry_returns.index
+                    aligned = vx_calendar_carry_returns.reindex(idx).fillna(0.0)
+                    sleeve_returns_data["vx_calendar_carry"] = aligned
+
                 if sleeve_returns_data:
                     sleeve_returns_df = pd.DataFrame(sleeve_returns_data)
                     sleeve_returns_df.to_csv(run_dir / 'sleeve_returns.csv')
