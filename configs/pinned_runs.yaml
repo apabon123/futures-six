@@ -4,6 +4,9 @@
 # Sleeves structure: metasleeves are level-1 (trend, csmom, vrp, vx_carry, curve_rv).
 # VRP atomic sleeves (vrp_core, vrp_convergence, vrp_alt) are grouped under vrp metasleeve.
 # vrp_core, vrp_convergence, vrp_alt must never appear at metasleeve level.
+#
+# Weight source-of-truth: VRP metasleeve weight is DERIVED (sum of atomic weights).
+# Store only atomic_sleeves with weights; builder computes VRP total. No drift.
 
 runs:
   - run_id: phase3b_baseline_traded_20260120_093953
@@ -21,7 +24,7 @@ runs:
       metasleeves:
         - { name: trend, weight: 0.5244 }
         - { name: csmom, weight: 0.2185 }
-        - { name: vrp, weight: 0.2185, atomic_sleeves: [vrp_core, vrp_convergence, vrp_alt] }
+        - { name: vrp, atomic_sleeves: [{ name: vrp_core, weight: 0.06555 }, { name: vrp_convergence, weight: 0.02185 }, { name: vrp_alt, weight: 0.1311 }] }
         - { name: vx_carry, weight: 0.046 }
         - { name: curve_rv, weight: 0.08 }
     artifacts:
@@ -42,7 +45,7 @@ runs:
       metasleeves:
         - { name: trend, weight: 0.5244 }
         - { name: csmom, weight: 0.2185 }
-        - { name: vrp, weight: 0.2185, atomic_sleeves: [vrp_core, vrp_convergence, vrp_alt] }
+        - { name: vrp, atomic_sleeves: [{ name: vrp_core, weight: 0.06555 }, { name: vrp_convergence, weight: 0.02185 }, { name: vrp_alt, weight: 0.1311 }] }
         - { name: vx_carry, weight: 0.046 }
         - { name: curve_rv, weight: 0.08 }
     artifacts:
@@ -63,7 +66,7 @@ runs:
       metasleeves:
         - { name: trend, weight: 0.5244 }
         - { name: csmom, weight: 0.2185 }
-        - { name: vrp, weight: 0.2185, atomic_sleeves: [vrp_core, vrp_convergence, vrp_alt] }
+        - { name: vrp, atomic_sleeves: [{ name: vrp_core, weight: 0.06555 }, { name: vrp_convergence, weight: 0.02185 }, { name: vrp_alt, weight: 0.1311 }] }
         - { name: vx_carry, weight: 0.046 }
         - { name: curve_rv, weight: 0.08 }
     artifacts:
@@ -82,7 +85,7 @@ runs:
     expected_universe: 13
     sleeves:
       metasleeves:
-        - { name: vrp, weight: 0.2185, atomic_sleeves: [vrp_core, vrp_convergence, vrp_alt] }
+        - { name: vrp, atomic_sleeves: [{ name: vrp_core, weight: 0.06555 }, { name: vrp_convergence, weight: 0.02185 }, { name: vrp_alt, weight: 0.1311 }] }
     artifacts:
       summary_md: docs/pinned/vrp_vxlegs_canonical.md
 
@@ -117,6 +120,6 @@ runs:
     sleeves:
       metasleeves:
         - { name: trend, weight: 0.6 }
-        - { name: vrp, weight: 0.4, atomic_sleeves: [vrp_core, vrp_convergence, vrp_alt] }
+        - { name: vrp, atomic_sleeves: [{ name: vrp_core, weight: 0.1 }, { name: vrp_convergence, weight: 0.05 }, { name: vrp_alt, weight: 0.25 }] }
     artifacts:
       summary_md: docs/pinned/trend_plus_vrp_canonical_2020_2024.md

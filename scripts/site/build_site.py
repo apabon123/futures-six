@@ -83,6 +83,34 @@ SOT_DOCS = [
 ]
 
 
+# Attribution JSON uses engine names; map to display names for consistency with hierarchy
+ATTRIBUTION_DISPLAY_ALIASES = {
+    "vrp_combined": "vrp",
+    "vrp_core_meta": "vrp_core",
+    "vrp_convergence_meta": "vrp_convergence",
+    "vrp_alt_meta": "vrp_alt",
+}
+
+
+def _normalize_metasleeves(metasleeves: list) -> list:
+    """Normalize metasleeves: derive VRP weight from atomic weights (single source of truth)."""
+    out = []
+    for s in metasleeves:
+        entry = dict(s)
+        atomics = s.get("atomic_sleeves", [])
+        if atomics and isinstance(atomics[0], dict):
+            # Atomic-only format: weight = sum of atomic weights
+            total = sum(a.get("weight", 0) for a in atomics)
+            entry["weight"] = total
+            entry["_atomic_names"] = [a.get("name", "") for a in atomics]
+        elif atomics and isinstance(atomics[0], str):
+            entry["_atomic_names"] = list(atomics)
+        else:
+            entry["_atomic_names"] = []
+        out.append(entry)
+    return out
+
+
 def load_pinned_runs() -> list:
     path = PROJECT_ROOT / "configs" / "pinned_runs.yaml"
     with open(path, "r", encoding="utf-8") as f:
@@ -232,8 +260,8 @@ def build_runs_dashboard(site_dir: Path, runs: list) -> None:
     for r in runs:
         rid = r["run_id"]
         display = r.get("display_name") or r.get("label") or rid
-        metasleeves = r.get("sleeves", {}).get("metasleeves", [])
-        # Dashboard shows metasleeves only (VRP once, not vrp_core/vrp_convergence/vrp_alt)
+        metasleeves = _normalize_metasleeves(r.get("sleeves", {}).get("metasleeves", []))
+        # Dashboard shows metasleeves only (VRP once, weight derived from atomics)
         sleeves_s = ", ".join(f"{s.get('name','')} ({s.get('weight',0)})" for s in metasleeves[:5])
         if len(metasleeves) > 5:
             sleeves_s += "…"
@@ -273,20 +301,20 @@ def _render_attribution(attribution: Optional[dict]) -> str:
     consistency += "</p>"
     parts.append(consistency)
 
-    # Metasleeve summary table
+    # Metasleeve summary table (alias engine names -> display names for consistency)
     meta = attribution.get("metasleeve_summary", [])
     if meta:
         rows = "".join(
-            f"<tr><td>{r.get('metasleeve','')}</td><td>{r.get('cum_return','')}</td></tr>"
+            f"<tr><td>{ATTRIBUTION_DISPLAY_ALIASES.get(r.get('metasleeve',''), r.get('metasleeve',''))}</td><td>{r.get('cum_return','')}</td></tr>"
             for r in meta
         )
         parts.append("<h4>Metasleeve contributions</h4><table><thead><tr><th>Metasleeve</th><th>Cum return</th></tr></thead><tbody>" + rows + "</tbody></table>")
 
-    # Atomic sleeve summary table
+    # Atomic sleeve summary table (alias vrp_*_meta -> vrp_* for display)
     atomic = attribution.get("atomic_summary", attribution.get("per_sleeve", {}))
     if isinstance(atomic, dict) and atomic:
         rows = "".join(
-            f"<tr><td>{s}</td><td>{d.get('cum_return','')}</td></tr>"
+            f"<tr><td>{ATTRIBUTION_DISPLAY_ALIASES.get(s, s)}</td><td>{d.get('cum_return','') if isinstance(d, dict) else d}</td></tr>"
             for s, d in atomic.items()
         )
         parts.append("<h4>Atomic sleeve contributions</h4><table><thead><tr><th>Sleeve</th><th>Cum return</th></tr></thead><tbody>" + rows + "</tbody></table>")
@@ -329,12 +357,12 @@ def build_run_detail(site_dir: Path, run: dict) -> None:
                 metrics_block += f"<li><strong>{k}</strong>: {v}</li>"
         metrics_block += "</ul>"
 
-    metasleeves = run.get("sleeves", {}).get("metasleeves", [])
+    metasleeves = _normalize_metasleeves(run.get("sleeves", {}).get("metasleeves", []))
     sleeves_rows = []
     for s in metasleeves:
         name = s.get("name", "")
         weight = s.get("weight", "")
-        atomics = s.get("atomic_sleeves", [])
+        atomics = s.get("_atomic_names", [])
         atomics_str = ", ".join(str(a) for a in atomics) if atomics else "—"
         sleeves_rows.append(f"<tr><td>{name}</td><td>{weight}</td><td>{atomics_str}</td></tr>")
     sleeves_table = (
