@@ -44,6 +44,8 @@ from src.agents.allocator import Allocator
 from src.agents.exec_sim import ExecSim
 import yaml
 
+from scripts.diagnostics.phase2_vrp_sleeve_io import write_vrp_sleeve_returns_csv
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -142,6 +144,7 @@ def compute_sleeve_returns(
         vol_lookback=config.get("risk_vol", {}).get("vol_lookback", 63)
     )
     overlay = VolManagedOverlay(
+        risk_vol=risk,
         target_vol=config.get("vol_overlay", {}).get("target_vol", 0.20),
         lookback_vol=config.get("vol_overlay", {}).get("lookback_vol", 63)
     )
@@ -435,6 +438,11 @@ Examples:
                 all_dates = all_dates.intersection(vrp_sleeve_returns['csmom'].index)
             if 'vrp_core' in vrp_sleeve_returns:
                 all_dates = all_dates.intersection(vrp_sleeve_returns['vrp_core'].index)
+            
+            # Emit Phase-2 atomic sleeve returns (Phase-4 compatible) to VRP run dir
+            vrp_run_dir = Path("reports/runs") / vrp_run_id
+            write_vrp_sleeve_returns_csv(vrp_run_dir, vrp_sleeve_returns, all_dates)
+            logger.info(f"  Wrote {vrp_run_dir / 'sleeve_returns.csv'}")
             
             # Build correlation DataFrame
             corr_data = {}
