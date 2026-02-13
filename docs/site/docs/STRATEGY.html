@@ -1,0 +1,1693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STRATEGY — Futures-Six Project Hub</title>
+<style>
+:root { --bg: #1a1b26; --fg: #c0caf5; --muted: #565f89; --accent: #7aa2f7; }
+body { font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--fg); margin: 0; padding: 1.5rem 2rem; line-height: 1.6; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+nav { display: flex; gap: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--muted); padding-bottom: 1rem; }
+nav a { font-weight: 500; }
+h1, h2, h3 { color: var(--fg); margin-top: 1.5rem; }
+h1 { font-size: 1.75rem; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid var(--muted); padding: 0.5rem 0.75rem; text-align: left; }
+th { background: rgba(122,162,247,0.15); }
+.badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.85rem; }
+.badge-production { background: #1f7a1f; color: #fff; }
+.badge-engine_quality { background: #1f5a7a; color: #fff; }
+.badge-integration { background: #5a3a7a; color: #fff; }
+.badge-diagnostic { background: #7a5a1a; color: #fff; }
+.card { background: rgba(48,52,70,0.6); border: 1px solid var(--muted); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+.card h3 { margin-top: 0; }
+.card a { font-weight: 500; }
+.muted { color: var(--muted); font-size: 0.9rem; }
+pre, code { background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; }
+pre { padding: 1rem; overflow-x: auto; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted); color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<nav><a href="../index.html">Home</a> | <a href="../runs/index.html">Runs</a> | <a href="../ops/index.html">Ops</a> | <a href="index.html">Docs</a></nav>
+<h1>STRATEGY</h1><h1>Strategy Execution Flow</h1>
+<p>This document describes the <strong>exact step-by-step process</strong> of how the futures-six strategy is executed. This is the single source of truth for understanding what happens at each stage of the backtest.</p>
+<h2>Related Documents</h2>
+<ul>
+<li><a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a>: Sleeve status, priorities, and sequencing</li>
+<li><a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a>: Development process, checklists, and promotion workflow</li>
+<li><a href="DIAGNOSTICS.html">docs/SOTs/DIAGNOSTICS.md</a>: Validation outputs, required artifacts, and pass/fail criteria</li>
+<li><a href="SYSTEM_CONSTRUCTION.html">docs/SOTs/SYSTEM_CONSTRUCTION.md</a>: Architecture and layering</li>
+</ul>
+<h2>Architecture: Two-Layer Sleeve Model</h2>
+<p>The strategy implements a <strong>two-layer sleeve architecture</strong> that separates economic ideas from implementation variants:</p>
+<h3>Meta-Sleeves (Economic Sources of Return)</h3>
+<p><strong>Meta-Sleeves</strong> represent distinct economic sources of return:</p>
+<ul>
+<li><strong>Trend (TSMOM)</strong>: Time-series momentum across multiple horizons (each asset vs its own past).</li>
+<li><strong>Cross-Sectional Momentum (CSMOM)</strong>: Relative momentum across assets (rank winners vs losers; typically market-neutral).</li>
+<li><strong>Carry</strong>: Roll yield and term carry from futures curves (rates, FX, commodities).</li>
+<li><strong>Value</strong>: Cross-sectional value and mean-reversion opportunities (valuation, spreads, slow fundamentals).</li>
+<li><strong>Curve RV</strong>: Curve-shape momentum on yield curve structures (flatteners/steepeners, flies, pack spreads). Captures macro state detection on the yield curve through momentum-driven regime signals.</li>
+<li><strong>Volatility Risk Premium (VRP)</strong>: Systematic volatility selling strategies (multiple atomic sleeves).</li>
+<li><strong>Seasonality / Flows</strong>: Calendar effects and flow-driven patterns.</li>
+</ul>
+<h3>Atomic Sleeves (Implementation Variants)</h3>
+<p><strong>Atomic Sleeves</strong> are specific implementations within each Meta-Sleeve:
+- <strong>Trend Meta-Sleeve</strong> includes:
+  - Long-term momentum (252d) — Canonical (1/3, 1/3, 1/3)
+  - Medium-term momentum (84/126d) — Legacy
+  - Medium-term momentum (84d) — Canonical
+  - Short-term momentum (21d) — Legacy (0.5/0.3/0.2)
+  - Short-term momentum (21d) — Canonical (1/3, 1/3, 1/3)
+  - Residual Trend (252d long - 21d short)
+  - Breakout Mid (50-100d)
+- <strong>Volatility Risk Premium Meta-Sleeve</strong> includes atomic sleeves for systematic volatility strategies:
+  - <strong>VRP-Core</strong>: Directional VX1 trading based on z-scored VRP spread (VIX - realized ES vol)
+  - VX curve trading, vol spreads, variance risk premium
+- Each atomic sleeve can have different feature sets, horizons, or signal processing methods</p>
+<p>Operational and promotion status of meta-sleeves is defined in <a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a> and <a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a>.</p>
+<h3>Signal Flow</h3>
+<p><code>Atomic Sleeves → Meta-Sleeve (vol-normalized, combined) → Risk Overlays → Portfolio</code></p>
+<p><strong>Key Principle</strong>: Risk overlays (macro filters, vol targeting, portfolio allocator) operate <strong>only at the Meta-Sleeve layer</strong>, not on individual atomic sleeves. Atomic sleeves feed into meta-sleeves, and meta-sleeves feed into the portfolio.</p>
+<p>A meta-sleeve may define a <strong>restricted tradable instrument universe</strong>. Instruments outside this scope must be stripped before portfolio combination (e.g. VRP meta-sleeve trades only VX1/VX2/VX3; other sleeves must not emit VX signals).</p>
+<h2>Data Consistency and Run Alignment ⚠️</h2>
+<p><strong>CRITICAL</strong>: To ensure valid performance comparisons, all runs must follow strict data alignment rules.</p>
+<h3>Canonical Evaluation Window</h3>
+<p>All canonical performance metrics are computed on a single, authoritative evaluation window defined in <code>configs/canonical_window.yaml</code>:</p>
+<ul>
+<li><strong>Canonical Start Date</strong>: 2020-01-06</li>
+<li><strong>Canonical End Date</strong>: 2025-10-31</li>
+</ul>
+<p>This window is used for:
+- STRATEGY.md headline metrics
+- Core version comparison tables
+- Phase-2 promotion metrics
+- "What is the system?" numbers</p>
+<p>Diagnostics may compute internally on subsets, but <strong>reported canonical numbers must use this window</strong>. Use <code>src.utils.canonical_window.load_canonical_window()</code> to load the canonical window in code.</p>
+<h3>Canonical Start Date Rule</h3>
+<p><strong>All runs begin at the first timestamp where ALL enabled atomic sleeves have valid signals for ALL assets.</strong></p>
+<p><strong>Why This Matters:</strong></p>
+<p>Different sleeves require different warmup periods:
+- Long-Term (252d): ~252 trading days
+- Medium-Term (84d): ~84 trading days<br />
+- Short-Term (21d): ~21 trading days
+- Breakout Mid (100d): ~100 trading days</p>
+<p><strong>Example:</strong>
+<code>Requested start: 2018-01-01
+Longest warmup: 252 trading days
+Effective start: 2018-12-15 (approximately)</code></p>
+<p>The system automatically determines the effective start date as:
+<code>effective_start = requested_start + max(all_enabled_sleeve_warmups)</code></p>
+<h3>NA Handling Pipeline</h3>
+<p>To prevent silent misalignments, NAs are dropped at each stage:</p>
+<ol>
+<li><strong>FeatureService</strong>: <code>features.dropna(how="any")</code> after computation</li>
+<li><strong>Atomic Sleeves</strong>: <code>signals.dropna(how="any")</code> after sleeve computation</li>
+<li><strong>Meta-Sleeve</strong>: <code>combined_sleeves.dropna(how="any")</code> before aggregation</li>
+<li><strong>Portfolio</strong>: <code>aligned_signals.dropna(how="any")</code> before position sizing</li>
+</ol>
+<p>This ensures:
+- No silent NA propagation
+- Consistent row counts across runs
+- Valid apples-to-apples comparisons
+- Deterministic performance metrics</p>
+<h3>Run Validation</h3>
+<p>Every run logs:
+<code>Requested start: 2018-01-01
+Effective start: 2018-12-15
+Valid rows: 1754
+Rows dropped: 0</code></p>
+<p><strong>Red flags</strong> (investigate immediately):
+- Effective start ≠ expected (requested + warmup)
+- Valid rows &lt; 1000 (for 2018-2025 range)
+- Rows dropped &gt; 5% of sample
+- Row count mismatch between runs being compared</p>
+<p>See <code>docs/SOTs/PROCEDURES.md</code> § 2 "Run Consistency Contract" for full details.</p>
+<h2>Sleeve Development Lifecycle</h2>
+<p>All new sleeves must follow a structured development lifecycle:</p>
+<h3>Phase-0: Simple Sanity Check</h3>
+<ul>
+<li><strong>Purpose</strong>: Verify that any positive alpha exists in the core economic idea</li>
+<li><strong>Requirements</strong>: </li>
+<li>Sign-only signals (no z-scoring, no overlays)</li>
+<li>Equal-weight or simple DV01-neutral weighting</li>
+<li>Daily rebalancing</li>
+<li>No vol targeting, macro filters, or portfolio optimization</li>
+<li><strong>Pass Criteria</strong>: Sharpe ≥ 0.2+ over long window</li>
+<li><strong>Outcome</strong>: If Phase-0 fails, sleeve remains <strong>disabled</strong> until reworked</li>
+</ul>
+<h3>Phase-1: Clean Implementation</h3>
+<ul>
+<li>Add proper feature engineering (z-scoring, standardization)</li>
+<li>Implement cross-sectional ranking if applicable</li>
+<li>Add basic signal processing</li>
+</ul>
+<h3>Phase-2: Overlay Integration</h3>
+<ul>
+<li>Integrate with macro regime filters</li>
+<li>Add volatility targeting</li>
+<li>Portfolio allocator integration</li>
+</ul>
+<h3>Phase-3: Production + Monitoring</h3>
+<ul>
+<li>Full production deployment</li>
+<li>Performance monitoring</li>
+<li>Ongoing refinement</li>
+</ul>
+<p><strong>Any sleeve that fails Phase-0 remains disabled until the underlying economic idea is validated or redesigned.</strong></p>
+<h3>Run Types and Governance</h3>
+<p>Futures-Six distinguishes between two canonical run types:</p>
+<p><strong>Engine-Quality Runs</strong>
+- <strong>Purpose</strong>: Evaluate the unconditional economic behavior of a new atomic or meta-sleeve.
+- <strong>Composition</strong>: Control engine(s) (typically Trend) plus the candidate sleeve(s).
+- These runs are not production portfolio candidates.</p>
+<p><strong>Integration Runs</strong>
+- <strong>Purpose</strong>: Evaluate interaction with the production stack.
+- <strong>Composition</strong>: Current promoted production baseline plus candidate sleeve(s).</p>
+<p>Promotion decisions must be based on engine-quality runs before any integration runs are evaluated.</p>
+<h2>Development Roadmap</h2>
+<p>See <a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a> for sleeve status, priorities, and sequencing.</p>
+<h2>Core Baseline Configurations</h2>
+<p><strong>Trend-Only Baseline:</strong> <code>core_v3_no_macro</code>  </p>
+<ul>
+<li>
+<p>Trend Meta-Sleeve only (no other Meta-Sleeves enabled)</p>
+</li>
+<li>
+<p>Used as the canonical reference profile for Trend research and A/B tests</p>
+</li>
+<li>
+<p>Configuration: <code>tsmom_multihorizon</code> with 4 atomic sleeves (long, med, short, breakout)</p>
+</li>
+<li>
+<p>See "Trend Meta-Sleeve Architecture" section for full details.</p>
+</li>
+</ul>
+<p><strong>Current Multi-Sleeve Baseline (Production-Style):</strong> Core v9 ✅</p>
+<p><strong>Previous Baseline:</strong> Core v8 (superseded by Core v9, Dec 2025)</p>
+<p>For historical reasons, earlier configuration identifiers use <code>*_meta</code> suffixes for VRP atomic sleeves. Conceptually, VRP is a single meta-sleeve and the entries vrp_core, vrp_convergence and vrp_alt are atomic sleeves under that meta-sleeve.</p>
+<p><strong>Strategy Profile Mapping:</strong></p>
+<p>| Label   | Strategy ID (config)                                      | Description                                    |
+|---------|-----------------------------------------------------------|------------------------------------------------|
+| Core v5 | core_v5_trend_csmom_vrp_core_no_macro                     | Trend + CSMOM + VRP (atomic: vrp_core); no macro overlays |
+| Core v6 | core_v6_trend_csmom_vrp_core_convergence_no_macro         | Trend + CSMOM + VRP (atomic: vrp_core, vrp_convergence); no macro overlays |
+| Core v7 | core_v7_trend_csmom_vrp_core_convergence_vrp_alt_no_macro | Trend + CSMOM + VRP (atomic: vrp_core, vrp_convergence, vrp_alt); no macro overlays |
+| Core v8 | core_v8_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_no_macro | Core v7 + VX Carry (5%); no macro overlays |
+| Core v9 | core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro | Core v8 + Curve RV (8%: Rank Fly 5% + Pack Slope 3%); no macro overlays |</p>
+<p><em>Note: After this mapping table, all references use the short labels (Core v5, Core v6, Core v7, Core v8) instead of the long internal IDs.</em></p>
+<p><strong>Core v8 Configuration:</strong>
+- Trend (57%) + CSMOM (23.75%) + VRP (21.75%; atomic: vrp_core, vrp_convergence, vrp_alt) + VX Calendar Carry (5%)
+- No macro overlay, no vol overlay, no allocator yet
+- Used as the default "full strategy" profile for future Meta-Sleeve integration and Phase-2 tests
+- VX Carry uses canonical atomic sleeve: VX2–VX1_short
+- Configuration:<br />
+  - <code>tsmom_multihorizon</code> weight: 0.57 (Trend, scaled from 0.60)<br />
+  - <code>csmom_meta</code> weight: 0.2375 (CSMOM, scaled from 0.25)
+  - <code>vrp_core_meta</code> weight: 0.07125 (vrp_core atomic, scaled from 0.075)
+  - <code>vrp_convergence_meta</code> weight: 0.02375 (vrp_convergence atomic, scaled from 0.025)
+  - <code>vrp_alt_meta</code> weight: 0.1425 (vrp_alt atomic, scaled from 0.15)
+  - <code>vx_calendar_carry</code> weight: 0.05 (VX Carry, canonical: vx2_vx1_short)</p>
+<p><strong>Core v7 Configuration (Superseded by Core v8, Dec 2025):</strong>
+- Trend (60%) + CSMOM (25%) + VRP (25%; atomic: vrp_core, vrp_convergence, vrp_alt)
+- No macro overlay, no vol overlay, no allocator yet
+- Superseded by Core v8 (Dec 2025)
+- Configuration:<br />
+  - <code>tsmom_multihorizon</code> weight: 0.60 (Trend)<br />
+  - <code>csmom_meta</code> weight: 0.25 (CSMOM)<br />
+  - <code>vrp_core_meta</code> weight: 0.075 (vrp_core atomic)
+  - <code>vrp_convergence_meta</code> weight: 0.025 (vrp_convergence atomic, de-emphasized)
+  - <code>vrp_alt_meta</code> weight: 0.15 (vrp_alt atomic, NEW)
+  - CSMOM uses 63/126/252-day cross-sectional momentum with horizon weights [0.4, 0.35, 0.25]
+  - VRP-Core uses z-scored VRP spread (VIX - 21d realized ES vol) with 252-day z-score window
+  - VRP-Convergence uses short-only z-scored convergence spread (VIX - VX1) with 252-day z-score window
+  - VRP-Alt uses short-only z-scored Alt-VRP spread (VIX - RV5) with 252-day z-score window</p>
+<h2>Baseline Evolution Summary (Core v3 → Core v9)</h2>
+<p><strong>Canonical Baseline Timeline</strong> (Canonical Window: 2020-01-06 → 2025-10-31):</p>
+<p><em>Note: All canonical metrics computed on canonical evaluation window (2020-01-06 to 2025-10-31) for apples-to-apples comparison. See <code>configs/canonical_window.yaml</code> for the authoritative window definition.</em></p>
+<p>| Core Version | Composition | CAGR | Sharpe | Vol | MaxDD | Status |
+|--------------|-------------|------|--------|-----|-------|--------|
+| Core v3 | Trend only | -0.48% | 0.0294 | 12.20% | -29.85% | Trend diagnostic baseline |
+| Core v4 | Trend 75% / CSMOM 25% | 8.34% | 0.6461 | 13.83% | -15.57% | First multi-sleeve baseline |
+| Core v5 | Trend 65% / CSMOM 25% / VRP 10% (vrp_core) | 8.46% | 0.6532 | 13.85% | -15.49% | VRP (vrp_core) promotion |
+| Core v6 | Trend 62.5% / CSMOM 25% / VRP 12.5% (vrp_core, vrp_convergence) | 8.49% | 0.6553 | 13.85% | -15.46% | VRP (vrp_convergence) promotion |
+| Core v7 | Trend 60% / CSMOM 25% / VRP 25% (vrp_core, vrp_convergence, vrp_alt) | 8.53% | 0.6577 | 13.86% | -15.43% | Superseded by Core v8 (Dec 2025) |
+| Core v8 | Trend 57% / CSMOM 23.75% / VRP 21.75% (vrp_core, vrp_convergence, vrp_alt) / VX Carry 5% | 6.81% | 0.5820 | 12.70% | -17.13% | Superseded by Core v9 (Dec 2025) |
+| Core v9 | Trend 52.4% / CSMOM 21.85% / VRP 21.85% (vrp_core, vrp_convergence, vrp_alt) / VX Carry 4.6% / Curve RV 8% | 9.35% | 0.6605 | 12.01% | -15.32% | Current baseline (see <a href="ROADMAP.html">ROADMAP</a>) |</p>
+<p><strong>Key Takeaways:</strong>
+- The major performance jump occurs between Core v3 → Core v4 (introduction of CSMOM) and Core v4 → Core v5 (introduction of VRP-Core)
+- Core v5 → v6 → v7: Incremental improvements (CAGR +0.03% → +0.04%, Sharpe +0.002 → +0.002)
+- Core v7 → v8: Largest incremental improvement (CAGR +0.14%, Sharpe +0.038) from VX Carry addition
+- VRP does not juice returns — it stabilizes and diversifies the portfolio
+- VX Carry provides both return enhancement and diversification (correlation -0.0508 with Core v7)</p>
+<p><strong>Economic Interpretation of Each Step:</strong></p>
+<p><strong>Core v3 → Core v4:</strong> Addition of CSMOM introduces diversification across assets and reduces trend dependency on equity beta. Still weak absolute performance, but represents structural improvement. This is why Core v4 became the minimum viable baseline.</p>
+<p><strong>Core v4 → Core v5:</strong> Addition of VRP-Core (short-dated implied vs realized volatility) introduces true economic edge (option overpricing). This is the first time the system earns money for selling insurance. Massive drawdown compression relative to Trend-only. This is the foundational VRP engine — everything else is optional.</p>
+<p><strong>Core v5 → Core v6:</strong> Addition of VRP-Convergence is not a new edge, but a behavioral timing modifier. Small Sharpe lift and slight drawdown smoothing. Valid as a secondary VRP sleeve, not a core engine.</p>
+<p><strong>Core v6 → Core v7:</strong> Addition of VRP-Alt (scaled) demonstrates that engineering and sizing matter more than raw Phase-0 stats. Adds convexity control and volatility dampening. Low vol sleeve requires scale to matter. This is why Core v7 is a portfolio engineering milestone, not an alpha leap.</p>
+<p><strong>Core v7 → Core v8:</strong> Addition of VX Calendar Carry (5%) provides the largest incremental improvement in the evolution (Sharpe +0.038, CAGR +0.14%, MaxDD +1.02%, Vol -0.71%). VX Carry serves as "portfolio glue" with low correlation (-0.0508) to Core v7, improving both return and risk metrics. This demonstrates the value of carry strategies as diversification tools in a multi-sleeve portfolio.</p>
+<p><strong>Core v8 → Core v9:</strong> Addition of Curve RV Meta-Sleeve (8% total: Rank Fly Momentum 5% + Pack Slope Momentum 3%) provides strong performance improvement (Sharpe +0.0785, CAGR +2.54%, MaxDD +1.81%, Vol -0.69%). Curve RV serves as a momentum-driven regime sleeve that captures macro state detection on the yield curve, distinct from mean-reversion approaches. The promotion includes both Rank Fly (primary, 5%) and Pack Slope (secondary, 3%) atomics based on Phase-1 redundancy analysis and Phase-2 integration results.</p>
+<p><strong>Sources:</strong> Phase-2 diagnostics and promotion summaries documented in DIAGNOSTICS.md. Detailed promotion rationale and Phase-2 results are documented in the sections below. All metrics computed on aligned date range (2020-01-06 to 2025-10-31, 1,472 days) for apples-to-apples comparison.</p>
+<h3>Baseline Strategy Profiles and Promotion History</h3>
+<p><strong>core_v4_trend_csmom_no_macro</strong> (Superseded)</p>
+<ul>
+<li><strong>Composition</strong>: Trend (75%), CSMOM (25%)</li>
+<li><strong>Role</strong>: Pre-VRP production baseline (no VRP sleeves)</li>
+<li><strong>Status</strong>: Superseded by Core v5 (Dec 2025), then by Core v6 (Dec 2025)</li>
+<li><strong>Retained</strong>: For historical comparison and Phase-2 testing</li>
+</ul>
+<p><strong>Core v5</strong> (Historical Reference Baseline)</p>
+<ul>
+<li><strong>Composition</strong>: Trend (65%), CSMOM (25%), VRP (10%; atomic: vrp_core)</li>
+<li><strong>Role</strong>: Historical reference baseline with VRP-Core integration (superseded by Core v6, Dec 2025)</li>
+<li><strong>Promotion Reason</strong>: VRP-Core passed Phase-0 (toy econ test), Phase-1 (engineered sleeve), and Phase-2 (portfolio integration)</li>
+<li><strong>Phase-2 Results</strong> (Aligned dates: 2020-01-06 to 2025-10-31) vs Core v4:</li>
+<li>Sharpe: +0.0071 (0.6532 vs 0.6461)</li>
+<li>CAGR: +0.12% (8.46% vs 8.34%)</li>
+<li>MaxDD: slight improvement (-15.49% vs -15.57%)</li>
+<li>Crisis behavior: neutral or modestly better across 2020 Q1/Q2 and 2022</li>
+<li><strong>Full analysis</strong>: See <code>docs/SOTs/DIAGNOSTICS.md</code> § "VRP-Core Phase-2 Diagnostics"</li>
+<li><strong>Decision</strong>: Promoted to canonical baseline (Dec 2025), then superseded by Core v6 (Dec 2025)</li>
+</ul>
+<p><strong>Core v7</strong> (Superseded by Core v8, Dec 2025)</p>
+<ul>
+<li><strong>Composition</strong>: Trend (60%), CSMOM (25%), VRP (25%; atomic: vrp_core, vrp_convergence, vrp_alt)</li>
+<li><strong>Role</strong>: Historical reference baseline (superseded by Core v8, Dec 2025)</li>
+<li><strong>Status</strong>: Superseded by Core v8 (Dec 2025)</li>
+<li><strong>Configuration</strong>: <code>core_v7_trend_csmom_vrp_core_convergence_vrp_alt_no_macro</code></li>
+<li><strong>Promotion Reason</strong>: VRP-Alt passed Phase-0 (borderline), Phase-1 (strong), Phase-2 (inconclusive), and scaling verification (promoted at 15% weight)</li>
+<li><strong>Performance</strong> (aligned dates, 2020-01-06 to 2025-10-31): CAGR 8.53%, Sharpe 0.6577, MaxDD -15.43%, Vol 13.86%</li>
+</ul>
+<p><strong>Core v8</strong> (Superseded by Core v9, Dec 2025)</p>
+<ul>
+<li><strong>Composition</strong>: Trend (57%), CSMOM (23.75%), VRP (21.75%; atomic: vrp_core, vrp_convergence, vrp_alt), VX Calendar Carry (5%)</li>
+<li><strong>Role</strong>: Historical reference baseline (superseded by Core v9, Dec 2025)</li>
+<li><strong>Status</strong>: Superseded by Core v9 (Dec 2025)</li>
+<li><strong>Configuration</strong>: <code>core_v8_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_no_macro</code></li>
+<li><strong>Promotion Reason</strong>: VX Calendar Carry passed Phase-0, Phase-1, and Phase-2 (promoted at 5% weight)</li>
+<li><strong>Performance</strong> (canonical window, 2020-01-06 to 2025-10-31): CAGR 6.81%, Sharpe 0.5820, MaxDD -17.13%, Vol 12.70%</li>
+</ul>
+<p><strong>Core v9</strong> ✅ (Current Canonical Baseline)</p>
+<ul>
+<li><strong>Composition</strong>: Trend (52.4%), CSMOM (21.85%), VRP (21.85%; atomic: vrp_core, vrp_convergence, vrp_alt), VX Calendar Carry (4.6%), Curve RV (8%: Rank Fly 5% + Pack Slope 3%)</li>
+<li><strong>Role</strong>: Current canonical production baseline for all new Meta-Sleeve integration and Phase-2 tests</li>
+<li>Current production baseline; see <a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a> for status.</li>
+<li><strong>Configuration</strong>: <code>core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro</code></li>
+<li><strong>Promotion Reason</strong>: Curve RV Meta-Sleeve passed Phase-0 (momentum variants), Phase-1 (redundancy analysis), and Phase-2 (portfolio integration) for both Rank Fly and Pack Slope atomics</li>
+<li><strong>Performance</strong> (canonical window, 2020-01-06 to 2025-10-31): CAGR 9.35%, Sharpe 0.6605, MaxDD -15.32%, Vol 12.01%</li>
+<li><strong>Improvement vs Core v8</strong>: CAGR +2.54%, Sharpe +0.0785, MaxDD +1.81%, Vol -0.69%</li>
+</ul>
+<p><strong>Core v6</strong> (Superseded)</p>
+<ul>
+<li><strong>Composition</strong>: Trend (62.5%), CSMOM (25%), VRP (12.5%; atomic: vrp_core, vrp_convergence)</li>
+<li><strong>Role</strong>: Historical reference baseline (superseded by Core v7, Dec 2025)</li>
+<li><strong>Promotion Reason</strong>: VRP-Convergence passed Phase-0 (short-only signal test), Phase-1 (engineered sleeve), and Phase-2 (portfolio integration)</li>
+<li><strong>Phase-2 Results</strong> (Aligned dates: 2020-01-06 to 2025-10-31) vs Core v5:</li>
+<li>Sharpe: +0.0021 (0.6553 vs 0.6532)</li>
+<li>CAGR: +0.03% (8.49% vs 8.46%)</li>
+<li>MaxDD: slight improvement (-15.46% vs -15.49%)</li>
+<li><strong>Full analysis</strong>: See <code>docs/SOTs/DIAGNOSTICS.md</code> § "VRP-Convergence Phase-2 Diagnostics"</li>
+<li><strong>Decision</strong>: Promoted to canonical baseline (Dec 2025) after confirming:</li>
+<li>No metric degradation</li>
+<li>Consistent behavior across regimes</li>
+<li>Clean integration of VRP-Convergence with existing sleeves</li>
+</ul>
+<h3>Baseline Performance (Trend vs Trend + CSMOM, Aligned Date Range)</h3>
+<p><strong>Note:</strong> Metrics computed on canonical evaluation window (2020-01-06 to 2025-10-31) for apples-to-apples comparison with Core v4-v9 evolution. See <code>configs/canonical_window.yaml</code> for the authoritative window definition.</p>
+<p><strong>Baseline (Trend-only):</strong> <code>core_v3_baseline_2020_2025</code>  </p>
+<p><strong>Variant (Trend + CSMOM 75/25):</strong> <code>core_v4_trend_csmom_2020_2025</code></p>
+<p>| Metric   | Trend Only | Trend + CSMOM | Change |
+|----------|-----------:|--------------:|-------:|
+| Sharpe   | 0.0294     | 0.6461        | +0.6167 |
+| CAGR     | -0.48%     | 8.34%         | +8.82% |
+| MaxDD    | -29.85%    | -15.57%       | +14.28% |
+| Vol      | 12.20%     | 13.83%        | +1.63% |
+| Equity Ratio (variant / baseline) | 1.0000 | 1.0549 | +5.49% |</p>
+<p><strong>Verdict:</strong> Core v4 was promoted to the multi-sleeve baseline (Nov 2025), then superseded by Core v5 (Dec 2025) after VRP-Core Phase-2 integration, then superseded by Core v6 (Dec 2025) after VRP-Convergence Phase-2 integration, then superseded by Core v7 (Dec 2025) after VRP-Alt scaling verification, then superseded by Core v8 (Dec 2025) after VX Carry Phase-2 integration, then superseded by Core v9 (Dec 2025) after Curve RV Phase-2 integration. Core v3 remains the canonical Trend-only baseline for diagnostics and future research.</p>
+<h3>Enabled Meta-Sleeves</h3>
+<ul>
+<li>✅ <strong>Trend Meta-Sleeve</strong>: Multi-horizon time-series momentum</li>
+<li><strong>Atomic Sleeves</strong> (5):<ul>
+<li><strong>Long-term momentum (252d) — Canonical</strong>: Equal-weight (1/3, 1/3, 1/3) of 252d return, 252d breakout, slow trend slope</li>
+<li><strong>Medium-term momentum (84/126d) — Legacy</strong>: 84-day return, 126-day breakout, medium trend slope (EMA_20 - EMA_84), persistence</li>
+<li><strong>Short-term momentum (21d)</strong>: 21-day return, 21-day breakout, fast trend slope (EMA_10 - EMA_40), reversal filter (optional)</li>
+<li><strong>Residual Trend (252d-21d)</strong>: Long-horizon trend minus short-term movement, cross-sectionally z-scored</li>
+<li><strong>Breakout (50–100d)</strong>: 50/100-day breakout-based trend sleeve (Production; Donchian-style range breakouts, 70/30 feature weights, 3% horizon weight)</li>
+</ul>
+</li>
+<li><strong>Research Atomic Sleeves</strong> (Phase-1):<ul>
+<li><strong>Medium-term momentum (84d) — Canonical</strong>: Equal-weight (1/3, 1/3, 1/3) of 84d return, 84d breakout, EMA21-84 slope (skip 10d, 21d vol scaling)</li>
+</ul>
+</li>
+<li><strong>Signal Processing</strong>: <ul>
+<li>Atomic sleeves are vol-normalized and combined using <strong>frozen horizon weights</strong> (long=0.485, med=0.291, short=0.194, breakout_mid=0.03)</li>
+<li>Cross-sectional z-scoring across assets</li>
+<li>EWMA volatility normalization (63-day half-life, 5% floor)</li>
+</ul>
+</li>
+<li><strong>Internal Weights (FROZEN)</strong>: 48.5% long, 29.1% medium, 19.4% short, 3% breakout_mid<ul>
+<li><strong>⚠️ Weight Freeze Policy</strong>: These weights are frozen during architecture build-out. Optimization belongs in Phase-B with proper OOS controls (see <code>docs/SOTs/PROCEDURES.md</code>).</li>
+<li><strong>Note</strong>: Breakout (50-100d) atomic sleeve passed Phase-0/1B/2/3 validation (70/30 config, 3% weight). Integrated into production <code>core_v3_no_macro</code> profile.</li>
+</ul>
+</li>
+<li>
+<p><strong>Implementation</strong>: TSMOMMultiHorizon strategy (v2)</p>
+</li>
+<li>
+<p>✅ <strong>Cross-Sectional Momentum (CSMOM) Meta-Sleeve</strong></p>
+</li>
+</ul>
+<h3>Cross-Sectional Momentum (CSMOM) Meta-Sleeve</h3>
+<p><strong>Status:</strong> Phase-2 complete (validated), not yet in production baseline  </p>
+<p><strong>Implementation:</strong> Single multi-horizon atomic sleeve</p>
+<p>The CSMOM Meta-Sleeve is currently implemented as a <strong>single atomic sleeve</strong> that internally blends multiple return horizons. Unlike the Trend Meta-Sleeve (which exposes several atomic sleeves explicitly), CSMOM uses a single engine with multi-horizon features:</p>
+<ul>
+<li>
+<p>Lookbacks: <strong>63d, 126d, 252d</strong></p>
+</li>
+<li>
+<p>Horizon weights: <strong>[0.4, 0.35, 0.25]</strong> (shorter horizons slightly favored)</p>
+</li>
+<li>
+<p>Vol lookback: <strong>63d</strong></p>
+</li>
+<li>
+<p>Rebalance: <strong>Daily ("D")</strong></p>
+</li>
+<li>
+<p>Cross-sectional neutralization: <strong>enabled</strong></p>
+</li>
+<li>
+<p>Clipping: <strong>±3.0</strong> (signals scaled to [-1, 1])</p>
+</li>
+</ul>
+<p><strong>Signal construction (CSMOMMeta):</strong></p>
+<ol>
+<li>
+<p>Compute k-day log returns for each horizon (63d, 126d, 252d)</p>
+</li>
+<li>
+<p>For each date and horizon, z-score returns across assets (cross-sectional z-score)</p>
+</li>
+<li>
+<p>Form a weighted composite of horizon z-scores using [0.4, 0.35, 0.25]</p>
+</li>
+<li>
+<p>Apply volatility tempering (divide by 63d realized vol) and re-z-score</p>
+</li>
+<li>
+<p>Cross-sectionally neutralize final scores (zero-sum across the universe)</p>
+</li>
+<li>
+<p>Clip to ±3.0 and scale to the [-1, +1] signal range</p>
+</li>
+<li>
+<p>Forward-fill between daily rebalance dates (rebalance = "D" currently, so no gap)</p>
+</li>
+</ol>
+<p><strong>Lifecycle status:</strong></p>
+<ul>
+<li>
+<p><strong>Phase-0:</strong> PASS (simple sign-only CSMOM shows positive Sharpe on 2020–2025 window)</p>
+</li>
+<li>
+<p><strong>Phase-1:</strong> PASS (multi-horizon, volatility-aware implementation)</p>
+</li>
+<li>
+<p><strong>Phase-2:</strong> PASS (Trend + CSMOM, with 75%/25% sleeve weights, improves Sharpe and reduces drawdown vs Trend-only baseline)</p>
+</li>
+</ul>
+<p>At this stage, CSMOM is treated as a <strong>single canonical atomic sleeve</strong> for the Cross-Sectional Momentum Meta-Sleeve. The three horizons (63d/126d/252d) are treated as internal features of that atomic sleeve, not as separate atomic sleeves.</p>
+<p>Future work (Phase-B enhancement) may introduce additional atomic sleeves for CSMOM (e.g., different lookback structures, volatility-adjusted variants, sector-neutral variants) following the same Meta-Sleeve → Atomic Sleeve pattern used in Trend.</p>
+<h3>Disabled/Parked Meta-Sleeves</h3>
+<ul>
+<li>⏸️ <strong>Carry Meta-Sleeve</strong>: <strong>Phase-0 in progress</strong></li>
+<li><strong>FX/Commodity Carry</strong>: Parked for redesign<ul>
+<li><strong>Phase-0 Sanity Check Result</strong>: Negative Sharpe (-0.69) across all assets (2020-2025)</li>
+<li><strong>Findings</strong>: Sign-only roll yield strategy showed negative alpha in recent years</li>
+<li><strong>Status</strong>: Remains on roadmap for redesign (e.g., sector-based roll yield, DV01-neutral carry, regime-dependent filters)</li>
+</ul>
+</li>
+<li><strong>SR3 Calendar Carry</strong>: ✅ <strong>PROMOTED</strong> (Dec 2025)<ul>
+<li><strong>Canonical Expression</strong>: SOFR futures calendar spread (R2–R1)</li>
+<li><strong>Role</strong>: Risk stabilizer, drawdown reducer, diversification against Trend and VRP</li>
+<li><strong>Execution</strong>: Trade at close, P&amp;L accrues close-to-close (T → T+1)</li>
+<li><strong>Status</strong>: Canonical carry sleeve</li>
+<li><strong>Phase-0</strong>: PASS (Sharpe 0.6384, R2-R1 canonical pair)</li>
+<li><strong>Phase-1</strong>: PASS (Implementation with z-scoring, vol targeting, execution rules frozen)</li>
+<li><strong>Phase-2</strong>: PASS (Portfolio integration: MaxDD improvement +0.80%, correlation 0.04, Sharpe preserved)</li>
+<li><strong>Research Weight</strong>: 5% (scaffolding, not production)</li>
+<li><strong>See</strong>: <code>docs/SOTs/DIAGNOSTICS.md</code> § "SR3 Calendar Carry" for full development history and promotion decision</li>
+</ul>
+</li>
+<li>
+<p><strong>VX Calendar Carry</strong>: ✅ <strong>PROMOTED</strong> (Dec 2025)</p>
+<ul>
+<li><strong>Canonical Atomic Sleeve</strong>: VX2–VX1_short (liquidity-favored, default)</li>
+<li><strong>Secondary Atomic Sleeve</strong>: VX3–VX2_short (Phase-2 PASS, non-default, validated backup)</li>
+<li><strong>Economic Idea</strong>: Volatility term carry via shorting calendar spreads in contango</li>
+<li><strong>Role</strong>: Portfolio glue, drawdown reducer, diversification against Trend and VRP (similar to SR3 carry)</li>
+<li><strong>Execution</strong>: Trade at close, P&amp;L accrues close-to-close (T → T+1)</li>
+<li><strong>Status</strong>: PROMOTED — Canonical atomic sleeve integrated into Core v8 baseline</li>
+<li><strong>Phase-0</strong>: PASS (both short-spread variants show strong standalone carry expectancy)</li>
+<li><strong>Phase-1</strong>: PASS (z-scoring, vol targeting, execution rules frozen; two atomic sleeves)</li>
+<li><strong>Phase-2</strong>: PASS (Portfolio integration: Sharpe +0.0377, MaxDD +1.02%, Vol -0.71%, correlation -0.0508)</li>
+<li><strong>Research Weight</strong>: 5% (scaffolding, not production)</li>
+<li><strong>Promotion Decision</strong>: VX2–VX1_short promoted as canonical due to slightly stronger Phase-2 improvements and liquidity advantages. VX3–VX2_short retained as validated secondary option.</li>
+<li><strong>Rationale</strong>: Both represent the same economic idea with different curve locations. No synthetic execution modeling applied. Liquidity considerations deferred to production reality. Matches institutional CTA practice: spreads are worked differently than outrights.</li>
+<li><strong>See</strong>: <code>docs/SOTs/DIAGNOSTICS.md</code> § "VX Calendar Carry" for full development history and promotion decision</li>
+</ul>
+</li>
+<li>
+<p>✅ <strong>Curve RV Meta-Sleeve</strong>: <strong>Phase-1 Complete, Phase-2 Pending</strong></p>
+</li>
+<li><strong>Role</strong>: Momentum-driven regime sleeve for macro state detection on the yield curve</li>
+<li><strong>Key Discovery</strong>: Mean-reversion on curves is conditional; momentum on curve shape is unconditional</li>
+<li><strong>Phase-0 Results</strong>: All mean-reversion variants failed; all momentum variants passed (Sharpe 0.42-0.81)</li>
+<li><strong>Phase-1 Results</strong>: Rank Fly Momentum (Sharpe 1.19), Pack Slope Momentum (Sharpe 0.28), Pack Curvature Momentum (Sharpe 0.39)</li>
+<li><strong>Redundancy Analysis</strong>: Pack Curvature redundant with Rank Fly (0.91 signal correlation); Pack Slope orthogonal</li>
+<li><strong>Phase-1 Decision</strong>: Promote Rank Fly to Phase-2 (primary), Pack Slope optional (secondary), Park Pack Curvature (redundant)</li>
+<li><strong>Atomic Sleeves</strong>: <ul>
+<li><code>sr3_curve_rv_rank_fly_2_6_10_momentum</code> (Phase-2 candidate)</li>
+<li><code>sr3_curve_rv_pack_slope_momentum</code> (optional secondary)</li>
+<li><code>sr3_curve_rv_pack_curvature_momentum</code> (parked - redundant)</li>
+</ul>
+</li>
+<li>
+<p><strong>See</strong>: <code>docs/SOTs/DIAGNOSTICS.md</code> § "SR3 Curve RV Momentum" for full Phase-0/1 results</p>
+</li>
+<li>
+<p>❌ <strong>Volatility Risk Premium Meta-Sleeve</strong>: <strong>Planned</strong> (not yet implemented)</p>
+</li>
+<li>Will include multiple atomic sleeves for various volatility selling strategies</li>
+<li>
+<p>Different implementation approaches and feature sets</p>
+</li>
+<li>
+<p>❌ <strong>Value Meta-Sleeve</strong>: <strong>Planned</strong> (not yet implemented)</p>
+</li>
+<li>
+<p>❌ <strong>Seasonality/Flows Meta-Sleeve</strong>: <strong>Future</strong> (not yet implemented)</p>
+</li>
+<li>
+<p>❌ <strong>Macro Overlay</strong>: Disabled (too aggressive with only 1 meta-sleeve; will revisit when more meta-sleeves are added)</p>
+</li>
+</ul>
+<h3>Baseline Performance</h3>
+<p><strong>Trend Meta-Sleeve Only</strong> (<code>core_v3_no_macro</code> - with canonical Long-Term and canonical Medium-Term):
+- <strong>Production Profile</strong>: Uses canonical Long-Term (1/3, 1/3, 1/3) and canonical Medium-Term (1/3, 1/3, 1/3) as of Nov 2025
+- <strong>Phase-2 Results</strong> (canonical vs legacy baseline, 2020-01-02 to 2025-10-31):
+  - <strong>CAGR</strong>: +6.83% (vs legacy -2.59%, +9.42% improvement)
+  - <strong>Sharpe</strong>: +0.59 (vs legacy -0.15, +0.74 improvement)
+  - <strong>MaxDD</strong>: -16.72% (vs legacy -39.69%, +22.97% improvement)
+  - <strong>HitRate</strong>: 50.55% (vs legacy 49.77%, +0.78% improvement)</p>
+<p><strong>Legacy Baseline</strong> (<code>core_v3_no_macro_baseline</code> - with legacy medium-term, 2021-01-01 to 2025-10-31):
+- <strong>CAGR</strong>: -2.59%
+- <strong>Sharpe</strong>: -0.15
+- <strong>MaxDD</strong>: -39.69%
+- <strong>Vol</strong>: 12.31%
+- <strong>HitRate</strong>: 49.77%</p>
+<p><strong>Note</strong>: Performance reflects the challenging 2022-2025 period for trend-following strategies. The canonical medium-term sleeve shows significant improvement over the legacy version. The Trend Meta-Sleeve architecture is validated and production-ready; performance will improve as additional meta-sleeves are added.</p>
+<h3>Strategy Profile</h3>
+<p>Use <code>--strategy_profile core_v3_no_macro</code> in <code>run_strategy.py</code> to run the baseline configuration.</p>
+<h2>Core v3: Trend Meta-Sleeve (Phase 4)</h2>
+<p><strong>Production Strategy:</strong> <code>core_v3_no_macro</code></p>
+<p>Phase 4 introduces the <strong>Trend Meta-Sleeve</strong> architecture, which combines multiple atomic trend sleeves (long-term, medium-term, short-term momentum, and breakout) into a unified meta-signal using industry-standard horizon weights. The production profile (<code>core_v3_no_macro</code>) currently uses 4 active atomic sleeves with canonical long-term and canonical medium-term (promoted Nov 2025). This represents the current production baseline.</p>
+<h3>Phase 4a: Trend Meta-Sleeve Implementation</h3>
+<p><strong>Strategy Profile:</strong> <code>core_v3_no_macro</code></p>
+<p><strong>Trend Meta-Sleeve Architecture (<code>core_v3_no_macro</code> Production Profile):</strong></p>
+<p>The <code>core_v3_no_macro</code> profile uses <strong>TSMOMMultiHorizon (v2)</strong> with <strong>4 active atomic sleeves</strong>:</p>
+<ol>
+<li><strong>Long-term (252d) — Canonical</strong> (48.5% horizon weight)</li>
+<li>Equal-weight (1/3, 1/3, 1/3) of 252d return, 252d breakout, slow trend slope</li>
+<li>
+<p>Promoted Nov 2025</p>
+</li>
+<li>
+<p><strong>Medium-term (84d) — Canonical</strong> (29.1% horizon weight)</p>
+</li>
+<li>Equal-weight (1/3, 1/3, 1/3) of 84d return (skip 10d, vol-scaled), 84d breakout, EMA21-84 slope</li>
+<li>
+<p>Promoted Nov 2025</p>
+</li>
+<li>
+<p><strong>Short-term (21d) — Legacy</strong> (19.4% horizon weight)</p>
+</li>
+<li>21-day return, 21-day breakout, fast trend slope (EMA_10 - EMA_40), reversal filter (optional)</li>
+<li>Feature weights: 0.5 ret_21 + 0.3 breakout_21 + 0.2 slope_fast (legacy, for comparison)</li>
+<li>
+<p><strong>Canonical variant (Phase-0/1/2)</strong>: Equal-weight (1/3, 1/3, 1/3) composite; reversal filter weight 0</p>
+</li>
+<li>
+<p><strong>Breakout Mid (50-100d)</strong> (3.0% horizon weight)</p>
+</li>
+<li>70/30 blend of 50d and 100d breakout strength</li>
+<li>Phase-3 production</li>
+</ol>
+<p><strong>Additional Validated Sleeves (Not Currently Active):</strong>
+- <strong>Residual Trend (252d-21d)</strong>: Long-horizon trend minus short-term movement, cross-sectionally z-scored
+  - Phase-0/1/2 passed, production-ready but not currently enabled in <code>core_v3_no_macro</code> profile
+  - Design intent: 4th atomic trend sleeve for internal integration</p>
+<p><strong>Deprecated:</strong>
+- <strong>Medium-term (84/126d) — Legacy</strong>: 84-day return, 126-day breakout, medium trend slope (EMA_20 - EMA_84), persistence
+  - Deprecated Nov 2025, preserved in <code>core_v3_no_macro_legacy</code> for historical comparison
+- ❌ <strong>Persistence (Momentum-of-Momentum)</strong>: <strong>PARKED</strong> (Phase-1 failed)
+  - Phase-0: Only slope acceleration variant passed minimum Sharpe (0.22)
+  - Phase-1: Engineered sleeve did not improve Trend Meta-Sleeve (Sharpe declined from 0.097 to 0.087)
+  - Status: Not integrated. Re-test when universe expands (≥25%) or historical sample increases (≥5 years)</p>
+<p><strong>Horizon Weights (Frozen for Architecture Build-Out):</strong>
+- Long (252d): <strong>0.45</strong> (FIXED)
+- Medium (84/126d): <strong>0.28</strong> (FIXED)
+- Short (21d): <strong>0.20</strong> (FIXED)
+- Residual (252d-21d): <strong>0.15</strong> (FIXED)</p>
+<p><strong>⚠️ Weight Freeze Policy:</strong>
+These internal weights (45/28/20/15) are <strong>frozen during the architecture build-out phase</strong>. Do not sweep or optimize these weights until Phase-B (Optimization &amp; Pruning), where they must be optimized jointly across all sleeves with proper out-of-sample controls. See <code>docs/SOTs/PROCEDURES.md</code> for details.</p>
+<p><strong>Feature Weights (Within Each Horizon):</strong>
+- <strong>Long</strong>: ret_252=0.5, breakout_252=0.3, slope_slow=0.2
+- <strong>Medium</strong>: ret_84=0.4, breakout_126=0.3, slope_med=0.2, persistence=0.1
+- <strong>Short</strong>: ret_21=0.5, breakout_21=0.3, slope_fast=0.2, reversal=0.0</p>
+<p><strong>Signal Processing:</strong>
+1. Combine features within each horizon using feature weights
+2. Blend horizons using horizon weights: <code>tsmom_raw = 0.50 * long_signal + 0.30 * med_signal + 0.20 * short_signal</code>
+3. Cross-sectional z-score across assets
+4. Clip to ±3.0 standard deviations</p>
+<p><strong>Performance (2021-01-01 to 2025-10-31, without EWMA):</strong>
+- <strong>CAGR</strong>: -2.41%
+- <strong>Sharpe</strong>: -0.08
+- <strong>MaxDD</strong>: -43.80%
+- <strong>Vol</strong>: 15.37%
+- <strong>HitRate</strong>: 49.57%</p>
+<h3>Phase 4b: EWMA Volatility Normalization</h3>
+<p><strong>Strategy Profile:</strong> <code>core_v2_no_macro</code> (with <code>vol_normalization.enabled: true</code>)</p>
+<p><strong>Enhancement:</strong> Added EWMA volatility normalization to the TSMOMMultiHorizon sleeve to ensure:
+- Same signal magnitude implies same risk across assets
+- Exposure stops jumping wildly when vol spikes/drops
+- More stable risk-adjusted signals</p>
+<p><strong>EWMA Vol Calculation:</strong>
+- <strong>Half-life</strong>: 63 trading days (standard CTA choice)
+- <strong>Formula</strong>: <code>σ²_t = λ * σ²_{t-1} + (1-λ) * r²_{t-1}</code> where <code>λ = 0.5^(1/63)</code>
+- <strong>Annualization</strong>: <code>σ_annual = σ_daily * sqrt(252)</code>
+- <strong>Floor</strong>: 5% annualized minimum to prevent extreme scaling</p>
+<p><strong>Vol Normalization:</strong>
+- After cross-sectional z-scoring and clipping: <code>s_risk = z_clipped / max(σ_annual, σ_floor)</code>
+- Apply global scale factor: <code>s_final = risk_scale * s_risk</code> (default: risk_scale=0.2)
+- Final vol targeting overlay still applied on top (unchanged)</p>
+<p><strong>Configuration:</strong>
+<code>yaml
+vol_normalization:
+  enabled: true
+  halflife_days: 63
+  sigma_floor_annual: 0.05
+  risk_scale: 0.2</code></p>
+<p><strong>Performance (2021-01-01 to 2025-10-31, with EWMA):</strong>
+- <strong>CAGR</strong>: -2.59%
+- <strong>Sharpe</strong>: -0.15
+- <strong>MaxDD</strong>: -39.69% (improved from -43.80%)
+- <strong>Vol</strong>: 12.31% (reduced from 15.37%)
+- <strong>HitRate</strong>: 49.77%</p>
+<p><strong>Key Improvement:</strong> MaxDD improved by 4.11% and volatility reduced by 3.06%, demonstrating more stable risk-adjusted signals.</p>
+<h3>Strategy Profiles</h3>
+<ul>
+<li><strong><code>core_v1_no_macro</code></strong>: Long-term TSMOM + FX/Commodity Carry (legacy baseline, deprecated)</li>
+<li><strong><code>core_v2_no_macro</code></strong>: Multi-Horizon TSMOM (v2) with EWMA normalization (intermediate version, deprecated)</li>
+<li><strong><code>core_v3_no_macro</code></strong>: Trend Meta-Sleeve only (current production baseline)</li>
+</ul>
+<h2>Overview</h2>
+<p>The strategy implements a <strong>two-layer sleeve architecture</strong> with Meta-Sleeves representing economic sources of return and Atomic Sleeves representing implementation variants.</p>
+<p><strong>Note:</strong> The strategy uses a <strong>dual-price architecture</strong> (raw vs continuous prices) for all calculations. See <code>docs/DUAL_PRICE_ARCHITECTURE.md</code> for details on how prices are back-adjusted and which modules use which price source.</p>
+<h2>Institutional Design Principles</h2>
+<h3>Institutional Operating Model</h3>
+<p>Futures-Six is designed as an institutional-grade systematic macro platform, even when deployed with a single principal's capital.</p>
+<p><strong>Key principles:</strong></p>
+<ul>
+<li><strong>Economic engines (Meta-Sleeves) are clean, unconditional, and always-on</strong></li>
+<li>Meta-Sleeves produce signals based on economic relationships, not conditional logic</li>
+<li>
+<p>They operate independently of regime detection or crisis response mechanisms</p>
+</li>
+<li>
+<p><strong>Conditional logic, regime detection, and crisis response do not belong in sleeves</strong></p>
+</li>
+<li>Sleeves are pure alpha engines</li>
+<li>
+<p>All conditional exposure control is centralized in the Allocator layer</p>
+</li>
+<li>
+<p><strong>Architecture decisions precede performance optimization</strong></p>
+</li>
+<li>System structure and design principles are established before parameter tuning</li>
+<li>
+<p>Optimization occurs only after the complete architecture is validated</p>
+</li>
+<li>
+<p><strong>Production systems are frozen and versioned</strong></p>
+</li>
+<li>Once promoted to production, sleeves and allocator logic are versioned and frozen</li>
+<li>Changes require formal promotion process from research track</li>
+</ul>
+<p>This mirrors institutional CTA / macro fund design rather than retail trading workflows.</p>
+<h2>Production vs Research Tracks</h2>
+<p>Futures-Six maintains strict separation between production and research environments to ensure system stability and controlled evolution.</p>
+<h3>Production Track</h3>
+<p><strong>Characteristics:</strong>
+- <strong>Frozen engines</strong>: Meta-Sleeves are locked at their production version
+- <strong>Frozen allocator logic</strong>: Allocator rules and parameters are versioned and immutable
+- <strong>Capital deployed</strong>: Real capital is allocated to production systems
+- <strong>Changes limited to</strong>: Execution, monitoring, and bug fixes only</p>
+<p><strong>Governance:</strong>
+- No parameter changes without formal promotion process
+- No new sleeves injected directly into production
+- All modifications require versioned release (e.g., Core v10)</p>
+<h3>Research / Incubation Track</h3>
+<p><strong>Characteristics:</strong>
+- <strong>New sleeves</strong>: Development and validation of new Meta-Sleeves and Atomic Sleeves
+- <strong>New data</strong>: Testing with expanded historical windows or new data sources
+- <strong>New allocator logic</strong>: Development of conditional exposure control mechanisms
+- <strong>No capital dependency</strong>: Research operates independently of production capital</p>
+<p><strong>Governance:</strong>
+- No changes move from Research → Production without a formal promotion process
+- Research track follows full lifecycle (Phase-0 → Phase-1 → Phase-2 → Promotion)
+- Paper integration with production copy before promotion decision</p>
+<h3>The Allocator: Role and Purpose</h3>
+<p><strong>The Allocator is not an alpha engine.</strong></p>
+<p>It is a <strong>risk governor</strong> responsible for:
+- Conditional exposure control
+- Regime-dependent de-risking
+- Crisis protection
+- Timing and convexity activation
+- Leverage control</p>
+<p>This is where institutions place timing, convexity activation, and leverage control. The Allocator operates on Meta-Sleeve outputs, not on raw market data, and implements conditional logic that Meta-Sleeves explicitly do not contain.</p>
+<h3>System Components</h3>
+<ul>
+<li><strong>13 futures contracts</strong> across equities, rates, commodities, and FX</li>
+<li><strong>Regime-based signal scaling</strong> (macro overlay) - operates at Meta-Sleeve layer</li>
+<li><strong>Volatility targeting</strong> - operates at Meta-Sleeve layer</li>
+<li><strong>Portfolio optimization</strong> with constraints - operates at Meta-Sleeve layer</li>
+<li><strong>Weekly rebalancing</strong> on Fridays</li>
+</ul>
+<h2>Universe</h2>
+<p><strong>13 Continuous Futures Contracts:</strong></p>
+<ul>
+<li><strong>Equities (3)</strong>: ES, NQ, RTY (calendar roll, 2 days before expiry)</li>
+<li><strong>Rates (5)</strong>: ZN, ZF, ZT, UB (volume-weighted roll), SR3 (SOFR, calendar roll, T-2)</li>
+<li><strong>Commodities (2)</strong>: CL, GC (volume-weighted roll)</li>
+<li><strong>FX (3)</strong>: 6E, 6B, 6J (calendar roll, 2 days before expiry)</li>
+</ul>
+<p><strong>Universe Configuration</strong> (<code>configs/data.yaml</code>):
+- Dictionary format with roll settings per contract
+- Calendar roll: rolls 2 business days before expiry
+- Volume roll: rolls when volume shifts to next contract
+- SOFR (SR3): Calendar roll with <code>roll_offset_bdays: -2</code> (IMM convention, roll T-2)
+- <strong>Symbol Naming Note</strong>: Equities (ES, NQ, RTY) use <code>*_FRONT_CALENDAR_2D</code> suffix in database. FX (6E, 6B, 6J) and SR3 use <code>*_FRONT_CALENDAR</code> (no <code>_2D</code> suffix) in database. The <code>MarketData</code> broker automatically maps universe config to the correct database symbol names.</p>
+<h2>VRP Data Requirements</h2>
+<p><strong>Volatility Risk Premium Meta-Sleeve</strong> requires specialized volatility and VX futures data:</p>
+<h3>Data Sources</h3>
+<p><strong>VIX (1-month implied volatility):</strong>
+- Source: FRED (Federal Reserve Economic Data)
+- Series: VIXCLS (VIX Close)
+- Table: <code>f_fred_observations</code> in canonical DB
+- Provider: FRED API → financial-data-system → databento-es-options
+- Access: <code>src.market_data.vrp_loaders.load_vix()</code></p>
+<p><strong>VIX3M (3-month implied volatility):</strong>
+- Source: CBOE (Chicago Board Options Exchange)
+- Symbol: VIX3M
+- Table: <code>market_data_cboe</code> in canonical DB
+- Provider: CBOE website scraper → financial-data-system → databento-es-options
+- First observation: 2009-09-18
+- Access: <code>src.market_data.vrp_loaders.load_vix3m()</code></p>
+<p><strong>VVIX (volatility of volatility index):</strong>
+- Source: CBOE (Chicago Board Options Exchange)
+- Symbol: VVIX
+- Table: <code>market_data_cboe</code> in canonical DB
+- Provider: CBOE via financial-data-system → databento-es-options
+- Required for VRP-Convexity atomic sleeve
+- Access: <code>src.market_data.vrp_loaders.load_vvix()</code></p>
+<p><strong>VX Futures (VX1/2/3 continuous):</strong>
+- Source: CBOE VX Futures
+- Symbols:
+  - <code>@VX=101XN</code>: VX front month (VX1)
+  - <code>@VX=201XN</code>: VX second month (VX2)
+  - <code>@VX=301XN</code>: VX third month (VX3)
+- Table: <code>market_data</code> in canonical DB
+- Provider: CBOE → financial-data-system → databento-es-options
+- Roll: 1-day roll, unadjusted continuous contracts
+- Access: <code>src.market_data.vrp_loaders.load_vx_curve()</code></p>
+<p><strong>Combined Loader:</strong>
+- <code>src.market_data.vrp_loaders.load_vrp_inputs()</code> provides all VRP data in single DataFrame</p>
+<h3>VRP Window</h3>
+<ul>
+<li><strong>Start</strong>: 2009-09-18 (first VIX3M observation)</li>
+<li><strong>End</strong>: CANONICAL_END (from <code>src.config.backtest_window</code>)</li>
+</ul>
+<h3>VRP Data Diagnostics + Phase-0 Signal Test</h3>
+<p>Before implementing VRP atomic sleeves, verify data availability and test economic idea:</p>
+<p><code>bash
+python scripts/diagnostics/run_vrp_phase0.py --start 2020-01-01 --end 2025-10-31</code></p>
+<p><strong>This script performs TWO tasks:</strong></p>
+<ol>
+<li><strong>VRP Data Diagnostics (NOT Phase-0)</strong>:</li>
+<li>Coverage checks for VIX, VIX3M, VX1/2/3</li>
+<li>Basic spreads: VIX - VX1, VIX3M - VIX, VX2 - VX1</li>
+<li>Summary stats and plots</li>
+<li>
+<p>Outputs: <code>data/diagnostics/vrp_phase0/data_diagnostics/</code></p>
+</li>
+<li>
+<p><strong>VRP-Core Phase-0 Signal Test</strong>:</p>
+</li>
+<li>Toy rule: short VX1 when (VIX - RV_21) &gt; 1.5 vol points, else flat</li>
+<li>Threshold of 1.5 is fixed for Phase-0 documentation only</li>
+<li>No z-scores, no vol targeting</li>
+<li>Pass criteria: Sharpe ≥ 0.1</li>
+<li>Outputs: <code>data/diagnostics/vrp_phase0/phase0_signal_test/</code></li>
+</ol>
+<p><strong>Phase Index:</strong> <code>reports/phase_index/vrp/phase0.txt</code></p>
+<p><strong>Key VRP Spreads (Data Diagnostics):</strong>
+- <strong>VRP (VIX - VX1)</strong>: Spot vs front month spread (primary VRP signal)
+- <strong>Term Structure (VIX3M - VIX)</strong>: 3M vs 1M implied vol spread
+- <strong>Curve Slope (VX2 - VX1)</strong>: Front vs second month futures slope</p>
+<p>See <code>docs/SOTs/PROCEDURES.md</code> § VRP Prerequisites for full data pipeline requirements and <code>docs/SOTs/DIAGNOSTICS.md</code> for detailed Phase-0 documentation.</p>
+<h3>VRP-Core Atomic Sleeve</h3>
+<p><strong>Economic idea</strong>: VIX (30d implied vol) vs realized ES volatility. When VIX &gt; realized vol → implied vol is expensive → fade (short VX1). When VIX &lt; realized vol → implied vol is cheap → stay flat or long.</p>
+<p><strong>Units</strong>: VIX in vol points; realized ES vol as <code>std(returns)*sqrt(252)</code> in decimals — multiply RV by 100 for vol points: <code>vrp_spread = VIX - (RV_21 * 100.0)</code>.</p>
+<p><strong>Signal</strong>: Z-scored VRP spread (252-day rolling); mean-reversion (fade expensive vol); vol-targeted (e.g., 10%).</p>
+<p><strong>Instruments</strong>: VX1 (front-month VIX futures).</p>
+<p><strong>Data</strong>: VIX from FRED; ES returns for RV21; VX1 from CBOE. Warmup: 273 days.</p>
+<p>Governance and evaluation status is defined in <a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a> and <a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a>.</p>
+<h3>VRP-Convergence Atomic Sleeve</h3>
+<p><strong>Economic idea</strong>: Spread between spot VIX and front-month VX1 as convergence/dislocation signal. When VX1 too high vs VIX → short VX1 (expect convergence down). Positive spreads (VIX &gt; VX1) often indicate momentum regimes; only negative spreads (VX1 &gt; VIX) produce stable convergence — short-only logic.</p>
+<p><strong>Signal</strong>: Z-scored convergence spread <code>spread_conv = VIX - VX1</code> (vol points); short-only <code>conv_z_neg = min(conv_z, 0)</code>; 252-day z-score; vol-targeted (10%).</p>
+<p><strong>Instruments</strong>: VX1 (front-month VIX futures).</p>
+<p><strong>Data</strong>: VIX from FRED; VX1 from CBOE. Warmup: 252 days.</p>
+<p>Governance and evaluation status is defined in <a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a> and <a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a>.</p>
+<h3>VRP-TermStructure Atomic Sleeve</h3>
+<p><strong>Economic idea</strong>: The slope of the near-term volatility futures curve (VX2 – VX1) may contain a tradable short-volatility risk premium.</p>
+<p><strong>Signal</strong>: <code>slope = VX2 - VX1</code>; short-only rule <code>signal = -1 if slope &gt; 0.5 else 0</code>.</p>
+<p><strong>Instruments</strong>: VX1 (outright directional exposure).</p>
+<p>Governance and evaluation status is defined in <a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a> and <a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a>.</p>
+<h3>VRP-RollYield Atomic Sleeve</h3>
+<p><strong>Economic idea</strong>: Front-month VIX futures (VX1) tend to decay toward spot VIX as expiry approaches (roll-down carry).</p>
+<p><strong>Signal</strong>: <code>roll = VX1 - VIX</code>; <code>roll_yield = roll / days_to_expiry</code>; short-only rule <code>signal = -1 if roll_yield &gt; 0 else 0</code>.</p>
+<p><strong>Instruments</strong>: VX1 (outright directional exposure).</p>
+<p>Governance and evaluation status is defined in <a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a> and <a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a>.</p>
+<h3>VRP-Alt (VRP-Richness) Atomic Sleeve</h3>
+<p><strong>Economic idea</strong>: VRP-Alt captures the volatility risk premium by comparing VIX (implied volatility) to short-term realized volatility (RV5). When VIX is significantly higher than RV5, it indicates a volatility risk premium that can be captured by shorting VX1 futures.</p>
+<p><strong>Signal</strong>: <code>alt_vrp_spread = VIX - RV5</code>; z-scored (252-day rolling, clipped ±3σ); short-only mean-reversion; 10% target vol.</p>
+<p><strong>Instruments</strong>: VX1 (outright directional exposure).</p>
+<p><strong>Data Dependencies</strong>:
+- VIX (1M implied vol) from FRED
+- ES returns for RV5 calculation (5-day rolling std, annualized to vol points)
+- VX1 prices from CBOE (market_data table, symbol @VX=101XN)</p>
+<p><strong>Warmup Period</strong>: 252 trading days (z-score window) + 5 days (RV5 calculation)</p>
+<p>Governance and evaluation status is defined in <a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a> and <a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a>.</p>
+<h3>VRP-Convexity (VVIX) — Atomic Sleeve</h3>
+<p><strong>Economic idea</strong>: Convexity insurance embedded in VVIX is persistently overpriced, creating a volatility risk premium distinct from level-based VRP.</p>
+<p><strong>Signal</strong>: VVIX threshold-based (e.g., VVIX &gt; 100 ⇒ short VX1).</p>
+<p><strong>Instruments</strong>: VX1.</p>
+<p>Governance and evaluation status is defined in <a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a> and <a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a>.</p>
+<h3>VRP-FrontSpread (Directional) — Atomic Sleeve</h3>
+<p><strong>Economic idea</strong>: Richness spread VX1 − VX2 (not slope) carries predictive power; short VX1 when VX1 &gt; VX2.</p>
+<p><strong>Instruments</strong>: VX1 (outright directional exposure).</p>
+<p>Governance and evaluation status is defined in <a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a> and <a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a>.</p>
+<h3>VRP-Structural (RV252) — Atomic Sleeve</h3>
+<p><strong>Economic idea</strong>: Long-horizon implied vs realized volatility premium: VIX vs RV252; short VX when VIX &gt; RV252.</p>
+<p><strong>Instruments</strong>: VX1/VX2/VX3.</p>
+<p>Governance and evaluation status is defined in <a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a> and <a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a>.</p>
+<h3>VRP-Mid (RV126) — Atomic Sleeve</h3>
+<p><strong>Economic idea</strong>: Mid-horizon implied vs realized volatility premium: VIX vs RV126; short VX when VIX &gt; RV126.</p>
+<p><strong>Instruments</strong>: VX2/VX3.</p>
+<p>Governance and evaluation status is defined in <a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a> and <a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a>.</p>
+<h2>Complete Execution Flow</h2>
+<h3>Initialization Phase</h3>
+<p><strong>1. MarketData Broker</strong>
+- Connect to DuckDB database (read-only)
+- Load universe from <code>configs/data.yaml</code>
+- Auto-detect OHLCV table schema
+- Validate data availability
+- <strong>Build continuous prices</strong>: Load raw prices with <code>contract_id</code>, build back-adjusted continuous prices using <code>ContinuousContractBuilder</code> (backward-panama adjustment)
+- <strong>Expose dual prices</strong>: <code>prices_raw</code> (raw DB prices), <code>prices_cont</code> (back-adjusted), <code>contract_ids</code>, <code>returns_cont</code> (log returns from continuous prices)</p>
+<p><strong>2. FeatureService</strong>
+- Initialize feature computation service
+- Configure SR3 curve features (12 ranks, 252-day window)
+- Configure Rates curve features (FRED-anchored yields, 252-day window, anchor_lag_days=2)
+- Configure FX/Commodity carry features (CL, GC, 6E, 6B, 6J; 3 features per root: time-series, cross-sectional, momentum)
+- Configure Long-term momentum features (252-day return, breakout, slow trend slope; 252-day window)
+- Configure Medium-term momentum features (84-day return, 126-day breakout, medium trend slope, persistence; 252-day window)
+- Configure Short-term momentum features (21-day return, breakout, fast trend slope, reversal filter; 252-day window)
+- Pre-compute features if feature-based sleeves are enabled</p>
+<p><strong>3. Strategy Sleeves</strong>
+- <strong>TSMOM Strategy (Long-Term Momentum)</strong> (if enabled in config):
+  - Uses three long-term momentum features: 252-day return momentum, 252-day breakout strength, slow trend slope
+  - Combines features with configurable weights (default: ret_252=0.5, breakout_252=0.3, slope_slow=0.2)
+  - Uses pre-computed LONG_MOMENTUM features from FeatureService
+  - Cross-sectional z-scoring and clipping at ±3.0
+  - Returns: <code>pd.Series</code> with signals for all symbols
+- <strong>TSMOMMultiHorizon Strategy (v2)</strong> (if enabled in config):
+  - <strong>Unified multi-horizon momentum sleeve</strong> combining long, medium, and short-term features
+  - <strong>Long-term (252d)</strong>: 252-day return, 252-day breakout, slow trend slope (EMA_63 - EMA_252)
+  - <strong>Medium-term (84/126d)</strong>: 84-day return, 126-day breakout, medium trend slope (EMA_20 - EMA_84), persistence
+  - <strong>Short-term (21d)</strong>: 21-day return, 21-day breakout, fast trend slope (EMA_10 - EMA_40), reversal filter (optional)
+  - <strong>Horizon weights</strong>: long_252=0.50, med_84=0.30, short_21=0.20 (industry-standard)
+  - <strong>Feature weights</strong>: Same as individual sleeves within each horizon
+  - <strong>Signal processing</strong>: Combine features → blend horizons → cross-sectional z-score → clip ±3.0
+  - <strong>EWMA Vol Normalization</strong> (if enabled): Risk-normalize signals by dividing by EWMA vol (63-day half-life, 5% floor)
+  - Uses pre-computed LONG_MOMENTUM, MEDIUM_MOMENTUM, SHORT_MOMENTUM features from FeatureService
+  - Returns: <code>pd.Series</code> with risk-normalized signals for all symbols
+- <strong>Medium-Term Momentum Strategy</strong> (if enabled in config):
+  - Uses four medium-term momentum features: 84-day return momentum, 126-day breakout strength, medium trend slope, persistence
+  - Combines features with configurable weights (default: ret_84=0.4, breakout_126=0.3, slope_med=0.2, persistence=0.1)
+  - Uses pre-computed MEDIUM_MOMENTUM features from FeatureService
+  - Cross-sectional z-scoring and clipping at ±3.0
+  - Returns: <code>pd.Series</code> with signals for all symbols
+- <strong>Short-Term Momentum Strategy</strong> (if enabled in config):
+  - Uses four short-term momentum features: 21-day return momentum, 21-day breakout strength, fast trend slope, reversal filter
+  - Combines features with configurable weights (default: ret_21=0.5, breakout_21=0.3, slope_fast=0.2, reversal_filter=0.0)
+  - Uses pre-computed SHORT_MOMENTUM features from FeatureService
+  - Cross-sectional z-scoring and clipping at ±3.0
+  - Returns: <code>pd.Series</code> with signals for all symbols
+- <strong>SR3 Carry/Curve Strategy</strong> (if enabled in config):
+  - Initialize with feature weights (w_carry=0.30, w_curve=0.25, w_pack_slope=0.20, w_front_lvl=0.10, w_curv_belly=0.15)
+  - Signal cap: ±3.0 standard deviations
+  - Uses pre-computed SR3 curve features from FeatureService (5 features total)
+- <strong>Rates Curve Strategy</strong> (if enabled in config):
+  - Initialize with feature weights (w_slope_2s10s=0.35, w_slope_5s30s=0.35, w_curv_2s5s10s=0.15, w_curv_5s10s30s=0.15)
+  - Signal cap: ±3.0 standard deviations
+  - Uses pre-computed Rates curve features from FeatureService (4 features total)
+  - Generates flattener/steepener signals for ZT, ZF, ZN, UB
+- <strong>FX/Commodity Carry Strategy</strong> (if enabled in config):
+  - Initialize with feature weights (w_ts=0.6, w_xs=0.25, w_mom=0.15)
+  - Uses roll yield between front and next contracts for CL, GC, 6E, 6B, 6J
+  - Defines roll yield in log price space: <code>roll_yield_raw = -(ln(F1) - ln(F0))</code>
+  - Uses pre-computed FX/Commodity carry features from FeatureService (3 features per root)
+  - Returns: pd.Series with signals for CL, GC, 6E, 6B, 6J</p>
+<p><strong>4. CombinedStrategy</strong>
+- Combine strategy sleeves with configurable weights
+- <strong>Weight Normalization</strong>: Weights are <strong>relative importance weights</strong>, not absolute risk budgets
+  - Automatically normalized to sum to 1.0: <code>normalized_weight_i = weight_i / sum(all_weights)</code>
+  - Example: If config has <code>tsmom=0.6, sr3=0.15, rates=0.15, fx_commod=0.10</code>, they become <code>tsmom=0.60, sr3=0.15, rates=0.15, fx_commod=0.10</code> (already normalized)
+  - Alternative: If config has <code>tsmom=1.0, sr3=0.3, rates=0.3, fx_commod=0.2</code>, they become <code>tsmom=0.556, sr3=0.167, rates=0.167, fx_commod=0.111</code>
+  - This ensures signals are combined proportionally regardless of the absolute weight values
+- Handle strategies that require features (e.g., TSMOM, Medium/Short Momentum, SR3, Rates Curve, FX/Commodity Carry)</p>
+<p><strong>5. MacroRegimeFilter</strong>
+- Initialize with vol thresholds, breadth lookback, FRED indicators
+- Configure FRED indicators from <code>configs/fred_series.yaml</code> (macro FRED series):
+  - Daily: VIXCLS, VXVCLS, FEDFUNDS, DGS2, DGS10, BAMLH0A0HYM2, TEDRATE, DTWEXBGS
+  - Monthly: CPIAUCSL, UNRATE (dailyized before z-scoring)
+  - <strong>Note</strong>: DGS2 and DGS10 are shared with Rates Curve features; DGS5 and DGS30 are curve-only
+- Set scaler bounds [0.5, 1.0] and smoothing (EMA α=0.15)
+- Input smoothing: 5-day EMA on breadth and FRED composite to avoid stepwise jumps</p>
+<p><strong>6. RiskVol Agent</strong>
+- Configure volatility lookback (63 days) and covariance lookback (252 days)
+- Set Ledoit-Wolf shrinkage for covariance stability
+- Apply min vol floor (50 bps annualized) to prevent exploding leverage in calm regimes</p>
+<p><strong>7. VolManagedOverlay</strong>
+- Set target volatility (20% annualized)
+- Configure leverage cap (7x) and position bounds (±3.0)</p>
+<p><strong>8. Allocator</strong>
+- Configure method (signal-beta), gross/net caps, turnover penalty
+- Set per-asset bounds (±1.5)</p>
+<p><strong>9. ExecSim</strong>
+- Set rebalance frequency (W-FRI), slippage (0.5 bps), commission (0.0)
+- Friday holiday handling: if Friday is not a trading day, rebalance on previous business day</p>
+<hr />
+<h3>Per-Rebalance Loop (Weekly Fridays)</h3>
+<p>For each rebalance date <code>t</code>, the following steps execute <strong>in this exact order</strong>:</p>
+<h4>Step 1: Generate Combined Strategy Signals</h4>
+<p><code>python
+signals = combined_strategy.signals(market, date=t)</code></p>
+<p><strong>What happens:</strong></p>
+<p><strong>1a. TSMOM Signals (Long-Term Momentum)</strong> (if enabled)
+- Get pre-computed long-term momentum features up to date <code>t</code>:
+  - <code>mom_long_ret_252_z_{symbol}</code>: 252-day return momentum (vol-standardized, z-scored)
+  - <code>mom_long_breakout_252_z_{symbol}</code>: 252-day breakout strength (normalized position in 252-day range)
+  - <code>mom_long_slope_slow_z_{symbol}</code>: Slow trend slope (EMA_63 - EMA_252, vol-standardized)
+- Combine features with configurable weights: <code>signal = w_ret * ret_252_z + w_breakout * breakout_252_z + w_slope * slope_slow_z</code>
+- Cross-sectional z-scoring across assets and clipping at ±3.0
+- Returns: <code>pd.Series</code> with signals for all symbols
+- <strong>Note</strong>: If features unavailable for date <code>t</code>, uses most recent available features (forward-fill)</p>
+<p><strong>1a2. Trend Meta-Sleeve Signals</strong> (if enabled)
+- <strong>Atomic Sleeve 1: Long-term momentum (252d)</strong>
+  - Get pre-computed long-term momentum features: <code>mom_long_ret_252_z_{symbol}</code>, <code>mom_long_breakout_252_z_{symbol}</code>, <code>mom_long_slope_slow_z_{symbol}</code>
+  - Combine features: <code>long_signal = 0.5 * ret_252 + 0.3 * breakout_252 + 0.2 * slope_slow</code>
+- <strong>Atomic Sleeve 2: Medium-term momentum (84/126d)</strong>
+  - Get pre-computed medium-term momentum features: <code>mom_med_ret_84_z_{symbol}</code>, <code>mom_med_breakout_126_z_{symbol}</code>, <code>mom_med_slope_med_z_{symbol}</code>, <code>mom_med_persistence_z_{symbol}</code>
+  - Combine features: <code>med_signal = 0.4 * ret_84 + 0.3 * breakout_126 + 0.2 * slope_med + 0.1 * persistence</code>
+- <strong>Atomic Sleeve 3: Short-term momentum (21d)</strong>
+  - Get pre-computed short-term momentum features: <code>mom_short_ret_21_z_{symbol}</code>, <code>mom_short_breakout_21_z_{symbol}</code>, <code>mom_short_slope_fast_z_{symbol}</code>, <code>mom_short_reversal_filter_z_{symbol}</code>
+  - Combine features: <code>short_signal = 0.5 * ret_21 + 0.3 * breakout_21 + 0.2 * slope_fast</code>
+- <strong>Meta-Sleeve Combination</strong>: Blend atomic sleeves using horizon weights
+  - <code>trend_meta_signal = 0.50 * long_signal + 0.30 * med_signal + 0.20 * short_signal</code>
+- <strong>Cross-sectional z-score</strong>: Normalize across assets and clip to ±3.0
+- <strong>EWMA Vol Normalization</strong> (if enabled):
+  - Compute EWMA annualized volatility for each asset: <code>σ_annual = EWMA(returns², halflife=63) * sqrt(252)</code>
+  - Risk-normalize: <code>s_risk = z_clipped / max(σ_annual, σ_floor)</code> where <code>σ_floor = 0.05</code> (5%)
+  - Apply global scale: <code>s_final = risk_scale * s_risk</code> (default: <code>risk_scale = 0.2</code>)
+- Returns: <code>pd.Series</code> with risk-normalized Trend Meta-Sleeve signals for all symbols
+- <strong>Note</strong>: If features unavailable for date <code>t</code>, uses most recent available features (forward-fill)</p>
+<p><strong>1b. SR3 Carry/Curve Signals</strong> (if enabled)
+- Get pre-computed SR3 curve features up to date <code>t</code>:
+  - <code>sr3_carry_01_z</code>: Carver carry (r1 - r0) standardized
+  - <code>sr3_curve_02_z</code>: Curve shape (r2 - r0) standardized
+  - <code>sr3_pack_slope_fb_z</code>: Pack slope (front vs back) standardized
+  - <code>sr3_front_pack_level_z</code>: Front-pack level (policy expectation) standardized
+  - <code>sr3_curvature_belly_z</code>: Belly curvature (hump vs straight) standardized
+- Compute weighted combination: <code>signal = w_carry * carry + w_curve * curve + w_pack_slope * pack_slope + w_front_lvl * front_lvl + w_curv_belly * curv_belly</code>
+- Default weights: w_carry=0.30, w_curve=0.25, w_pack_slope=0.20, w_front_lvl=0.10, w_curv_belly=0.15
+- Cap at ±3.0 standard deviations
+- Returns: <code>pd.Series</code> with signal for SR3_FRONT_CALENDAR only
+- <strong>Note</strong>: If features unavailable for date <code>t</code>, uses most recent available features (forward-fill)</p>
+<p><strong>1c. Rates Curve Signals</strong> (if enabled)
+- Get pre-computed Rates curve features up to date <code>t</code>:
+  - <code>curve_2s10s_z</code>: 2s10s curve slope standardized (ZT vs ZN)
+  - <code>curve_5s30s_z</code>: 5s30s curve slope standardized (ZF vs UB)
+  - <code>curve_2s5s10s_curv_z</code>: 2s-5s-10s belly curvature standardized
+  - <code>curve_5s10s30s_curv_z</code>: 5s-10s-30s belly curvature standardized
+- For 2s10s: Combine slope and curvature: <code>signal_2s10s = w_slope_2s10s * slope_z + w_curv_2s5s10s * curv_z</code>
+  - Default weights: w_slope_2s10s=0.35, w_curv_2s5s10s=0.15 (normalized within 2s10s segment to sum to 1.0)
+  - After normalization: w_slope_2s10s=0.70, w_curv_2s5s10s=0.30
+  - Positive signal → flattener (long ZT, short ZN); Negative signal → steepener (short ZT, long ZN)
+  - Final signals: <code>s_2y = +signal_2s10s</code>, <code>s_10y = -signal_2s10s</code>
+- For 5s30s: Combine slope and curvature: <code>signal_5s30s = w_slope_5s30s * slope_z + w_curv_5s10s30s * curv_z</code>
+  - Default weights: w_slope_5s30s=0.35, w_curv_5s10s30s=0.15 (normalized within 5s30s segment to sum to 1.0)
+  - After normalization: w_slope_5s30s=0.70, w_curv_5s10s30s=0.30
+  - Positive signal → flattener (long ZF, short UB); Negative signal → steepener (short ZF, long UB)
+  - Final signals: <code>s_5y = +signal_5s30s</code>, <code>s_30y = -signal_5s30s</code>
+- Cap combined signals at ±3.0 standard deviations
+- Returns: <code>pd.Series</code> with signals for ZT, ZF, ZN, UB
+- <strong>Note</strong>: If features unavailable for date <code>t</code>, uses most recent available features (forward-fill)</p>
+<p><strong>1d. Medium-Term Momentum Signals</strong> (if enabled)
+- Get pre-computed medium-term momentum features up to date <code>t</code>:
+  - <code>mom_med_ret_84_z_{symbol}</code>: 84-day return momentum (vol-standardized, z-scored)
+  - <code>mom_med_breakout_126_z_{symbol}</code>: 126-day breakout strength (normalized position in 126-day range)
+  - <code>mom_med_slope_med_z_{symbol}</code>: Medium trend slope (EMA_20 - EMA_84, vol-standardized)
+  - <code>mom_med_persistence_z_{symbol}</code>: Trend persistence (sign consistency over 20 days)
+- Combine features with configurable weights: <code>signal = w_ret * ret_84_z + w_breakout * breakout_126_z + w_slope * slope_med_z + w_persist * persistence_z</code>
+- Cross-sectional z-scoring across assets and clipping at ±3.0
+- Returns: <code>pd.Series</code> with signals for all symbols
+- <strong>Note</strong>: If features unavailable for date <code>t</code>, uses most recent available features (forward-fill)</p>
+<p><strong>1e. Short-Term Momentum Signals</strong> (if enabled)
+- Get pre-computed short-term momentum features up to date <code>t</code>:
+  - <code>mom_short_ret_21_z_{symbol}</code>: 21-day return momentum (vol-standardized, z-scored)
+  - <code>mom_short_breakout_21_z_{symbol}</code>: 21-day breakout strength (normalized position in 21-day range)
+  - <code>mom_short_slope_fast_z_{symbol}</code>: Fast trend slope (EMA_10 - EMA_40, vol-standardized)
+  - <code>mom_short_reversal_filter_z_{symbol}</code>: Reversal filter (RSI-like, optional, not used by default)
+- Combine features with configurable weights: <code>signal = w_ret * ret_21_z + w_breakout * breakout_21_z + w_slope * slope_fast_z</code>
+- Cross-sectional z-scoring across assets and clipping at ±3.0
+- Returns: <code>pd.Series</code> with signals for all symbols
+- <strong>Note</strong>: If features unavailable for date <code>t</code>, uses most recent available features (forward-fill)</p>
+<p><strong>1f. FX/Commodity Carry Signals</strong> (if enabled)
+- Get pre-computed FX/Commodity carry features up to date <code>t</code> (3 features per root):
+  - <code>carry_ts_z_&lt;root&gt;</code>: Time-series roll yield standardized per root
+  - <code>carry_xs_z_&lt;root&gt;</code>: Cross-sectional carry strength (relative to other assets on same day)
+  - <code>carry_mom_63_z_&lt;root&gt;</code>: 63-day carry momentum (change in roll yield over 3 months)
+- For each asset: Combine features with weights: <code>signal = w_ts * carry_ts_z + w_xs * carry_xs_z + w_mom * carry_mom_63_z</code>
+  - Default weights: w_ts=0.6, w_xs=0.25, w_mom=0.15 (normalized to sum to 1.0)
+  - Positive signal → long (backwardation, attractive carry); Negative signal → short (contango, negative carry)
+- Cap combined signals at ±3.0 standard deviations
+- Returns: <code>pd.Series</code> with signals for CL, GC, 6E, 6B, 6J
+- <strong>Note</strong>: If features unavailable for date <code>t</code>, uses most recent available features (forward-fill)</p>
+<p><strong>1g. Combine Signals</strong>
+- Weighted combination: <code>combined = weight_tsmom * tsmom_signals + weight_tsmom_multihorizon * tsmom_multihorizon_signals + weight_tsmom_med * tsmom_med_signals + weight_tsmom_short * tsmom_short_signals + weight_sr3 * sr3_signals + weight_rates * rates_signals + weight_fx_commod * fx_commod_signals</code>
+- <strong>Weight Normalization</strong>: Weights from <code>configs/strategies.yaml</code> are <strong>relative importance weights</strong>
+  - Automatically normalized: <code>normalized_weight = weight / sum(all_weights)</code>
+  - Example: Config <code>{tsmom: 0.6, sr3: 0.15, rates: 0.15, fx_commod: 0.10}</code> → Normalized <code>{tsmom: 0.60, sr3: 0.15, rates: 0.15, fx_commod: 0.10}</code> (already sums to 1.0)
+  - Alternative example: Config <code>{tsmom_multihorizon: 1.0}</code> → Normalized <code>{tsmom_multihorizon: 1.0}</code> (single sleeve)
+  - This means you can use any scale and get the same relative proportions after normalization
+- <strong>Note</strong>: When using <code>tsmom_multihorizon</code>, typically disable <code>tsmom</code>, <code>tsmom_med</code>, and <code>tsmom_short</code> to avoid double-counting momentum features
+- Returns: <code>pd.Series</code> with combined signals for all symbols</p>
+<p><strong>Example output:</strong>
+<code>ES_FRONT_CALENDAR_2D     1.25  (from TSMOM long-term)
+NQ_FRONT_CALENDAR_2D    -0.87  (from TSMOM long-term)
+RTY_FRONT_CALENDAR_2D    0.45  (from TSMOM long-term + Medium-term)
+ZN_FRONT_VOLUME          0.42  (from TSMOM long-term + Rates Curve)
+ZT_FRONT_VOLUME          0.18  (from Rates Curve 2s10s)
+ZF_FRONT_VOLUME         -0.12  (from Rates Curve 5s30s)
+UB_FRONT_VOLUME          0.12  (from Rates Curve 5s30s)
+SR3_FRONT_CALENDAR       0.15  (from SR3 carry/curve, weighted)
+CL_FRONT_VOLUME         -0.28  (from FX/Commodity Carry)
+GC_FRONT_VOLUME          0.19  (from FX/Commodity Carry)
+6E_FRONT_CALENDAR        0.55  (from FX/Commodity Carry)
+6B_FRONT_CALENDAR       -0.12  (from FX/Commodity Carry)
+6J_FRONT_CALENDAR        0.24  (from FX/Commodity Carry)
+...</code></p>
+<p><strong>Reference:</strong> 
+- <code>src/agents/strat_combined.py</code> (CombinedStrategy)
+- <code>src/agents/strat_momentum.py</code> (TSMOM - Long-Term Momentum)
+- <code>src/agents/strat_tsmom_multihorizon.py</code> (TSMOMMultiHorizon - v2, unified multi-horizon momentum)
+- <code>src/agents/strat_momentum_medium.py</code> (Medium-Term Momentum)
+- <code>src/agents/strat_momentum_short.py</code> (Short-Term Momentum)
+- <code>src/agents/strat_sr3_carry_curve.py</code> (SR3 Carry/Curve)
+- <code>src/agents/strat_rates_curve.py</code> (Rates Curve)
+- <code>src/agents/strat_carry_fx_commod.py</code> (FX/Commodity Carry)
+- <code>src/agents/feature_long_momentum.py</code> (Long/Medium/Short Momentum Features)
+- <code>src/agents/feature_sr3_curve.py</code> (SR3 Features)
+- <code>src/agents/feature_rates_curve.py</code> (Rates Curve Features)
+- <code>src/agents/feature_carry_fx_commod.py</code> (FX/Commodity Carry Features)
+- <code>docs/legacy/TSMOM_IMPLEMENTATION.md</code>
+- <code>docs/SR3_CARRY_CURVE.md</code></p>
+<hr />
+<h4>Step 2: Compute Macro Regime Scaler</h4>
+<p><code>python
+macro_k = macro_overlay.scaler(market, date=t)</code></p>
+<p><strong>What happens:</strong></p>
+<p><strong>2a. Realized Volatility</strong>
+- Get ES and NQ returns over last 21 days
+- Compute equal-weighted portfolio returns
+- Calculate annualized volatility: <code>vol = std(returns) * sqrt(252)</code></p>
+<p><strong>2b. Market Breadth</strong>
+- For ES and NQ:
+  - Get 200-day SMA as of date <code>t</code>
+  - Check if price &gt; SMA
+- Breadth = fraction of symbols above SMA (0.0, 0.5, or 1.0)</p>
+<p><strong>2c. FRED Economic Indicators</strong>
+- Query <code>f_fred_observations</code> table for indicators up to date <code>t</code> (configurable via <code>configs/fred_series.yaml</code>)
+- For monthly series (CPI, UNRATE):
+  - Forward-fill to business days before z-scoring
+  - Resample to daily frequency with <code>asfreq('B', method='pad')</code>
+- For each indicator:
+  - Get last 252 days (or available data, after dailyization)
+  - Compute rolling z-score: <code>z = (value - mean) / std</code> (63-day window after dailyization)
+  - Cap z-score at ±5.0 to avoid single prints swinging the scaler
+  - Map to [-1, 1] using <code>tanh(z / 2.0)</code>
+- Combine all normalized indicators with equal weights
+- Result: Combined FRED signal in [-1, 1]
+- Data freshness check: warn if monthly series stale &gt; 45 days</p>
+<p><strong>2d. Input Smoothing</strong>
+- Apply 5-day EMA to breadth and FRED composite inputs
+- Prevents stepwise k-jumps when monthly FRED data updates
+- Formula: <code>smoothed = 0.2 * new_value + 0.8 * previous_smoothed</code></p>
+<p><strong>2e. Base Scaler Calculation</strong>
+- Map vol linearly: <code>[vol_low, vol_high] → [k_max, k_min]</code>
+  - Higher vol → lower scaler (risk-off)
+- Add breadth adjustment (using smoothed breadth):
+  - Breadth = 1.0 → +0.1 (bullish)
+  - Breadth = 0.0 → -0.1 (bearish)
+  - Breadth = 0.5 → 0.0 (neutral)
+- Add FRED adjustment (using smoothed FRED signal): <code>fred_signal * fred_weight</code> (default: 0.3)
+- Clamp to [k_min, k_max] = [0.5, 1.0]
+- Apply EMA smoothing to final scaler: <code>k_smooth = 0.15 * k_new + 0.85 * k_prev</code></p>
+<p><strong>Returns:</strong> Scaler <code>k</code> ∈ [0.5, 1.0]</p>
+<p><strong>Example:</strong> <code>macro_k = 0.837</code> (16.3% risk reduction)</p>
+<p><strong>Reference:</strong> <code>src/agents/overlay_macro_regime.py</code>, <code>docs/MACRO_REGIME_FILTER.md</code></p>
+<hr />
+<h4>Step 3: Apply Volatility Targeting</h4>
+<p><code>python
+scaled_signals = vol_overlay.scale(signals, market, date=t)</code></p>
+<p><strong>What happens:</strong>
+- Get current portfolio volatility (63-day lookback)
+- Calculate target leverage: <code>leverage = target_vol / current_vol</code>
+- Scale all signals: <code>scaled = signals * leverage</code>
+- Apply leverage cap (7x) and position bounds (±3.0)
+- <strong>Then apply macro scaler:</strong> <code>scaled_signals = scaled_signals * macro_k</code></p>
+<p><strong>Returns:</strong> Vol-targeted and regime-scaled signals</p>
+<p><strong>Example:</strong>
+<code>ES_FRONT_CALENDAR_2D     0.95  (was 1.25, scaled by vol + macro)
+NQ_FRONT_CALENDAR_2D    -0.66  (was -0.87)
+...</code></p>
+<p><strong>Reference:</strong> <code>src/agents/overlay_volmanaged.py</code></p>
+<hr />
+<h4>Step 4: Get Risk Data</h4>
+<p><code>python
+cov = risk_vol.covariance(market, date=t)
+vols = risk_vol.vols(market, date=t)
+mask = risk_vol.mask(market, date=t)</code></p>
+<p><strong>What happens:</strong>
+- Compute covariance matrix (252-day lookback, Ledoit-Wolf shrinkage)
+- Apply min vol floor: ensure all diagonal elements ≥ (50 bps)² to prevent exploding leverage
+- Compute individual volatilities (63-day lookback)
+- Create mask of valid symbols (have sufficient data)</p>
+<p><strong>Returns:</strong> Covariance matrix, volatility series, validity mask</p>
+<p><strong>Reference:</strong> <code>src/agents/risk_vol.py</code></p>
+<hr />
+<h4>Step 5: Apply Data Validity Mask</h4>
+<p><code>python
+mask = risk_vol.mask(market, date=t)
+valid_symbols = mask.intersection(scaled_signals.index)
+scaled_signals.loc[invalid_symbols] = 0.0  # Zero out invalid signals</code></p>
+<p><strong>What happens:</strong>
+- Get validity mask from RiskVol (symbols with sufficient data)
+- Zero out signals for assets failing validity mask
+- Prevents allocator from wasting budget on NaNs that got imputed</p>
+<p><strong>Returns:</strong> Masked signals (invalid assets set to 0.0)</p>
+<hr />
+<h4>Step 6: Optimize Portfolio Weights</h4>
+<p><code>python
+weights = allocator.solve(scaled_signals, cov, weights_prev=prev_weights)</code></p>
+<p><strong>What happens:</strong>
+- Use signal-beta method: align weights with signal direction
+- Enforce constraints:
+  - Gross leverage cap: <code>sum(abs(weights)) &lt;= 7.0</code>
+  - Net leverage cap: <code>sum(weights) &lt;= 2.0</code>
+  - Per-asset bounds: <code>-1.5 &lt;= weight &lt;= 1.5</code>
+  - Turnover penalty: minimize <code>lambda * turnover</code>
+- If constraints violated, use L2 projection to find nearest feasible solution</p>
+<p><strong>Returns:</strong> Final portfolio weights <code>pd.Series</code></p>
+<p><strong>Example:</strong>
+<code>ES_FRONT_CALENDAR_2D     0.1299  (12.99%)
+NQ_FRONT_CALENDAR_2D     0.1415  (14.15%)
+ZN_FRONT_VOLUME          0.1562  (15.62%)
+...</code></p>
+<p><strong>Reference:</strong> <code>src/agents/allocator.py</code></p>
+<hr />
+<h4>Step 7: Calculate Portfolio Return</h4>
+<p>```python</p>
+<h1>Get returns for holding period (t to t+1)</h1>
+<p>next_date = rebalance_dates[i+1] if i &lt; len(rebalance_dates)-1 else end_date
+period_returns = market.get_returns(start=t+1, end=next_date)  # Daily returns</p>
+<h1>For log returns: sum is correct (additive)</h1>
+<h1>For simple returns: would use prod() to compound</h1>
+<p>holding_returns = period_returns.sum()  # Cumulative period return per asset</p>
+<h1>Portfolio return (weights are fixed over [t, next_t))</h1>
+<p>port_ret = (weights * holding_returns).sum()</p>
+<h1>Apply transaction costs (slippage on turnover)</h1>
+<p>turnover = sum(abs(weights - prev_weights)) if prev_weights is not None else sum(abs(weights))
+slippage_cost = turnover * slippage_bps / 10000
+net_ret = port_ret - slippage_cost
+```</p>
+<p><strong>What happens:</strong>
+- Get asset returns from date <code>t+1</code> to next rebalance (or end)
+- Compute cumulative period return per asset: <code>sum(daily_returns)</code> for log returns
+- Compute portfolio return: <code>Σ(weight_i * period_return_i)</code> where weights are fixed over the holding period
+- Calculate turnover: <code>sum(abs(new_weights - old_weights))</code>
+- Apply slippage: <code>slippage = turnover * 0.5 bps</code>
+- Net return: <code>portfolio_return - slippage</code></p>
+<p><strong>Returns:</strong> Portfolio return for the holding period</p>
+<p><strong>Reference:</strong> <code>src/agents/exec_sim.py</code> (lines 393-417)</p>
+<hr />
+<h4>Step 8: Update Equity Curve &amp; Diagnostics</h4>
+<p>```python
+equity[t+1] = equity[t] * (1 + net_ret)</p>
+<h1>Diagnostics: what-moved report</h1>
+<p>if prev_weights is not None:
+    weight_changes = (weights - prev_weights).abs().sort_values(ascending=False)
+    top_movers = weight_changes.head(5)
+    logger.info(f"top_movers={dict(top_movers.head(3))}, k={macro_k:.3f}, turnover={turnover:.3f}")
+```</p>
+<p><strong>What happens:</strong>
+- Compound returns: <code>equity_new = equity_old * (1 + return)</code>
+- Track cumulative performance
+- Log diagnostics: top weight changes, macro scaler (k), turnover</p>
+<p><strong>Returns:</strong> Updated equity value</p>
+<hr />
+<h3>Post-Processing Phase</h3>
+<p>After all rebalance dates complete:</p>
+<p><strong>1. Compute Performance Metrics</strong>
+- CAGR: <code>(equity_end / equity_start) ^ (1/years) - 1</code>
+- Volatility: <code>std(daily_returns) * sqrt(252)</code>
+- Sharpe: <code>mean(daily_returns) / std(daily_returns) * sqrt(252)</code>
+- Max Drawdown: Maximum peak-to-trough decline
+- Hit Rate: Fraction of positive return periods
+- Turnover: Average turnover per rebalance
+- Gross/Net Leverage: Average portfolio leverage</p>
+<p><strong>2. Generate Outputs</strong>
+- Equity curve: <code>pd.Series</code> indexed by date
+- Weights panel: <code>pd.DataFrame</code> [date × symbol]
+- Signals panel: <code>pd.DataFrame</code> [date × symbol]
+- Performance report: <code>dict</code> with all metrics</p>
+<p><strong>Reference:</strong> <code>src/agents/exec_sim.py</code> (lines 382-450)</p>
+<hr />
+<h2>Data Flow Diagram</h2>
+<p><code>┌─────────────────────────────────────────────────────────────┐
+│                    INITIALIZATION                            │
+├─────────────────────────────────────────────────────────────┤
+│ MarketData → FeatureService → Strategy Sleeves →            │
+│ CombinedStrategy → MacroRegime → RiskVol → VolManaged →     │
+│ Allocator → ExecSim                                          │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│              PER-REBALANCE LOOP (Weekly Fridays)            │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  t = rebalance_date                                         │
+│                                                              │
+│  Step 1: combined_strategy.signals(market, t)               │
+│           → combined_signals (pd.Series)                     │
+│           • TSMOM: long-term momentum signals (multi-feature)│
+│           • Medium-Term: medium-term momentum signals       │
+│             (if enabled)                                     │
+│           • Short-Term: short-term momentum signals         │
+│             (if enabled)                                     │
+│           • SR3: carry/curve signal for SR3 (if enabled)    │
+│           • Rates: curve signals for ZT/ZF/ZN/UB (if enabled)│
+│           • FX/Commodity: carry signals for CL/GC/6E/6B/6J  │
+│             (if enabled)                                     │
+│           • Combine: weighted sum of sleeve signals         │
+│                                                              │
+│  Step 2: macro_overlay.scaler(market, t)                   │
+│           → macro_k (float ∈ [0.5, 1.0])                    │
+│           • Compute vol (21-day ES+NQ)                      │
+│           • Compute breadth (200-day SMA)                    │
+│           • Fetch &amp; normalize FRED indicators              │
+│           • Dailyize monthly series (CPI, UNRATE)          │
+│           • Cap z-scores (±5.0), smooth inputs (5-day EMA) │
+│           • Combine → scaler                                │
+│                                                              │
+│  Step 3: vol_overlay.scale(combined_signals, market, t)   │
+│           → vol_scaled_signals                              │
+│           • Scale to target vol (20%)                       │
+│           • Apply macro_k: vol_scaled * macro_k             │
+│           → final_scaled_signals                            │
+│                                                              │
+│  Step 4: risk_vol.covariance(market, t)                     │
+│           → cov_matrix (pd.DataFrame)                        │
+│           • Apply min vol floor (50 bps)                     │
+│           mask = risk_vol.mask(market, t)                   │
+│                                                              │
+│  Step 5: Apply data validity mask                           │
+│           • Zero out signals for invalid assets            │
+│           → masked_signals                                  │
+│                                                              │
+│  Step 6: allocator.solve(masked_signals, cov, ...)         │
+│           → portfolio_weights (pd.Series)                  │
+│           • Enforce constraints (gross/net/bounds)          │
+│                                                              │
+│  Step 7: Compute portfolio return                           │
+│           period_returns = market.get_returns(t+1, next_date)│
+│           holding_returns = period_returns.sum()            │
+│           port_ret = (weights * holding_returns).sum()     │
+│           slippage = turnover * 0.5 bps                     │
+│           net_ret = port_ret - slippage                     │
+│                                                              │
+│  Step 8: Update equity curve &amp; diagnostics                 │
+│           equity[t+1] = equity[t] * (1 + net_ret)          │
+│           • Log top_movers, k, turnover                     │
+│                                                              │
+│  prev_weights = portfolio_weights                           │
+│  t = next_rebalance_date                                    │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    POST-PROCESSING                           │
+├─────────────────────────────────────────────────────────────┤
+│ Compute metrics (CAGR, Sharpe, MaxDD, etc.)                 │
+│ Generate outputs (equity, weights, signals, report)         │
+└─────────────────────────────────────────────────────────────┘</code></p>
+<h2>Key Implementation Details</h2>
+<h3>No Look-Ahead Bias</h3>
+<ul>
+<li>All data queries use <code>end=date</code> (point-in-time)</li>
+<li>Indicators computed only with data available at <code>date</code></li>
+<li>No future information leaks into past decisions</li>
+</ul>
+<h3>Deterministic Execution</h3>
+<ul>
+<li>Same inputs → same outputs</li>
+<li>No random number generation in signal/weight calculation</li>
+<li>Reproducible results across runs</li>
+</ul>
+<h3>Read-Only Database Access</h3>
+<ul>
+<li>All connections use <code>read_only=True</code></li>
+<li>No writes, no mutations</li>
+<li>Safe to run on production databases</li>
+</ul>
+<h3>Transaction Costs</h3>
+<ul>
+<li>Slippage: 0.5 basis points on turnover</li>
+<li>Applied only on rebalance days</li>
+<li>Commission: 0.0 (placeholder for future)</li>
+<li>Turnover calculation: <code>sum(abs(new_weights - old_weights))</code> (full roundtrip)</li>
+</ul>
+<h3>Rebalance Schedule</h3>
+<ul>
+<li>Weekly Fridays (<code>W-FRI</code>)</li>
+<li>Holiday handling: if Friday is not a trading day, rebalance on previous business day</li>
+<li>Calendar is explicit to prevent silent skips</li>
+</ul>
+<h3>SR3 Feature Computation</h3>
+<ul>
+<li><strong>Data Source</strong>: 12 SR3 contract ranks (0-11) queried by root symbol</li>
+<li><strong>Rate Space</strong>: All calculations use <code>r_k = 100 - P_k</code> (not price space)</li>
+<li><strong>Features</strong> (5 total):</li>
+<li><strong>Carry</strong> (<code>sr3_carry_01_z</code>): <code>r1 - r0</code> (next 3M rate vs front 3M rate)</li>
+<li><strong>Curve</strong> (<code>sr3_curve_02_z</code>): <code>r2 - r0</code> (3rd 3M rate vs front 3M rate)</li>
+<li><strong>Pack Slope</strong> (<code>sr3_pack_slope_fb_z</code>): <code>pack_back - pack_front</code> (simple difference in rate space)<ul>
+<li>Front pack: ranks 0-3 (mean of rates)</li>
+<li>Belly pack: ranks 4-7 (mean of rates)</li>
+<li>Back pack: ranks 8-11 (mean of rates)</li>
+</ul>
+</li>
+<li><strong>Front-Pack Level</strong> (<code>sr3_front_pack_level_z</code>): <code>pack_front = mean(r_0, r_1, r_2, r_3)</code> (absolute policy level over ~1 year)</li>
+<li><strong>Belly Curvature</strong> (<code>sr3_curvature_belly_z</code>): <code>belly_pack - (pack_front + pack_back) / 2</code> (hump vs straight term structure)</li>
+<li><strong>Standardization</strong>: Rolling 252-day z-scores with min_periods=126 (clipped at ±3.0)</li>
+<li><strong>Missing Data</strong>: Forward-fill for contract gaps; features require min_periods (126 days) before use</li>
+<li><strong>Date Alignment</strong>: If rebalance date doesn't have features, uses most recent available (forward-fill)</li>
+<li><strong>Availability</strong>: Features available from 2020-06-07 onwards (after 126 days of history)</li>
+</ul>
+<h3>Rates Curve Feature Computation</h3>
+<ul>
+<li><strong>Data Source</strong>: Treasury futures (ZT, ZF, ZN, UB) and FRED yields (curve FRED series: DGS2, DGS5, DGS10, DGS30)</li>
+<li><strong>FRED Series</strong>: Uses curve FRED series from <code>configs/fred_series.yaml</code> (separate from macro FRED series used by MacroRegimeFilter)</li>
+<li><strong>Anchor Method</strong>: FRED yields from 2-3 business days ago used as anchors</li>
+<li><strong>Yield Calculation</strong>: <code>y_t = y_anchor - (F_t - F_anchor) / (DV01 * 100)</code></li>
+<li><code>y_anchor</code>: FRED yield at anchor date</li>
+<li><code>F_t</code>, <code>F_anchor</code>: Futures prices at date t and anchor date</li>
+<li><code>DV01</code>: Dollar value of 01 per $100 notional (from <code>configs/rates_dv01.yaml</code>)</li>
+<li><strong>Features</strong> (4 total):</li>
+<li><strong>2s10s Slope</strong> (<code>curve_2s10s_z</code>): <code>y10 - y2</code> (ZN yield - ZT yield) standardized</li>
+<li><strong>5s30s Slope</strong> (<code>curve_5s30s_z</code>): <code>y30 - y5</code> (UB yield - ZF yield) standardized</li>
+<li><strong>2s-5s-10s Curvature</strong> (<code>curve_2s5s10s_curv_z</code>): <code>2 * y5 - y2 - y10</code> standardized<ul>
+<li>Positive: 5y higher than straight line between 2y and 10y → "hump" in the belly</li>
+<li>Negative: belly lower → curve is more U-shaped / concave</li>
+</ul>
+</li>
+<li><strong>5s-10s-30s Curvature</strong> (<code>curve_5s10s30s_curv_z</code>): <code>2 * y10 - y5 - y30</code> standardized<ul>
+<li>Positive: 10y high relative to 5y &amp; 30y (hump at the 10y)</li>
+<li>Negative: belly low (U-shaped between 5y and 30y)</li>
+</ul>
+</li>
+<li><strong>Standardization</strong>: Rolling 252-day z-scores with min_periods=126 (clipped at ±3.0)</li>
+<li><strong>Anchor Lag</strong>: Default 2 business days (configurable; use 0 for backtests, 2-3 for live)</li>
+<li><strong>Missing Data</strong>: Gracefully handles missing FRED series (computes available curves only)</li>
+<li><strong>Availability</strong>: Features available from 2020-01-01 onwards (z-scores from mid-2020 after min_periods)</li>
+</ul>
+<h3>FX/Commodity Carry Feature Computation</h3>
+<ul>
+<li><strong>Data Source</strong>: Continuous futures contracts with rank 0 (front) and rank 1 (next) for CL, GC, 6E, 6B, 6J</li>
+<li><strong>CL</strong>: <code>CL_FRONT_VOLUME</code> (rank 0), <code>CL_RANK_1_VOLUME</code> (rank 1) - volume-weighted roll</li>
+<li><strong>GC</strong>: <code>GC_FRONT_VOLUME</code> (rank 0), <code>GC_RANK_1_VOLUME</code> (rank 1) - volume-weighted roll</li>
+<li><strong>6E</strong>: <code>6E_FRONT_CALENDAR</code> (rank 0), <code>6E_RANK_1_CALENDAR</code> (rank 1) - calendar roll</li>
+<li><strong>6B</strong>: <code>6B_FRONT_CALENDAR</code> (rank 0), <code>6B_RANK_1_CALENDAR</code> (rank 1) - calendar roll</li>
+<li><strong>6J</strong>: <code>6J_FRONT_CALENDAR</code> (rank 0), <code>6J_RANK_1_CALENDAR</code> (rank 1) - calendar roll</li>
+<li><strong>Roll Yield Calculation</strong>: <code>roll_yield_raw = -(ln(F1) - ln(F0))</code> where:</li>
+<li><code>F0</code>: Close price of rank 0 (front contract)</li>
+<li><code>F1</code>: Close price of rank 1 (next contract)</li>
+<li>Positive roll_yield_raw = backwardation (F1 &lt; F0) = attractive long carry</li>
+<li>Negative roll_yield_raw = contango (F1 &gt; F0) = attractive short carry</li>
+<li><strong>Features</strong> (3 per root):</li>
+<li><strong>Time-Series Carry</strong> (<code>carry_ts_z_&lt;root&gt;</code>): <code>roll_yield_raw</code> standardized with rolling 252-day z-score per root<ul>
+<li>Positive = backwardation (attractive long carry)</li>
+<li>Negative = contango (attractive short carry)</li>
+</ul>
+</li>
+<li><strong>Cross-Sectional Carry</strong> (<code>carry_xs_z_&lt;root&gt;</code>): Daily z-score of <code>roll_yield_raw</code> across all 5 assets<ul>
+<li>Compares each asset's carry to the mean across CL, GC, 6E, 6B, 6J on the same day</li>
+<li>Identifies which assets have relatively best/worst carry among the sleeve</li>
+<li>Clipped at ±3.0 standard deviations</li>
+</ul>
+</li>
+<li><strong>Carry Momentum</strong> (<code>carry_mom_63_z_&lt;root&gt;</code>): 63-day change in <code>roll_yield_raw</code>, then standardized<ul>
+<li><code>carry_mom_63_raw = roll_yield_raw(t) - roll_yield_raw(t-63)</code></li>
+<li>Standardized with rolling 252-day z-score per root</li>
+<li>Positive = carry improving over last 3 months; Negative = carry deteriorating</li>
+</ul>
+</li>
+<li><strong>Standardization</strong>: </li>
+<li>Time-series and momentum: Rolling 252-day z-scores with min_periods=126 (clipped at ±3.0) per root</li>
+<li>Cross-sectional: Daily z-score across assets (clipped at ±3.0)</li>
+<li><strong>Missing Data</strong>: Forward-fill and backward-fill for contract data gaps; forward-fill features when rebalance dates don't align</li>
+<li><strong>Availability</strong>: Features available from 2020-01-01 onwards (z-scores from mid-2020 after min_periods, momentum requires additional 63 days)</li>
+</ul>
+<h3>Long-Term Momentum Feature Computation</h3>
+<ul>
+<li><strong>Data Source</strong>: Continuous futures contracts for all symbols in universe</li>
+<li><strong>Features</strong>:</li>
+<li><code>mom_long_ret_252_z_{symbol}</code>: 252-day return momentum<ul>
+<li>Lookback: 252 days, skip: 21 days</li>
+<li>Formula: <code>r_252 = log(price[t-21] / price[t-21-252])</code>, vol-standardized with 63-day vol, z-scored</li>
+</ul>
+</li>
+<li><code>mom_long_breakout_252_z_{symbol}</code>: 252-day breakout strength<ul>
+<li>Normalized position in 252-day range: <code>(price - min_252) / (max_252 - min_252)</code>, rescaled to [-1, 1], z-scored</li>
+</ul>
+</li>
+<li><code>mom_long_slope_slow_z_{symbol}</code>: Slow trend slope<ul>
+<li>EMA_63 and EMA_252 of log prices, difference vol-standardized, z-scored</li>
+</ul>
+</li>
+<li><strong>Standardization</strong>: Rolling 252-day z-scores with min_periods=126 (clipped at ±3.0) per symbol</li>
+<li><strong>Missing Data</strong>: Forward-fill and backward-fill for data gaps; forward-fill features when rebalance dates don't align</li>
+<li><strong>Availability</strong>: Features available from 2020-01-01 onwards (z-scores from mid-2020 after min_periods)</li>
+</ul>
+<h3>Medium-Term Momentum Feature Computation</h3>
+<ul>
+<li><strong>Data Source</strong>: Continuous futures contracts for all symbols in universe</li>
+<li><strong>Features</strong>:</li>
+<li><code>mom_med_ret_84_z_{symbol}</code>: 84-day return momentum<ul>
+<li>Lookback: 84 days, skip: 10 days</li>
+<li>Formula: <code>r_84 = log(price[t-10] / price[t-10-84])</code>, vol-standardized with 63-day vol, z-scored</li>
+</ul>
+</li>
+<li><code>mom_med_breakout_126_z_{symbol}</code>: 126-day breakout strength<ul>
+<li>Normalized position in 126-day range, rescaled to [-1, 1], z-scored</li>
+</ul>
+</li>
+<li><code>mom_med_slope_med_z_{symbol}</code>: Medium trend slope<ul>
+<li>EMA_20 and EMA_84 of log prices, difference vol-standardized, z-scored</li>
+</ul>
+</li>
+<li><code>mom_med_persistence_z_{symbol}</code>: Trend persistence<ul>
+<li>Rolling mean of return signs over 20 days (measures trend consistency), z-scored</li>
+</ul>
+</li>
+<li><strong>Standardization</strong>: Rolling 252-day z-scores with min_periods=126 (clipped at ±3.0) per symbol</li>
+<li><strong>Missing Data</strong>: Forward-fill and backward-fill for data gaps; forward-fill features when rebalance dates don't align</li>
+<li><strong>Availability</strong>: Features available from 2020-01-01 onwards (z-scores from mid-2020 after min_periods)</li>
+</ul>
+<h3>Short-Term Momentum Feature Computation</h3>
+<ul>
+<li><strong>Data Source</strong>: Continuous futures contracts for all symbols in universe</li>
+<li><strong>Production Weights</strong>: 0.5 ret_21 / 0.3 breakout_21 / 0.2 slope_fast (empirically validated Nov 2025)</li>
+<li><strong>Alternatives Tested</strong>:</li>
+<li><strong>Equal-Weight Canonical</strong> (1/3, 1/3, 1/3): Tested but not promoted<ul>
+<li>Phase-0: PASSED (sign-only Sharpe 0.31)</li>
+<li>Phase-1/2: FAILED — Legacy weights consistently outperform equal weights in both standalone and integrated tests</li>
+<li>Rationale for rejection: 21d return signal is economically more informative than breakout/slope at this horizon; empirical weights preserve the strongest signal</li>
+<li>Status: Preserved as research variant (<code>variant="canonical"</code> in code), not used in production</li>
+</ul>
+</li>
+<li><strong>Features</strong>:</li>
+<li><code>mom_short_ret_21_z_{symbol}</code>: 21-day return momentum<ul>
+<li>Lookback: 21 days, skip: 5 days</li>
+<li>Formula: <code>r_21 = log(price[t-5] / price[t-5-21])</code>, vol-standardized with 20-day vol, z-scored</li>
+</ul>
+</li>
+<li><code>mom_short_breakout_21_z_{symbol}</code>: 21-day breakout strength<ul>
+<li>Normalized position in 21-day range, rescaled to [-1, 1], z-scored</li>
+</ul>
+</li>
+<li><code>mom_short_slope_fast_z_{symbol}</code>: Fast trend slope<ul>
+<li>EMA_10 and EMA_40 of log prices, difference vol-standardized, z-scored</li>
+</ul>
+</li>
+<li><code>mom_short_reversal_filter_z_{symbol}</code>: Reversal filter (RSI-like) - optional, not used in canonical composite<ul>
+<li>14-day RSI converted to z-score (optional, not used in signal combination by default)</li>
+</ul>
+</li>
+<li><strong>Standardization</strong>: Rolling 252-day z-scores with min_periods=126 (clipped at ±3.0) per symbol</li>
+<li><strong>Missing Data</strong>: Forward-fill and backward-fill for data gaps; forward-fill features when rebalance dates don't align</li>
+<li><strong>Availability</strong>: Features available from 2020-01-01 onwards (z-scores from mid-2020 after min_periods)</li>
+</ul>
+<h2>Configuration Files</h2>
+<ul>
+<li><strong><code>configs/data.yaml</code></strong>: Universe (dictionary format with roll settings), database path</li>
+<li><strong><code>configs/strategies.yaml</code></strong>: Strategy parameters, overlays, allocator settings, strategy sleeves configuration</li>
+<li><strong>Important</strong>: Strategy sleeve weights are <strong>relative importance weights</strong> (normalized to sum to 1.0), not absolute risk budgets</li>
+<li><strong><code>configs/fred_series.yaml</code></strong>: FRED economic indicators configuration (series list, download settings)</li>
+<li><strong><code>configs/rates_dv01.yaml</code></strong>: DV01 values for Treasury futures (ZT, ZF, ZN, UB)</li>
+</ul>
+<h2>Related Documentation</h2>
+<ul>
+<li><strong>Trend Meta-Sleeve Implementation</strong>: <code>docs/META_SLEEVES/TREND_IMPLEMENTATION.md</code> (current production implementation)</li>
+<li><strong>Legacy TSMOM</strong>: <code>docs/legacy/TSMOM_IMPLEMENTATION.md</code> (legacy single-horizon TSMOM class, not used in production)</li>
+<li><strong>Medium/Short Momentum</strong>: See <code>src/agents/feature_long_momentum.py</code> and <code>src/agents/strat_momentum_medium.py</code>, <code>src/agents/strat_momentum_short.py</code></li>
+<li><strong>SR3 Carry/Curve</strong>: <code>docs/SR3_CARRY_CURVE.md</code> (features, implementation, and configuration)</li>
+<li><strong>Rates Curve</strong>: See <code>src/agents/feature_rates_curve.py</code> and <code>src/agents/strat_rates_curve.py</code></li>
+<li><strong>FX/Commodity Carry</strong>: See <code>src/agents/feature_carry_fx_commod.py</code> and <code>src/agents/strat_carry_fx_commod.py</code></li>
+<li><strong>Macro Regime Filter</strong>: <code>docs/MACRO_REGIME_FILTER.md</code></li>
+<li><strong>Volatility Targeting</strong>: See <code>src/agents/overlay_volmanaged.py</code></li>
+<li><strong>Portfolio Allocation</strong>: See <code>src/agents/allocator.py</code></li>
+<li><strong>Backtest Engine</strong>: See <code>src/agents/exec_sim.py</code></li>
+</ul>
+<h2>Code References</h2>
+<ul>
+<li><strong>Main Entry Point</strong>: <code>run_strategy.py</code></li>
+<li><strong>ExecSim Loop</strong>: <code>src/agents/exec_sim.py</code> (lines 307-380)</li>
+<li><strong>Combined Strategy</strong>: <code>src/agents/strat_combined.py</code></li>
+<li><strong>TSMOM Signals (Long-Term)</strong>: <code>src/agents/strat_momentum.py</code></li>
+<li><strong>Medium-Term Momentum</strong>: <code>src/agents/strat_momentum_medium.py</code></li>
+<li><strong>Short-Term Momentum</strong>: <code>src/agents/strat_momentum_short.py</code></li>
+<li><strong>SR3 Carry/Curve</strong>: <code>src/agents/strat_sr3_carry_curve.py</code></li>
+<li><strong>Rates Curve</strong>: <code>src/agents/strat_rates_curve.py</code></li>
+<li><strong>FX/Commodity Carry</strong>: <code>src/agents/strat_carry_fx_commod.py</code></li>
+<li><strong>Momentum Features</strong>: <code>src/agents/feature_long_momentum.py</code> (Long/Medium/Short)</li>
+<li><strong>SR3 Features</strong>: <code>src/agents/feature_sr3_curve.py</code></li>
+<li><strong>Rates Curve Features</strong>: <code>src/agents/feature_rates_curve.py</code></li>
+<li><strong>FX/Commodity Carry Features</strong>: <code>src/agents/feature_carry_fx_commod.py</code></li>
+<li><strong>Feature Service</strong>: <code>src/agents/feature_service.py</code></li>
+<li><strong>Macro Scaler</strong>: <code>src/agents/overlay_macro_regime.py</code></li>
+<li><strong>Vol Targeting</strong>: <code>src/agents/overlay_volmanaged.py</code></li>
+<li><strong>Allocation</strong>: <code>src/agents/allocator.py</code></li>
+</ul>
+<hr />
+<p><strong>Last Updated</strong>: November 2025</p>
+<p><strong>Current Baseline Performance (core_v3_no_macro)</strong>: Trend Meta-Sleeve only
+- <strong>CAGR</strong>: -2.59%
+- <strong>Sharpe</strong>: -0.15
+- <strong>MaxDD</strong>: -39.69%
+- <strong>Vol</strong>: 12.31%
+- <strong>HitRate</strong>: 49.77%</p>
+<p><strong>Note</strong>: The Trend Meta-Sleeve combines three atomic sleeves (long-term, medium-term, short-term momentum) into a unified meta-signal using industry-standard horizon weights. EWMA volatility normalization provides more stable risk-adjusted signals. Performance metrics reflect the challenging 2022-2025 period for trend-following strategies. The architecture is validated and production-ready; performance will improve as additional meta-sleeves are added.</p>
+<h2>Recent Improvements (November 2025)</h2>
+<h3>Phase 4: Trend Meta-Sleeve Architecture (v2)</h3>
+<ul>
+<li>✅ <strong>Trend Meta-Sleeve Implementation (Phase 4a)</strong>: Unified meta-sleeve architecture</li>
+<li><strong>Two-Layer Architecture</strong>: Introduced Meta-Sleeves (economic ideas) and Atomic Sleeves (implementation variants)</li>
+<li><strong>Trend Meta-Sleeve</strong>: Combines three atomic sleeves (long-term, medium-term, short-term momentum) into unified meta-signal</li>
+<li><strong>Horizon Weights</strong>: Industry-standard weights (long_252=0.50, med_84=0.30, short_21=0.20)</li>
+<li><strong>Feature Preservation</strong>: All existing features from three atomic sleeves preserved and used as subcomponents</li>
+<li><strong>Signal Processing</strong>: Atomic signals → meta-signal blend → cross-sectional z-score → clip ±3.0</li>
+<li><strong>Configuration</strong>: <code>tsmom_multihorizon</code> config block in <code>configs/strategies.yaml</code></li>
+<li><strong>Strategy Profile</strong>: <code>core_v3_no_macro</code> (current production baseline)</li>
+<li>
+<p><strong>Integration</strong>: Fully integrated with CombinedStrategy; risk overlays operate at Meta-Sleeve layer</p>
+</li>
+<li>
+<p>✅ <strong>EWMA Volatility Normalization (Phase 4b)</strong>: Risk-normalized signals within Trend Meta-Sleeve</p>
+</li>
+<li><strong>EWMA Vol Calculation</strong>: 63-day half-life EWMA volatility (standard CTA choice)</li>
+<li><strong>Formula</strong>: <code>σ²_t = λ * σ²_{t-1} + (1-λ) * r²_{t-1}</code> where <code>λ = 0.5^(1/63)</code></li>
+<li><strong>Annualization</strong>: <code>σ_annual = σ_daily * sqrt(252)</code></li>
+<li><strong>Vol Floor</strong>: 5% annualized minimum to prevent extreme scaling</li>
+<li><strong>Risk Normalization</strong>: <code>s_risk = z_clipped / max(σ_annual, σ_floor)</code></li>
+<li><strong>Global Scale</strong>: <code>s_final = risk_scale * s_risk</code> (default: 0.2)</li>
+<li><strong>Benefits</strong>: Same signal magnitude implies same risk across assets; prevents exposure jumps during vol spikes</li>
+<li><strong>Configuration</strong>: <code>vol_normalization</code> section in <code>tsmom_multihorizon</code> params</li>
+<li><strong>Performance Impact</strong>: Reduced volatility (15.37% → 12.31%) and improved MaxDD (-43.80% → -39.69%)</li>
+</ul>
+<h3>Phase 2: SR3 Carry/Curve and Rates Curve Features</h3>
+<ul>
+<li>✅ <strong>SR3 Carry/Curve Strategy Sleeve</strong>: New strategy sleeve for SOFR futures (5-feature implementation)</li>
+<li><strong>Carver-style carry</strong>: <code>r1 - r0</code> in rate space (next 3M vs front 3M)</li>
+<li><strong>Curve shape</strong>: <code>r2 - r0</code> in rate space (3rd 3M vs front 3M)</li>
+<li><strong>STIR pack slope</strong>: Front pack (ranks 0-3) vs back pack (ranks 8-11)</li>
+<li><strong>Front-pack level</strong>: Absolute policy expectation over ~1 year (ranks 0-3 average)</li>
+<li><strong>Belly curvature</strong>: Hump vs straight term structure (belly pack vs front/back average)</li>
+<li>All features standardized with rolling 252-day z-scores (clipped at ±3.0)</li>
+<li>Default feature weights: w_carry=0.30, w_curve=0.25, w_pack_slope=0.20, w_front_lvl=0.10, w_curv_belly=0.15</li>
+<li>
+<p>Features computed from 2020-06-07 onwards (after 126 days of history)</p>
+</li>
+<li>
+<p>✅ <strong>Curve RV Meta-Sleeve</strong>: <strong>Phase-1 Complete, Phase-2 Pending</strong> (momentum-driven regime sleeve)</p>
+</li>
+<li><strong>Phase-0 Discovery</strong>: Mean-reversion failed; momentum passed (all three variants Sharpe 0.42-0.81)</li>
+<li><strong>Phase-1 Results</strong>: Rank Fly Momentum (Sharpe 1.19), Pack Slope Momentum (Sharpe 0.28), Pack Curvature Momentum (Sharpe 0.39)</li>
+<li><strong>Redundancy Analysis</strong>: Pack Curvature redundant with Rank Fly (0.91 signal correlation); Pack Slope orthogonal</li>
+<li><strong>Phase-1 Decision</strong>: Promote Rank Fly to Phase-2 (primary), Pack Slope optional (secondary), Park Pack Curvature (redundant)</li>
+<li><strong>Atomic Sleeves</strong>: <ul>
+<li><code>sr3_curve_rv_rank_fly_2_6_10_momentum</code> (Phase-2 candidate)</li>
+<li><code>sr3_curve_rv_pack_slope_momentum</code> (optional secondary)</li>
+<li><code>sr3_curve_rv_pack_curvature_momentum</code> (parked - redundant)</li>
+</ul>
+</li>
+<li>
+<p><strong>See</strong>: <code>docs/SOTs/DIAGNOSTICS.md</code> § "SR3 Curve RV Momentum" for full Phase-0/1 results</p>
+</li>
+<li>
+<p>✅ <strong>Multi-Sleeve Architecture</strong>: CombinedStrategy wrapper</p>
+</li>
+<li>Combines TSMOM (long-term), Medium-Term Momentum, Short-Term Momentum, SR3 carry/curve, Rates curve, and FX/Commodity carry signals with configurable weights</li>
+<li>Config-driven: Enable/disable sleeves via <code>configs/strategies.yaml</code></li>
+<li>
+<p>Handles strategies that require features (e.g., TSMOM, Medium/Short Momentum, SR3, Rates Curve, FX/Commodity Carry)</p>
+</li>
+<li>
+<p>✅ <strong>FeatureService</strong>: Centralized feature computation</p>
+</li>
+<li>Manages SR3 curve, Rates curve, FX/Commodity carry, and Momentum (Long/Medium/Short) features with caching</li>
+<li>Point-in-time feature computation (no look-ahead)</li>
+<li>Handles missing data with forward-fill/backward-fill</li>
+<li>
+<p>Fetches all historical data from beginning (not limited by end_date)</p>
+</li>
+<li>
+<p>✅ <strong>TSMOM Refactor (Long-Term Momentum)</strong>: Multi-feature momentum strategy</p>
+</li>
+<li>Replaced single-feature TSMOM with three-feature long-term momentum</li>
+<li>Features: 252-day return momentum, 252-day breakout strength, slow trend slope (EMA_63 - EMA_252)</li>
+<li>Combines features with configurable weights (default: ret_252=0.5, breakout_252=0.3, slope_slow=0.2)</li>
+<li>Uses pre-computed LONG_MOMENTUM features from FeatureService</li>
+<li>Cross-sectional z-scoring and clipping at ±3.0</li>
+<li>
+<p>Integrated as primary momentum sleeve with configurable weight (default: 0.6)</p>
+</li>
+<li>
+<p>✅ <strong>Medium-Term Momentum Sleeve</strong>: Multi-feature momentum for medium horizons</p>
+</li>
+<li>Features: 84-day return momentum, 126-day breakout strength, medium trend slope (EMA_20 - EMA_84), persistence</li>
+<li>Combines features with configurable weights (default: ret_84=0.4, breakout_126=0.3, slope_med=0.2, persistence=0.1)</li>
+<li>Uses pre-computed MEDIUM_MOMENTUM features from FeatureService</li>
+<li>Cross-sectional z-scoring and clipping at ±3.0</li>
+<li>
+<p>Integrated as a new sleeve in CombinedStrategy with configurable weight (default: 0.15)</p>
+</li>
+<li>
+<p>✅ <strong>Short-Term Momentum Sleeve</strong>: Multi-feature momentum for short horizons</p>
+</li>
+<li>Features: 21-day return momentum, 21-day breakout strength, fast trend slope (EMA_10 - EMA_40), reversal filter (RSI-like)</li>
+<li>Combines features with configurable weights (default: ret_21=0.5, breakout_21=0.3, slope_fast=0.2, reversal_filter=0.0)</li>
+<li>Uses pre-computed SHORT_MOMENTUM features from FeatureService</li>
+<li>Cross-sectional z-scoring and clipping at ±3.0</li>
+<li>
+<p>Integrated as a new sleeve in CombinedStrategy with configurable weight (default: 0.10)</p>
+</li>
+<li>
+<p>❌ <strong>Carry Meta-Sleeve</strong>: <strong>Parked for redesign</strong> (Phase-0 sanity check failed)</p>
+</li>
+<li><strong>Phase-0 Results</strong>: Sign-only roll yield strategy showed negative Sharpe (-0.69) across all assets (2020-2025)</li>
+<li><strong>Findings</strong>: All assets (CL, GC, 6E, 6B, 6J) showed negative Sharpe; performance degraded post-2022</li>
+<li><strong>Status</strong>: Remains on roadmap for redesign (e.g., sector-based roll yield, DV01-neutral carry, regime-dependent filters)</li>
+<li><strong>Atomic Sleeves</strong>: FX/Commodity Carry (CL, GC, 6E, 6B, 6J), SR3 Carry/Curve</li>
+<li>
+<p><strong>Implementation Details</strong> (for reference):</p>
+<ul>
+<li>Roll yield: <code>roll_yield_raw = -(ln(F1) - ln(F0))</code> where F0=rank 0, F1=rank 1</li>
+<li>Features: time-series, cross-sectional, momentum (3 per root)</li>
+<li>Features available from 2020-01-01 onwards</li>
+</ul>
+</li>
+<li>
+<p>✅ <strong>MarketData Extensions</strong>:</p>
+</li>
+<li><code>get_contracts_by_root()</code>: Query contracts by root symbol and rank<ul>
+<li>Supports 12 SR3 contract ranks (0-11) for curve analysis</li>
+<li>Automatic rank assignment based on contract expiration order</li>
+</ul>
+</li>
+<li>
+<p><code>get_fred_indicators()</code>: Query multiple FRED series at once</p>
+<ul>
+<li>Used for Rates curve features (DGS2, DGS5, DGS10, DGS30)</li>
+</ul>
+</li>
+<li>
+<p>✅ <strong>Missing Data Handling</strong>: Robust gap handling</p>
+</li>
+<li>Forward-fill and backward-fill for contract data gaps</li>
+<li>Forward-fill features when rebalance dates don't align with feature dates</li>
+<li>Graceful degradation: returns zero signals when features unavailable</li>
+</ul>
+<h3>Previous Improvements</h3>
+<ul>
+<li>✅ <strong>SOFR Roll Configuration</strong>: SR3 uses calendar roll with T-2 offset (IMM convention)</li>
+<li>✅ <strong>FRED Series Configuration</strong>: Config-driven FRED indicators with dailyization for monthly series</li>
+<li>✅ <strong>MacroRegimeFilter Enhancements</strong>:</li>
+<li>Monthly series (CPI, UNRATE) dailyized before z-scoring</li>
+<li>Z-score capping (±5.0) to prevent single prints from swinging scaler</li>
+<li>5-day EMA input smoothing for breadth and FRED composite</li>
+<li>Data freshness checks (warns if monthly series stale &gt; 45 days)</li>
+<li>✅ <strong>Friday Holiday Handling</strong>: Automatic fallback to previous business day</li>
+<li>✅ <strong>Covariance Stability</strong>: Min vol floor (50 bps) prevents exploding leverage</li>
+<li>✅ <strong>Data Validity Mask</strong>: Invalid signals zeroed before allocation</li>
+<li>✅ <strong>Diagnostics</strong>: "What-moved" reports with top weight changes, k values, turnover</li>
+</ul>
+<footer>Last built: 2026-02-13 18:54 UTC</footer>
+</body>
+</html>

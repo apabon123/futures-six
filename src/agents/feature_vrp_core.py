@@ -23,7 +23,7 @@ import pandas as pd
 import numpy as np
 import duckdb
 
-from src.market_data.vrp_loaders import load_vrp_inputs
+from src.market_data.vrp_loaders import load_vrp_inputs_asof
 from src.agents.utils_db import open_readonly_connection
 
 logger = logging.getLogger(__name__)
@@ -141,7 +141,9 @@ class VRPCoreFeatures:
             window=self.rv_lookback,
             min_periods=self.rv_lookback
         ).std() * np.sqrt(252)
-        
+        # Per-series backward fill for RV (handles gaps from NaN in returns)
+        rv_es = rv_es.ffill()
+
         # Convert to DataFrame
         rv_df = pd.DataFrame({
             'date': rv_es.index,
@@ -172,13 +174,13 @@ class VRPCoreFeatures:
             logger.error(f"[VRPCore] Failed to connect to database: {e}")
             return pd.DataFrame()
         
-        # Determine date range for VRP data
-        vrp_start = str(rv_df['date'].min().date()) if start_date is None else start_date
-        vrp_end = str(rv_df['date'].max().date()) if end_date is None else end_date
-        
+        # Target dates = trading days with RV; use as-of merge + backward fill
+        # so FRED gaps (e.g. holidays) are filled per-series
+        target_dates = pd.DatetimeIndex(rv_df["date"].drop_duplicates().sort_values())
+
         try:
-            # Load VRP inputs
-            vrp_data = load_vrp_inputs(con, vrp_start, vrp_end)
+            # Load VRP inputs with as-of merge (per-series backward fill)
+            vrp_data = load_vrp_inputs_asof(con, target_dates)
         except Exception as e:
             logger.error(f"[VRPCore] Failed to load VRP inputs: {e}")
             con.close()

@@ -1,0 +1,2018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROCEDURES — Futures-Six Project Hub</title>
+<style>
+:root { --bg: #1a1b26; --fg: #c0caf5; --muted: #565f89; --accent: #7aa2f7; }
+body { font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--fg); margin: 0; padding: 1.5rem 2rem; line-height: 1.6; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+nav { display: flex; gap: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--muted); padding-bottom: 1rem; }
+nav a { font-weight: 500; }
+h1, h2, h3 { color: var(--fg); margin-top: 1.5rem; }
+h1 { font-size: 1.75rem; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid var(--muted); padding: 0.5rem 0.75rem; text-align: left; }
+th { background: rgba(122,162,247,0.15); }
+.badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.85rem; }
+.badge-production { background: #1f7a1f; color: #fff; }
+.badge-engine_quality { background: #1f5a7a; color: #fff; }
+.badge-integration { background: #5a3a7a; color: #fff; }
+.badge-diagnostic { background: #7a5a1a; color: #fff; }
+.card { background: rgba(48,52,70,0.6); border: 1px solid var(--muted); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+.card h3 { margin-top: 0; }
+.card a { font-weight: 500; }
+.muted { color: var(--muted); font-size: 0.9rem; }
+pre, code { background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; }
+pre { padding: 1rem; overflow-x: auto; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted); color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<nav><a href="../index.html">Home</a> | <a href="../runs/index.html">Runs</a> | <a href="../ops/index.html">Ops</a> | <a href="index.html">Docs</a></nav>
+<h1>PROCEDURES</h1><h1>Procedures: How to Add / Change Sleeves, Assets, and Parameters</h1>
+<p><strong>Purpose:</strong>  </p>
+<p>This document defines <strong>when</strong> and <strong>how</strong> to run the sleeve lifecycle (Phase-0 → Phase-3) for any change to the Futures-Six framework:</p>
+<ul>
+<li>Adding a new <strong>Meta-Sleeve</strong> (e.g., Cross-Sectional Momentum, Vol Risk Premium)</li>
+<li>Adding a new <strong>Atomic Sleeve</strong> inside a Meta-Sleeve</li>
+<li>Changing the <strong>asset universe</strong></li>
+<li>Changing <strong>parameters</strong> (lookbacks, weights, overlays)</li>
+<li>Deciding <strong>when to look at bad assets</strong> and when <em>not</em> to touch them</li>
+</ul>
+<p>It complements:</p>
+<ul>
+<li><a href="STRATEGY.html">docs/SOTs/STRATEGY.md</a> – sleeve definitions and signal specifications</li>
+<li><a href="DIAGNOSTICS.html">docs/SOTs/DIAGNOSTICS.md</a> – required diagnostics and pass/fail criteria</li>
+<li><a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a> – sleeve status and sequencing</li>
+</ul>
+<p>This file is the single source of truth for promotion workflow, engine-quality vs integration runs, and required artifacts.</p>
+<h2>Related Documents</h2>
+<ul>
+<li><a href="STRATEGY.html">docs/SOTs/STRATEGY.md</a>: Sleeve definitions (do not duplicate sleeve logic here)</li>
+<li><a href="DIAGNOSTICS.html">docs/SOTs/DIAGNOSTICS.md</a>: Required diagnostics and artifacts</li>
+<li><a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a>: Sleeve status and priorities</li>
+</ul>
+<hr />
+<h2>1. Core Principles</h2>
+<ol>
+<li>
+<p><strong>Architecture first, optimization later</strong></p>
+</li>
+<li>
+<p>Goal of current phase: <strong>get all Meta-Sleeves and core overlays implemented and wired in</strong>.</p>
+</li>
+<li>
+<p>We <strong>do not</strong> aggressively tune asset lists, ranks, or parameters until the architecture is complete.</p>
+</li>
+<li>
+<p><strong>Sleeve lifecycle is about the <em>idea</em>, not every tiny config tweak</strong></p>
+</li>
+</ol>
+<p>From <code>docs/SOTs/STRATEGY.md</code> (sleeve lifecycle):</p>
+<ul>
+<li><strong>Phase-0 – Simple Sanity Check</strong><ul>
+<li>Sign-only, no overlays, equal-weight / DV01-neutral.</li>
+<li>Objective: "Does the economic idea have any edge at all?"</li>
+<li><strong>Exception: Crisis Sleeves</strong> – Phase-0 evaluates tail-risk mitigation (MaxDD, worst-month), not Sharpe. Bleed is expected and acceptable.</li>
+</ul>
+</li>
+<li><strong>Phase-1 – Clean Implementation</strong><ul>
+<li>Proper feature engineering, z-scoring, cross-sectional ranking, etc.</li>
+<li><strong>Exception: Crisis Sleeves</strong> – Phase-1 focuses on reducing carry bleed without destroying convexity.</li>
+</ul>
+</li>
+<li><strong>Phase-2 – Overlay Integration</strong><ul>
+<li>Macro regime filters, vol targeting, allocator integration.</li>
+<li><strong>Exception: Crisis Sleeves</strong> – Phase-2 validates portfolio interaction with Core.</li>
+</ul>
+</li>
+<li><strong>Phase-3 – Production + Monitoring</strong><ul>
+<li>Full runs, performance monitoring, alerts, regression tests.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Crisis Sleeves — Lifecycle Exception:</strong></p>
+<p>Crisis sleeves follow a modified lifecycle:</p>
+<p>| Phase | Objective |
+|-------|-----------|
+| Phase-0 | Validate tail-risk mitigation (MaxDD, worst-month) |
+| Phase-1 | Reduce carry bleed without destroying convexity |
+| Phase-2 | Validate portfolio interaction with Core |</p>
+<p><strong>Critical Rule</strong>: At no stage in v1 are Crisis sleeves gated, timed, or conditionally activated. They maintain always-on exposure throughout all phases.</p>
+<p>Sharpe ratio is explicitly not a Phase-0 gating metric for Crisis sleeves.</p>
+<p><strong>Phase-1 Decision (2025-12-17)</strong>: Phase-1 winner: Long VX3 (cost-efficient convexity that preserves tails); VX2 retained as benchmark ceiling reference.</p>
+<p><strong>Final Decision (2025-12-17)</strong>: Crisis Meta-Sleeve v1 — NO PROMOTION. Long VX3 failed Phase-2 due to 2020 Q1 fast-crash deterioration. Allocator logic is the only approved mechanism for conditional crisis protection.</p>
+<ol>
+<li>
+<p><strong>We don't prune assets during build-out</strong></p>
+</li>
+<li>
+<p>"Bad" assets (e.g., SR3 front, CL, 6J in CSMOM) are <strong>kept during the build phase</strong> so:</p>
+<ul>
+<li>We preserve information about where sleeves fail.</li>
+<li>We avoid chasing performance before the whole machine is assembled.</li>
+</ul>
+</li>
+<li>Asset pruning and multipliers are <strong>Phase-B: Optimization &amp; Pruning</strong>, <em>after</em> core architecture is in place.</li>
+</ol>
+<hr />
+<h2>1.1 Local Setup and Execution Environment</h2>
+<h3>Local database path resolution</h3>
+<ul>
+<li>
+<p>The futures database location is configured in:
+  <strong>configs/data.yaml</strong></p>
+</li>
+<li>
+<p>The canonical project-relative path is:
+  <strong>../databento-es-options/data/silver</strong></p>
+</li>
+<li>
+<p>The repository assumes the following sibling layout:</p>
+</li>
+</ul>
+<p><code>&lt;workspace&gt;/
+    futures-six/
+    databento-es-options/</code></p>
+<ul>
+<li>
+<p>This layout is valid for both macOS and Windows when the two repositories are checked out side-by-side.</p>
+</li>
+<li>
+<p>If a user has a different local layout, they may change <code>db.path</code> in <strong>configs/data.yaml</strong>.</p>
+</li>
+<li>
+<p><strong>matplotlib</strong> is a required runtime dependency for diagnostics and chart generation.</p>
+</li>
+</ul>
+<hr />
+<h2>2. Run Consistency Contract ⚠️</h2>
+<p><strong>CRITICAL:</strong> All runs, diagnostics, and comparisons must follow these rules to ensure valid, apples-to-apples performance comparisons.</p>
+<h3>2.1 Canonical Start Date Rule</h3>
+<p><strong>Rule</strong>: All runs must begin on the <strong>earliest timestamp T</strong> where <strong>every enabled atomic sleeve</strong> produces a valid, non-NA signal for <strong>all assets in the universe</strong>.</p>
+<p>This applies to:
+- Phase-0 sanity checks
+- Phase-1 standalone sleeve tests
+- Phase-2 integrated A/B tests
+- All production profiles
+- All diagnostics comparisons
+- All research runs</p>
+<p><strong>Why This Matters:</strong></p>
+<p>Different sleeves have different warmup requirements:
+- Long-Term (252d): Requires ~252 trading days of history
+- Medium-Term (84d): Requires ~84 trading days of history
+- Short-Term (21d): Requires ~21 trading days of history
+- Breakout Mid (50-100d): Requires ~100 trading days of history</p>
+<p>If you request <code>start_date = 2018-01-01</code>, the <strong>effective start date</strong> will be:
+<code>2018-01-01 + max(all_sleeve_warmups) ≈ 2018-01-01 + 252d ≈ 2018-12-15</code></p>
+<p><strong>What This Guarantees:</strong>
+- Same starting index for every run with the same profile
+- Same number of rows for all comparisons
+- No silent NA propagation
+- No mismatched time series
+- Valid diagnostics comparisons</p>
+<p><strong>What This Prevents:</strong>
+- Phase-1 "passing" because it only ran on 400 days
+- Diagnostics comparing 500-row runs vs 1700-row runs
+- Bogus Sharpe/Vol/MaxDD from truncated samples
+- Silent failures due to missing features</p>
+<h3>2.2 Canonical NA Handling Rule</h3>
+<p><strong>Rule</strong>: Drop rows with <strong>ANY</strong> NA values at each stage of the pipeline:</p>
+<ol>
+<li>
+<p><strong>After feature computation</strong> (FeatureService):
+   <code>python
+   features_df = features_df.dropna(how="any")</code></p>
+</li>
+<li>
+<p><strong>After sleeve signal computation</strong> (each atomic sleeve):
+   <code>python
+   signals = signals.dropna(how="any")</code></p>
+</li>
+<li>
+<p><strong>Before meta-sleeve aggregation</strong> (TSMOMMultiHorizon, etc.):
+   <code>python
+   sleeve_signals_df = pd.concat(all_sleeves, axis=1).dropna(how="any")</code></p>
+</li>
+<li>
+<p><strong>Before allocator/position sizing</strong> (run_strategy):
+   <code>python
+   aligned_signals = combined_signals.dropna(how="any")</code></p>
+</li>
+</ol>
+<p><strong>Why This Matters:</strong></p>
+<p>Inconsistent NA handling causes:
+- Different runs to have different effective sample sizes
+- Silent feature misalignment
+- Bogus performance comparisons
+- Impossible-to-debug discrepancies</p>
+<h3>2.3 Canonical Logging Rule</h3>
+<p><strong>Rule</strong>: Every run MUST log:</p>
+<ol>
+<li><strong>Requested start date</strong> (from command line or config)</li>
+<li><strong>Effective start date</strong> (after warmup and NA dropping)</li>
+<li><strong>Total trading days</strong> (requested date range)</li>
+<li><strong>Valid rows</strong> (after all alignments and NA drops)</li>
+<li><strong>Rows dropped</strong> (due to NAs, warmup, etc.)</li>
+</ol>
+<p><strong>Example Output:</strong>
+<code>Requested start: 2018-01-01
+Effective start: 2018-12-15
+Requested end: 2025-10-31
+Total calendar days: 2860
+Total trading days: 1950
+Valid rows after warmup: 1754
+Rows dropped due to NA: 0
+Final rows used for metrics: 1754</code></p>
+<p><strong>Red Flags</strong> (if you see these, something is wrong):
+- Valid rows: 450 (too short, missing warmup?)
+- Valid rows: 723 (misaligned features?)
+- Effective start: 2020-03-20 (when requested 2018-01-01?)
+- Rows dropped: 800 (major feature alignment issue?)</p>
+<h3>2.4 Implementation Checklist</h3>
+<p><strong>For All New Runs:</strong></p>
+<ul>
+<li>[ ] Verify <code>start_date</code> is set consistently across all profiles being compared</li>
+<li>[ ] Check that effective start date is logged in run output</li>
+<li>[ ] Confirm row counts match between variant and baseline</li>
+<li>[ ] Verify no silent NA propagation (rows_dropped should be 0 or minimal)</li>
+<li>[ ] Check that all enabled sleeves have valid features from effective start date</li>
+<li>[ ] <strong>All metasleeves and atomic sleeves must be explicitly enabled or disabled in configuration files.</strong> Reliance on default enable/disable behavior is prohibited for governed runs.</li>
+</ul>
+<p><strong>For Diagnostics Comparisons:</strong></p>
+<ul>
+<li>[ ] Verify both runs use the same effective date range</li>
+<li>[ ] Check that row counts match exactly</li>
+<li>[ ] Confirm overlapping days are identical (no misalignment)</li>
+<li>[ ] Validate that metrics are computed on the same sample</li>
+</ul>
+<p><strong>Red Flags to Investigate:</strong></p>
+<ul>
+<li>Runs with different start dates being compared</li>
+<li>Row count mismatch between variant and baseline</li>
+<li>Large numbers of dropped rows (&gt;5% of sample)</li>
+<li>Effective start date differs from expected warmup</li>
+</ul>
+<h3>2.5 Known Issues and Migration Plan</h3>
+<p><strong>Current State</strong> (as of Nov 2025):</p>
+<p>Some existing runs have inconsistent start dates:
+- <code>core_v3_no_macro_baseline</code> (old): Started 2021-01-01<br />
+- <code>core_v3_shortcanon_v1</code>: Started 2018-01-01
+- Phase-0/1/2 runs: Mix of start dates</p>
+<p><strong>Migration Plan:</strong></p>
+<ol>
+<li>✅ Document the Run Consistency Contract (this section)</li>
+<li>🚧 Update <code>run_strategy.py</code> to enforce canonical start date and log effective dates</li>
+<li>🚧 Update all Phase-0/1/2 scripts to use consistent start dates</li>
+<li>🚧 Re-run all baselines with consistent dates for clean comparisons</li>
+<li>🚧 Add validation checks to <code>run_perf_diagnostics.py</code> to warn on mismatched samples</li>
+</ol>
+<p><strong>Action Required:</strong></p>
+<p>When you see diagnostic comparisons with mismatched row counts or start dates, <strong>do not trust the results</strong>. Re-run both variant and baseline with:
+- Same requested <code>start_date</code>
+- Same requested <code>end_date</code>
+- Same profile structure (same enabled sleeves)
+- Verify effective start dates match</p>
+<hr />
+<h3>2.6 Phase 3A: Baseline Run Definition</h3>
+<p><strong>Purpose</strong>: Define the rules for establishing and validating Phase 3A statistical baselines with full governance (Policy + Risk Targeting + Allocator).</p>
+<h4>Baseline Run Rules</h4>
+<ul>
+<li><strong>Data range vs effective_start_date (first weights)</strong>:</li>
+<li><code>start_date</code> / <code>end_date</code>: Requested data range.</li>
+<li><code>effective_start_date</code>: The first date where weights exist (after warmup).</li>
+<li>
+<p>The system does not trade before <code>effective_start_date</code> (weights undefined).</p>
+</li>
+<li>
+<p><strong>evaluation_start_date = max(per_stage_effective_starts)</strong>:</p>
+</li>
+<li>Computed as the maximum of all enabled, required governance stages.</li>
+<li><code>policy_effective_start</code>: First date policy features are present and valid.</li>
+<li><code>rt_effective_start</code>: First date Risk Targeting has covariance available.</li>
+<li><code>alloc_effective_start</code>: First date Allocator has state/scalars computed.</li>
+<li>Note: These often coincide with <code>effective_start_date</code> if everything is ready simultaneously.</li>
+</ul>
+<h4>Metrics Reporting Rule</h4>
+<ul>
+<li><strong>metrics_full</strong>: "Available returns span" (computed from <code>effective_start_date</code> to <code>end_date</code>).</li>
+<li><strong>metrics_eval</strong>: "Evaluation window" (computed from <code>evaluation_start_date</code> to <code>end_date</code>).</li>
+<li>Note: If <code>effective_start_date == evaluation_start_date</code>, these will be identical.</li>
+</ul>
+<h4>Precomputed Lineage Rule</h4>
+<ul>
+<li>Precomputed Allocator v1 MUST have <code>allocator_source_run_id</code> (non-null) and <code>allocator_source_valid = true</code>.</li>
+<li>If validation fails (source ID mismatch or missing), the allocator is marked as <strong>not-effective</strong>, and the run is not baseline-eligible.</li>
+</ul>
+<h4>Pinned Entry Requirements</h4>
+<p>A pinned baseline entry must include:
+- Data range (requested start/end)
+- Effective start (first weights)
+- Evaluation start (all governance effective)
+- Metric scope labels ("Available returns span" vs "Evaluation window")
+- Run lineage: Compute ID -&gt; Precomputed ID</p>
+<hr />
+<h2>3. Data Expansion Protocol</h2>
+<h3>Canonical Research Window vs Structural Validation Window</h3>
+<p><strong>Hard Rule</strong>: Initial research and sleeve validation may be performed on a subset window (e.g., 2020–2025), but before production freeze, the system must be validated on an expanded historical window (e.g., 2010–present).</p>
+<p><strong>Purpose of Expanded Data:</strong></p>
+<p>Expanded historical data is used for:
+- <strong>Invariance checks</strong>: Verify that sleeve behavior is consistent across different market regimes
+- <strong>Failure mode discovery</strong>: Identify edge cases and stress scenarios not visible in shorter windows
+- <strong>Allocator behavior validation</strong>: Ensure allocator logic performs correctly across diverse market conditions</p>
+<p><strong>Critical Rule: No Re-Optimization</strong></p>
+<p><strong>Expanding historical data does not permit re-optimization of parameters unless a structural failure is discovered.</strong></p>
+<p>If conclusions materially change with expanded data:
+- <strong>Architecture is revised</strong> (not parameters)
+- Structural changes to sleeve logic or allocator design are acceptable
+- Parameter tuning based on expanded data is prohibited until production freeze</p>
+<p><strong>Rationale:</strong></p>
+<p>This rule prevents overfitting to expanded historical windows. The goal is to validate that the architecture is robust across regimes, not to find parameters that work on a longer window.</p>
+<p><strong>Implementation Checklist:</strong></p>
+<ul>
+<li>[ ] Initial research performed on canonical window (e.g., 2020–2025)</li>
+<li>[ ] Phase-0/Phase-1 validation completed on canonical window</li>
+<li>[ ] Before production freeze, re-run validation on expanded window (e.g., 2010–present)</li>
+<li>[ ] Document any structural failures discovered</li>
+<li>[ ] If failures found, revise architecture (not parameters)</li>
+<li>[ ] Re-validate revised architecture on both canonical and expanded windows</li>
+</ul>
+<hr />
+<h2>4. Phase 3A Pre-Flight Gate (Governance)</h2>
+<p>Before any attribution ablation runs:</p>
+<ol>
+<li><strong>Governed Baseline Must Exist</strong>: A compute+precomputed baseline pair must be established.</li>
+<li><strong>Effectiveness Check</strong>:<ul>
+<li><strong>Engine Policy</strong>: Must be enabled, effective (inputs present), and non-inert.</li>
+<li><strong>Risk Targeting</strong>: Must be enabled, effective (history present), and non-inert.</li>
+<li><strong>Allocator</strong>: Must be enabled, effective (state computed), and non-inert.</li>
+</ul>
+</li>
+<li><strong>Validation</strong>: <code>validate_phase3a_policy_baseline.py</code> must PASS.</li>
+</ol>
+<p><strong>Runs failing this gate must not be used for attribution analysis.</strong></p>
+<h3>Ablation Eligibility Rule</h3>
+<p>Only runs where all <strong>enabled</strong> stages are <strong>effective</strong> and <strong>non-inert</strong> may be used for attribution analysis.
+Ablations intentionally disabling a stage must record <code>*_enabled=false</code> and must not be classified as inert. "Inert" implies "intended to work but failed," which invalidates the experiment.</p>
+<h3>Validation Tooling Reference</h3>
+<p>| Scope | Script | Purpose |
+|-------|--------|---------|
+| <strong>Phase 2 Policy</strong> | <code>scripts/diagnostics/validate_phase2_policy_v1.py</code> | Verify policy gates logic &amp; artifacts |
+| <strong>Phase 3A Baseline</strong> | <code>scripts/diagnostics/validate_phase3a_policy_baseline.py</code> | Verify governed baseline integrity |
+| <strong>Governance Checks</strong> | <code>scripts/diagnostics/check_governance.py</code> | Verify meta.json governance fields |</p>
+<hr />
+<h2>5. Change Types (Taxonomy)</h2>
+<p>Every change falls into one of these buckets:</p>
+<ol>
+<li><strong>New Meta-Sleeve</strong></li>
+<li>
+<p>Example: adding <strong>Cross-Sectional Momentum</strong> or <strong>Volatility Risk Premium</strong> as a new economic idea.</p>
+</li>
+<li>
+<p><strong>New Atomic Sleeve inside an existing Meta-Sleeve</strong></p>
+</li>
+<li>
+<p>Example: adding a new short-term trend variant inside the Trend Meta-Sleeve.</p>
+</li>
+<li>
+<p><strong>Universe Change (Assets)</strong></p>
+</li>
+<li>Add, remove, or swap assets (e.g., change SR3 front → SR3 rank 3).</li>
+<li>
+<p>Change roll rule or contract mapping that effectively changes the traded instrument.</p>
+</li>
+<li>
+<p><strong>Parameter Change (Within a Sleeve)</strong></p>
+</li>
+<li>
+<p>Change lookbacks, feature weights, clipping thresholds, vol lookbacks, etc.</p>
+</li>
+<li>
+<p><strong>Overlay / Allocator Change</strong></p>
+</li>
+<li>
+<p>Change macro overlay logic, vol targeting logic, risk limits, allocator method.</p>
+</li>
+<li>
+<p><strong>Non-functional Change</strong></p>
+</li>
+<li>Refactors, code cleanup, logging changes, doc edits only.</li>
+</ol>
+<hr />
+<h2>4. When Do We Run Which Phases?</h2>
+<p>Think of this as the <strong>decision table</strong>:</p>
+<p>| Change Type                               | Phase-0?                      | Phase-1?                           | Phase-2?                                     | Notes |
+|-------------------------------------------|-------------------------------|------------------------------------|----------------------------------------------|-------|
+| New <strong>Meta-Sleeve</strong>                       | <strong>YES (mandatory)</strong>           | <strong>YES (mandatory)</strong>               | <strong>YES</strong> once Phase-1 passes                  | Treat as new economic idea. |
+| New <strong>Atomic Sleeve</strong> in existing Meta    | <strong>YES</strong> (cheap sign-only)     | <strong>YES</strong> (clean implementation)    | Optional (depends if atomic is used in live) | Usually quick. |
+| <strong>Universe change</strong> (add/remove/swap asset)| <strong>NO</strong> fresh Phase-0/1        | <strong>Re-run existing diagnostics</strong>    | Optional (if affects overlays materially)    | Regression testing only. |
+| <strong>Parameter change</strong> (lookbacks, weights) | <strong>NO</strong> new Phase-0/1          | <strong>Re-run existing diagnostics</strong>    | Optional                                     | Treat as variant of same idea. |
+| <strong>Overlay / allocator change</strong>           | No (sleeve idea unchanged)    | No (sleeve idea unchanged)        | <strong>YES</strong>: run overlay/portfolio diagnostics   | Uses existing sleeve outputs. |
+| <strong>Non-functional change</strong>                 | No                            | No                                | No                                          | Quick sanity check run optional. |</p>
+<p><strong>Key rule:</strong>  </p>
+<p><strong>Phase-0/Phase-1 are for <em>ideas</em>.</strong>  </p>
+<p>Adding/changing assets or tuning parameters uses <strong>regression diagnostics</strong>, not a whole new sleeve lifecycle.</p>
+<hr />
+<h2>5. Procedure: Adding a New Meta-Sleeve</h2>
+<h3>4.1 Design Spec</h3>
+<p>Before touching code, create a short design section in <code>docs/SOTs/STRATEGY.md</code>:</p>
+<ul>
+<li>Economic thesis (why this sleeve should have edge).</li>
+<li>Universe it will trade.</li>
+<li>Key features (e.g., returns, curve, carry, macro inputs).</li>
+<li>Expected behavior (when it should make / lose money).</li>
+</ul>
+<h3>4.1.1 VRP Meta-Sleeve: Data Prerequisites</h3>
+<p><strong>Before running VRP Phase-0</strong>, ensure the following data pipeline steps have been completed:</p>
+<p><strong>Step 1: CBOE Data Ingestion (financial-data-system)</strong></p>
+<ol>
+<li>
+<p>Run CBOE VX futures scraper:
+   <code>bash
+   # In financial-data-system repo
+   python scripts/ingest_cboe_vx.py</code></p>
+</li>
+<li>
+<p>Run CBOE VIX3M index scraper:
+   <code>bash
+   # In financial-data-system repo
+   python scripts/ingest_cboe_vix3m.py</code></p>
+</li>
+<li>
+<p>Run CBOE VVIX index scraper:
+   <code>bash
+   # In financial-data-system repo
+   python scripts/ingest_cboe_vvix.py</code></p>
+</li>
+</ol>
+<p><strong>Step 2: Sync to Canonical DB (databento-es-options)</strong></p>
+<ol>
+<li>
+<p>Sync VIX from FRED (if not already done):
+   <code>bash
+   # In databento-es-options repo
+   python scripts/sync_fred_vix.py</code></p>
+</li>
+<li>
+<p>Sync VX, VIX3M, and VVIX from financial-data-system:
+   <code>bash
+   # In databento-es-options repo
+   python scripts/sync_vix_vx_from_financial_data_system.py</code></p>
+</li>
+</ol>
+<p><strong>Step 3: Verify VRP Data in Futures-Six</strong></p>
+<ol>
+<li>Run VRP Phase-0 diagnostics:
+   <code>bash
+   # In futures-six repo
+   python scripts/diagnostics/run_vrp_phase0.py</code></li>
+</ol>
+<p><strong>Expected Outputs:</strong>
+- <code>data/diagnostics/vrp_phase0/vrp_inputs.parquet</code>: Full VRP dataset
+- <code>data/diagnostics/vrp_phase0/summary_stats.json</code>: Coverage and summary stats
+- <code>data/diagnostics/vrp_phase0/*.png</code>: Diagnostic plots
+- <code>reports/phase_index/vrp/phase0.txt</code>: Phase-0 registration</p>
+<p><strong>VRP Coverage Targets:</strong>
+- VIX: ≥95% coverage (starts 1990)
+- VIX3M: ≥95% coverage (starts 2009-09-18)
+- VVIX: ≥95% coverage (starts ~2010, required for VRP-Convexity)
+- VX1/2/3: ≥90% coverage (starts ~2004)</p>
+<p><strong>Pass Criteria:</strong>
+- All required data sources (VIX, VIX3M, VVIX, VX1/2/3) are present
+- Coverage meets minimum thresholds
+- VRP spreads (VIX-VX1, VIX3M-VIX, VX2-VX1) are computable
+- VVIX available for VRP-Convexity sleeve (CBOE via financial-data-system → canonical sync)
+- No extended periods of missing data</p>
+<p>If any criteria fail, revisit Steps 1-4 above before proceeding to VRP strategy implementation.</p>
+<h3>4.1.2 VRP-Core Canonical Sleeve: Phase-0 / Phase-1 / Phase-2</h3>
+<p><strong>VRP-Core</strong> is the canonical VRP atomic sleeve using z-scored VRP spread (VIX - realized ES vol).</p>
+<p><strong>Prerequisites</strong>: Complete Steps 1-5 in § 4.1.1 (VRP data pipeline must pass data diagnostics)</p>
+<p><strong>Units Fix (Critical)</strong>:
+- <strong>VIX</strong>: In vol points (e.g., 20 = 20%)
+- <strong>Realized ES vol</strong>: Computed as <code>std(returns) * sqrt(252)</code> → gives decimals (e.g., 0.18 = 18%)
+- <strong>Fix</strong>: Multiply realized vol by 100 to convert to vol points before computing spread:
+  <code>python
+  vrp_spread = VIX - (RV_21 * 100.0)  # Both in vol points</code>
+- <strong>Without fix</strong>: Spread ≈ 21 vol points (nonsense: 20 - 0.18 = 19.82)
+- <strong>With fix</strong>: Spread ≈ 2-6 vol points (realistic: 20 - 18 = 2)
+- All documented results refer to post-fix implementation.</p>
+<p><strong>Phase-0 (Signal Test)</strong>:</p>
+<p>VRP-Core Phase-0 tests the raw economic idea using a toy rule:</p>
+<ul>
+<li><strong>Economic spec</strong>: VIX (30d implied vol) vs 21-day realized ES volatility</li>
+<li><strong>Toy rule</strong>: Short VX1 when (VIX - RV_21 × 100) &gt; 1.5 vol points, otherwise flat</li>
+<li>Threshold of 1.5 is fixed for Phase-0 documentation and clarity only</li>
+<li>This threshold is NOT used in Phase-1 or Phase-2</li>
+<li><strong>No z-scores, no clipping, no vol targeting</strong></li>
+<li><strong>Pass criteria</strong>: Sharpe ≥ 0.1 (marginal edge), ideally ≥ 0.2</li>
+</ul>
+<p><strong>Phase-0 Guidance: Asymmetric Economic Drivers</strong></p>
+<p>When an economic driver is asymmetric, symmetric Phase-0 may fail. In such cases, a directional Phase-0 rule is acceptable if:</p>
+<ol>
+<li><strong>Justified by economic structure</strong>: The asymmetry is inherent to the economic relationship (e.g., VIX term structure contango)</li>
+<li><strong>Supported by literature</strong>: Academic or industry research documents the asymmetry</li>
+<li><strong>Methodological integrity preserved</strong>: The Phase-0 test still validates the core economic idea</li>
+</ol>
+<p><strong>Documented Exception: VRP-Convergence</strong></p>
+<p>VRP-Convergence Phase-0 uses a <strong>short-only rule</strong> because:
+- <strong>Positive spreads (VIX &gt; VX1) do NOT imply mean reversion</strong>
+  - They often indicate momentum/expansion regimes
+  - These are not mean-reverting and should not be traded
+- <strong>Only negative spreads (VX1 &gt; VIX) produce stable convergence</strong>
+  - VX1 typically trades above VIX (contango)
+  - Decay from VX1 → VIX produces reliable downward convergence
+  - This aligns with academic VIX term structure literature</p>
+<p><strong>Phase-0 Process (Extended)</strong>:
+- Started with symmetric rule (long/short), which failed (Sharpe -0.15, MaxDD -86%)
+- Moved to short-only rule, tested thresholds (1.0, 1.5, 2.0 vol points)
+- Selected 1.0 as canonical because it passed with Sharpe ≈ 0.43
+- <strong>Phase-1 replaces the Phase-0 threshold with a short-only continuous z-scored signal</strong></p>
+<p>This preserves methodological integrity while respecting the asymmetric economics of the VIX term structure.</p>
+<p>```bash</p>
+<h1>Run Phase-0 signal test (includes data diagnostics)</h1>
+<p>python scripts/diagnostics/run_vrp_phase0.py --start 2020-01-01 --end 2025-10-31
+```</p>
+<p><strong>Outputs</strong>:
+- Data diagnostics: <code>data/diagnostics/vrp_phase0/data_diagnostics/</code>
+- Phase-0 signal test: <code>data/diagnostics/vrp_phase0/phase0_signal_test/</code>
+- Phase index: <code>reports/phase_index/vrp/phase0.txt</code></p>
+<p><strong>Results</strong>: See <code>docs/SOTs/DIAGNOSTICS.md</code> § "VRP-Core Phase-0 Signal Test" for full metrics and analysis.</p>
+<p><strong>Note</strong>: Any prior runs with spread ~21 vol points were invalid due to units mismatch.</p>
+<p><strong>Phase-1 (Engineered Sleeve)</strong>:</p>
+<ol>
+<li>
+<p><strong>Run VRP-Core Phase-1 diagnostics</strong>:
+   <code>bash
+   python scripts/diagnostics/run_vrp_core_phase1.py --start 2020-01-01 --end 2025-10-31</code></p>
+</li>
+<li>
+<p><strong>Review metrics</strong>:</p>
+</li>
+<li>Sharpe ratio (target: ≥0.2 for Phase-1 pass)</li>
+<li>MaxDD, hit rate, signal distribution</li>
+<li>
+<p>Compare vs Phase-0 (should show improvement)</p>
+</li>
+<li>
+<p><strong>Outputs</strong>:</p>
+</li>
+<li>Results: <code>data/diagnostics/vrp_core_phase1/&lt;timestamp&gt;/</code></li>
+<li>Phase index: <code>reports/phase_index/vrp/vrp_core_phase1.txt</code></li>
+<li>Plots: equity curve, distributions, signals over time</li>
+</ol>
+<p><strong>Key Differences from Other Sleeves</strong>:
+- VRP-Core trades VX1 futures, not the standard futures universe
+- Directional strategy (not market-neutral like CSMOM)
+- Requires VRP data pipeline (VIX, VX from canonical DB)
+- Units fix: realized vol must be multiplied by 100 before computing spread</p>
+<p><strong>Pass Criteria (Phase-1)</strong>:
+- Sharpe ≥ 0.2 over full test window
+- MaxDD within reasonable bounds (&lt;50%)
+- Signal distribution shows meaningful variation (not stuck at extremes)
+- Improvement over Phase-0 (z-scoring and vol targeting should help)</p>
+<p><strong>Results</strong>: See <code>docs/SOTs/DIAGNOSTICS.md</code> § "VRP-Core Phase-1 Diagnostics" for full metrics and analysis.</p>
+<p><strong>Phase-2 (Portfolio Integration)</strong>:</p>
+<ol>
+<li>
+<p><strong>Run Phase-2 diagnostics</strong>:
+   <code>bash
+   python scripts/diagnostics/run_core_v5_trend_csmom_vrp_core_phase2.py --start 2020-01-01 --end 2025-10-31</code></p>
+</li>
+<li>
+<p><strong>This script</strong>:</p>
+</li>
+<li>Runs baseline: Core v4 (Trend 75% + CSMOM 25%) - now superseded</li>
+<li>Runs VRP-enhanced: Core v5 (Trend 65% + CSMOM 25% + VRP-Core 10%) - now historical reference baseline</li>
+<li>Compares portfolio metrics (Sharpe, CAGR, Vol, MaxDD, HitRate)</li>
+<li>Analyzes crisis-period performance (2020 Q1/Q2, 2022)</li>
+<li>
+<p>Computes correlation between portfolios</p>
+</li>
+<li>
+<p><strong>Outputs</strong>:</p>
+</li>
+<li>Comparison returns: <code>data/diagnostics/phase2/core_v5_trend_csmom_vrp_core/&lt;timestamp&gt;/</code></li>
+<li>Comparison summary: <code>comparison_summary.json</code></li>
+<li>Plots: equity curves, drawdown curves</li>
+<li>
+<p>Phase index: <code>reports/phase_index/vrp/phase2_core_v5_trend_csmom_vrp_core.txt</code></p>
+</li>
+<li>
+<p><strong>Promotion Decision</strong>:</p>
+</li>
+<li>✅ <strong>Promoted</strong>: Core v5 promoted to baseline (Dec 2025) after Phase-2 pass, then superseded by Core v6 (Dec 2025)</li>
+<li>Criteria:<ul>
+<li>Portfolio Sharpe improves or remains similar with lower drawdown</li>
+<li>Crisis behavior is acceptable</li>
+<li>VRP contribution is additive and not redundant</li>
+</ul>
+</li>
+</ol>
+<h3>4.2 Phase-0 Checklist (Sign-Only)</h3>
+<ol>
+<li>
+<p>Implement a <strong>minimal sign-only</strong> version:</p>
+</li>
+<li>
+<p>Simple rule (e.g., sign of k-day return, sign of slope, sign of roll yield).</p>
+</li>
+<li>Equal-weight or DV01-neutral.</li>
+<li>Daily rebalance.</li>
+<li>
+<p>No overlays, no vol targeting.</p>
+</li>
+<li>
+<p>Add a <strong>Phase-0 script</strong> under <code>scripts/</code>, e.g.:</p>
+</li>
+<li>
+<p><code>scripts/run_&lt;sleeve&gt;_sanity.py</code></p>
+</li>
+<li>
+<p>Output to <code>reports/sanity_checks/&lt;meta_sleeve&gt;/&lt;atomic&gt;/archive/&lt;timestamp&gt;/</code> (automatically updates <code>latest/</code> and <code>phase_index</code>).</p>
+</li>
+<li>
+<p>Run over a <strong>long window</strong> (≥ 5y).</p>
+</li>
+<li>
+<p>Evaluate with <code>DIAGNOSTICS</code> tools:</p>
+</li>
+<li>
+<p>Sharpe ≥ 0.2?</p>
+</li>
+<li>MaxDD, hit rate, per-asset stats.</li>
+<li>
+<p>Subperiod behavior (pre/post 2022 if relevant).</p>
+</li>
+<li>
+<p>Log result in <code>docs/SOTs/DIAGNOSTICS.md</code> under <strong>Phase-0 Sanity Checks</strong> and in <code>docs/SOTs/STRATEGY.md</code> under that Meta-Sleeve's status.   </p>
+</li>
+</ol>
+<p><strong>If Phase-0 fails → Meta-Sleeve stays disabled.</strong></p>
+<h3>4.3 Phase-1 Checklist (Clean Implementation)</h3>
+<p>Once Phase-0 passes:</p>
+<ol>
+<li>
+<p>Implement production-quality sleeve:</p>
+</li>
+<li>
+<p>Feature engineering (multi-horizon, z-scores, etc.).</p>
+</li>
+<li>Vol normalization inside sleeve if appropriate.</li>
+<li>
+<p>Cross-sectional ranking logic where applicable.</p>
+</li>
+<li>
+<p>Integrate into <code>FeatureService</code> and strategy agents (see <code>docs/SOTs/STRATEGY.md</code> sections for existing sleeves as templates).</p>
+</li>
+<li>
+<p>Add a <strong>Phase-1 diagnostics script</strong>, e.g.:</p>
+</li>
+<li>
+<p><code>src/diagnostics/&lt;sleeve&gt;_phase1.py</code></p>
+</li>
+<li>
+<p><code>scripts/run_&lt;sleeve&gt;_phase1.py</code></p>
+</li>
+<li>
+<p>Run Phase-1 diagnostics:</p>
+</li>
+<li>
+<p>Compare to Phase-0 (Sharpe, MaxDD, Vol).</p>
+</li>
+<li>
+<p>Confirm behavior matches the idea (e.g., market-neutral, cross-sectional structure).</p>
+</li>
+<li>
+<p>Update phase index: <code>python scripts/update_phase_index.py &lt;meta_sleeve&gt; &lt;sleeve_name&gt; phase1 &lt;run_id&gt;</code></p>
+</li>
+<li>
+<p>Update <code>docs/SOTs/STRATEGY.md</code> status:</p>
+</li>
+<li>
+<p>"Meta-Sleeve X: Phase-1 PASSED; ready for overlay integration."</p>
+</li>
+</ol>
+<h3>4.4 Phase-2 Checklist (Overlays &amp; Portfolio Integration)</h3>
+<ol>
+<li>
+<p>Wire the Meta-Sleeve into:</p>
+</li>
+<li>
+<p>Macro overlay (if applicable).</p>
+</li>
+<li>Vol targeting overlay.</li>
+<li>
+<p>CombinedStrategy / allocator.</p>
+</li>
+<li>
+<p>Add / update a <strong>strategy profile</strong> in the config (e.g., <code>core_v4_with_&lt;sleeve&gt;</code>).</p>
+</li>
+<li>
+<p>Run <code>run_strategy.py</code> with a new <code>run_id</code>, store under <code>reports/runs/&lt;run_id&gt;/</code>.</p>
+</li>
+<li>
+<p>Analyze with <code>run_perf_diagnostics.py</code> (core metrics, yearly stats, per-asset, baseline comparison).</p>
+</li>
+<li>
+<p>Update phase index: <code>python scripts/update_phase_index.py &lt;meta_sleeve&gt; &lt;sleeve_name&gt; phase2 &lt;run_id&gt;</code></p>
+</li>
+<li>
+<p>If results acceptable, mark sleeve as <strong>Phase-2 integrated</strong>.</p>
+</li>
+</ol>
+<blockquote>
+<p><strong>Baseline Profiles (as of Dec 2025)</strong>
+- <code>core_v3_no_macro</code>: Trend-only baseline. Used when testing new Trend atomic sleeves or when isolating Trend behavior.
+- <strong>Core v7</strong>: ✅ <strong>Current canonical baseline</strong>. Trend + CSMOM + VRP-Core + VRP-Convergence + VRP-Alt. Used when testing new Meta-Sleeves or overlays.
+- <strong>Core v6</strong>: Historical reference baseline (Trend + CSMOM + VRP-Core + VRP-Convergence). Retained for historical comparison.
+- <strong>Core v5</strong>: Historical reference baseline (Trend + CSMOM + VRP-Core). Retained for historical comparison.
+- <code>core_v4_trend_csmom_no_macro</code>: Superseded baseline (retained for historical comparison). Pre-VRP baseline with Trend 75% + CSMOM 25%.</p>
+<p>When adding a new Meta-Sleeve, default to using <strong>Core v7</strong> as the baseline profile unless the experiment specifically concerns Trend-only behavior.</p>
+</blockquote>
+<h3>VRP-Core Baseline Promotion (core_v5)</h3>
+<p><strong>Sleeve</strong>: VRP-Core (canonical VRP sleeve)</p>
+<p><strong>Lifecycle</strong>: Passed Phase-0 (see <code>docs/SOTs/DIAGNOSTICS.md</code> § "VRP-Core Phase-0 Signal Test"), Phase-1 (see <code>docs/SOTs/DIAGNOSTICS.md</code> § "VRP-Core Phase-1 Diagnostics"), and Phase-2 (integration vs Trend+CSMOM baseline; see <code>docs/SOTs/DIAGNOSTICS.md</code> § "VRP-Core Phase-2 Diagnostics").</p>
+<p><strong>Baseline Change</strong>:
+- <strong>Previous baseline</strong>: <code>core_v4_trend_csmom_no_macro</code> (Trend 75%, CSMOM 25%)
+- <strong>New baseline</strong>: Core v5 (Trend 65%, CSMOM 25%, VRP-Core 10%)</p>
+<p><strong>Phase-2 Decision Logic</strong> (2020-2025 window):
+- Sharpe improved slightly (+0.0074)
+- CAGR improved slightly (+0.11%)
+- Max drawdown did not worsen (slight improvement)
+- Crisis-period performance (2020 Q1, 2020 Q2, 2022) was neutral or better
+- <strong>Full Phase-2 analysis</strong>: See <code>docs/SOTs/DIAGNOSTICS.md</code> § "VRP-Core Phase-2 Diagnostics"</p>
+<p><strong>Outcome</strong>: VRP-Core is promoted into the baseline; Core v4 is retained for historical comparison but tagged as superseded.</p>
+<h4>VRP-Convergence Baseline Promotion (Core v6)</h4>
+<p><strong>Lifecycle</strong>: Passed Phase-0 (see <code>docs/SOTs/DIAGNOSTICS.md</code> § "VRP-Convergence Phase-0 Diagnostics"), Phase-1 (see <code>docs/SOTs/DIAGNOSTICS.md</code> § "VRP-Convergence Phase-1 Diagnostics"), and Phase-2 (portfolio integration vs Core v5; see <code>docs/SOTs/DIAGNOSTICS.md</code> § "VRP-Convergence Phase-2 Diagnostics").</p>
+<h4>VRP-Alt Baseline Promotion (Core v7) — Non-Standard Lifecycle</h4>
+<p><strong>Lifecycle</strong>: Completed a modified 3-stage lifecycle with mandatory scaling verification:</p>
+<ol>
+<li><strong>Phase-0</strong>: Borderline pass (Sharpe ≈ 0.10, catastrophic MaxDD ≈ –94% expected for raw short-vol signals)</li>
+<li><strong>Phase-1</strong>: Strong pass after engineering (Sharpe ≈ 0.91, MaxDD ≈ –2%, very low volatility ~2%)</li>
+<li><strong>Phase-2</strong>: Inconclusive at 5% allocation (Portfolio Sharpe +0.0024, MaxDD +0.05%, limited impact due to low sleeve volatility)</li>
+<li><strong>Scaling Analysis (Mandatory)</strong>: Evaluated at 5%, 7.5%, 10%, 15% weights</li>
+<li>Monotonic Sharpe improvement</li>
+<li>Stable MaxDD (+0.15% at 15%)</li>
+<li>No crisis vulnerabilities</li>
+<li>Stable marginal Sharpe (~+0.0005 per 1% increase)</li>
+<li><strong>Promotion</strong>: VRP-Alt promoted at 15% weight, forming Core v7</li>
+</ol>
+<p><strong>Baseline Change</strong>:
+- <strong>Previous baseline</strong>: Core v6 (Trend 62.5%, CSMOM 25%, VRP-Core 7.5%, VRP-Convergence 5%)
+- <strong>New baseline</strong>: Core v7 (Trend 60%, CSMOM 25%, VRP-Core 7.5%, VRP-Convergence 2.5%, VRP-Alt 15%)</p>
+<p><strong>Outcome</strong>: VRP-Alt is promoted into the baseline at 15% weight; Core v6 is retained for historical comparison but tagged as superseded.</p>
+<h3>4.4.1 Promotion Exception: Borderline Phase-0 + Scaling Verification Lifecycle</h3>
+<p><strong>Codified Lifecycle Path</strong>: Borderline Phase-0 → Phase-1 strong → Phase-2 inconclusive → scaling verification → promotion</p>
+<p>Certain VRP sleeves may exhibit catastrophic raw Phase-0 drawdowns but demonstrate clear economic edge (e.g., implied minus short-term realized vol). In such cases, the following lifecycle path is codified:</p>
+<ol>
+<li><strong>Phase-0 borderline pass is acceptable</strong> if Phase-1 engineering produces a stable sleeve.</li>
+<li><strong>If Phase-2 results are inconclusive</strong> due to low weight or low volatility, the sleeve must undergo mandatory scaling analysis (e.g., 5%, 7.5%, 10%, 15%).</li>
+<li><strong>If scaling analysis shows monotonic improvement and controlled MaxDD</strong>, the sleeve may be promoted.</li>
+</ol>
+<p><strong>Canonical Example</strong>: VRP-Alt (Dec 2025)
+- Phase-0: Borderline pass (Sharpe ≈ 0.10, catastrophic MaxDD expected)
+- Phase-1: Strong pass (Sharpe ≈ 0.91, MaxDD ≈ –2%)
+- Phase-2: Inconclusive at 5% (limited impact due to low volatility)
+- Scaling verification: Tested 5%, 7.5%, 10%, 15% → monotonic improvement, controlled MaxDD
+- Promotion: VRP-Alt promoted at 15% weight, forming Core v7</p>
+<p>This lifecycle path is now a documented procedure for future borderline VRP sleeves, not a one-off exception.</p>
+<p><strong>Baseline Change</strong>:
+- <strong>Previous baseline</strong>: Core v5 (Trend 65%, CSMOM 25%, VRP-Core 10%)
+- <strong>New baseline</strong>: Core v6 (Trend 62.5%, CSMOM 25%, VRP-Core 7.5%, VRP-Convergence 5%)</p>
+<p><strong>Phase-2 Metrics (2020-2025, canonical window)</strong>:
+- Sharpe: 0.5774 → 0.5796 (+0.0022)
+- CAGR: 6.74% → 6.77% (+0.03%)
+- MaxDD: -17.22% → -17.18% (+0.04%, less negative)
+- <strong>Full Phase-2 analysis</strong>: See <code>docs/SOTs/DIAGNOSTICS.md</code> § "VRP-Convergence Phase-2 Diagnostics"</p>
+<p><strong>Decision</strong>: Core v6 was the canonical baseline for Phase-2 comparisons. Core v5 is retained as a historical reference baseline.</p>
+<p><strong>Outcome</strong>: VRP-Convergence is promoted as the 2nd canonical VRP atomic sleeve alongside VRP-Core. Core v6 was the canonical baseline until superseded by Core v7 (Dec 2025).</p>
+<h3>4.5 Phase-3 Checklist (Production + Monitoring)</h3>
+<ol>
+<li>
+<p>Promote sleeve + strategy profile to "production" set.</p>
+</li>
+<li>
+<p>For each production run, ensure:</p>
+</li>
+<li>
+<p><code>run_id</code> is logged and frozen.</p>
+</li>
+<li>Diagnostics run vs baseline.</li>
+<li>
+<p>Results summarized in <code>docs/SOTs/DIAGNOSTICS.md</code> under <strong>Production Monitoring</strong>.</p>
+</li>
+<li>
+<p>Only in <strong>Phase-3 / Optimization</strong> do we start:</p>
+</li>
+<li>
+<p>Asset-level pruning.</p>
+</li>
+<li>Aggressive parameter tuning.</li>
+<li>Per-sleeve asset multipliers.</li>
+</ol>
+<hr />
+<h2>6. Procedure: Adding an Atomic Sleeve to an Existing Meta-Sleeve</h2>
+<p><strong>Example: Adding Trend Breakout 50-100d inside the Trend Meta-Sleeve (Phase-0 lite → Phase-1 → Trend-level diagnostics).</strong></p>
+<ol>
+<li>
+<p><strong>Spec</strong>:  </p>
+</li>
+<li>
+<p>Add a short section in <code>docs/SOTs/STRATEGY.md</code> under that Meta-Sleeve:</p>
+<ul>
+<li>What horizon? (50-100d medium-term)</li>
+<li>What features? (50-day and 100-day breakout scores)</li>
+<li>What role in the Meta-Sleeve? (Complementary to return/slope-based signals, captures volatility expansions)</li>
+</ul>
+</li>
+<li>
+<p>Add detailed design section in <code>docs/META_SLEEVES/TREND_RESEARCH.md</code>:</p>
+<ul>
+<li>Economic idea (Donchian-style breakouts, regime shifts)</li>
+<li>Data requirements (continuous prices only)</li>
+<li>Expected behavior and hypotheses</li>
+</ul>
+</li>
+<li>
+<p><strong>Phase-0 lite</strong>:</p>
+</li>
+<li>
+<p>If it's a simple TSMOM or CSMOM variant, you <em>can</em> reuse existing Phase-0 scripts.</p>
+</li>
+<li>
+<p>For new signal types (e.g., breakout), add a sign-only variant check:</p>
+<ul>
+<li>Create <code>scripts/run_trend_breakout_mid_sanity.py</code></li>
+<li>Implement simple sign-only logic (no z-scoring, equal weight, no overlays)</li>
+<li>Run over long window (≥5y), check Sharpe ≥ 0.2</li>
+<li>Store results in <code>reports/sanity_checks/trend/breakout_mid_50_100/archive/&lt;timestamp&gt;/</code> (canonical results in <code>latest/</code>)</li>
+</ul>
+</li>
+<li>
+<p><strong>Phase-1</strong>:</p>
+</li>
+<li>
+<p>Implement atomic sleeve features and signal logic:</p>
+<ul>
+<li>Add breakout features to <code>src/agents/feature_long_momentum.py</code></li>
+<li>Compute 50-day and 100-day breakout scores</li>
+<li>Apply time-series z-scoring (252-day rolling, clipped at ±3.0)</li>
+</ul>
+</li>
+<li>
+<p>Ensure it plugs into the Meta-Sleeve combiner cleanly (e.g., as one more horizon in Trend):</p>
+<ul>
+<li>Extend <code>TSMOMMultiHorizon</code> to load breakout features</li>
+<li>Add <code>breakout_mid_50_100</code> atomic sleeve signal</li>
+<li>Combine with existing atomic sleeves using configurable horizon weights</li>
+</ul>
+</li>
+<li>
+<p><strong>Diagnostics</strong>:</p>
+</li>
+<li>
+<p>Run Meta-Sleeve-level diagnostics to see impact of the new atomic sleeve:</p>
+<ul>
+<li>Compare Meta-Sleeve with and without it using <code>run_perf_diagnostics.py</code>.</li>
+</ul>
+</li>
+</ol>
+<p><strong>Example: Adding VRP-Convergence inside the VRP Meta-Sleeve (Phase-0 → Phase-1 → Phase-2).</strong></p>
+<ol>
+<li><strong>Spec</strong>:  </li>
+<li>
+<p>Add a section in <code>docs/SOTs/STRATEGY.md</code> under VRP Meta-Sleeve:</p>
+<ul>
+<li>Economic idea: VIX (spot) vs VX1 (front-month futures) convergence</li>
+<li>What features? (spread_conv = VIX - VX1, optional curve_slope_vx = VX2 - VX1)</li>
+<li>What role in the Meta-Sleeve? (Second atomic VRP sleeve alongside VRP-Core)</li>
+</ul>
+</li>
+<li>
+<p>Document in <code>docs/SOTs/STRATEGY.md</code>:</p>
+<ul>
+<li>Economic idea (convergence/dislocation signal)</li>
+<li>Data requirements (VIX from FRED, VX1 from canonical DB)</li>
+<li>Expected behavior and hypotheses</li>
+</ul>
+</li>
+<li>
+<p><strong>Phase-0</strong>:</p>
+</li>
+<li>Create <code>scripts/diagnostics/run_vrp_convergence_phase0.py</code></li>
+<li>Implement simple tri-state convergence rule:<ul>
+<li>Long VX1 when (VIX - VX1) &gt; +T</li>
+<li>Short VX1 when (VIX - VX1) &lt; -T</li>
+<li>Flat otherwise</li>
+</ul>
+</li>
+<li>Use T = 1.0 vol points (fixed for Phase-0 documentation only)</li>
+<li>Run over canonical window (2020-01-01 to 2025-10-31)</li>
+<li>Check Sharpe ≥ 0.1, non-degenerate signal distribution</li>
+<li>Store results in <code>data/diagnostics/vrp_convergence_phase0/phase0_signal_test/</code></li>
+<li>
+<p>Register in <code>reports/phase_index/vrp/vrp_convergence_phase0.txt</code></p>
+</li>
+<li>
+<p><strong>Phase-1</strong>:</p>
+</li>
+<li>Implement atomic sleeve features and signal logic:<ul>
+<li>Create <code>src/agents/feature_vrp_convergence.py</code> with VRPConvergenceFeatures class</li>
+<li>Compute convergence spread: <code>spread_conv = VIX - VX1</code></li>
+<li>Apply z-scoring (252-day rolling window, clipped ±3σ): <code>conv_z = (spread_conv - rolling_mean_252) / rolling_std_252</code></li>
+<li>Create <code>src/agents/strat_vrp_convergence.py</code> with VRPConvergencePhase1 and VRPConvergenceMeta classes</li>
+<li>Generate signals: <code>conv_z_neg = min(conv_z, 0.0)</code> (short-only), then <code>signal = np.tanh(conv_z_neg / 2.0)</code> (bounded in [-1, 0])</li>
+<li><strong>Phase-0 discovered that only the negative side of VIX – VX1 is economically valid</strong></li>
+<li><strong>Phase-1 therefore encodes this as a short-only engineered sleeve</strong> (replaces Phase-0 threshold with continuous z-score signal)</li>
+<li>Apply volatility targeting (target vol = 10%, vol lookback = 63 days, vol floor = 5%)</li>
+<li>Use 1-day lag between signal and position to avoid lookahead</li>
+<li>Apply volatility targeting (target vol = 10%, vol lookback = 63 days)</li>
+</ul>
+</li>
+<li>Run Phase-1 diagnostics:
+     <code>bash
+     python scripts/diagnostics/run_vrp_convergence_phase1.py --start 2020-01-01 --end 2025-10-31</code></li>
+<li>Check pass criteria: Sharpe ≥ 0.20, reasonable MaxDD, balanced signal distribution</li>
+<li>Store results in <code>data/diagnostics/vrp_convergence_phase1/&lt;timestamp&gt;/</code></li>
+<li>
+<p>Register in <code>reports/phase_index/vrp/vrp_convergence_phase1.txt</code></p>
+</li>
+<li>
+<p><strong>Phase-2 (Portfolio Integration)</strong>:</p>
+</li>
+<li>Add new strategy profile Core v6 to <code>configs/strategies.yaml</code>:<ul>
+<li>Baseline: Core v5 (Trend 65% + CSMOM 25% + VRP-Core 10%)</li>
+<li>Variant: Trend 62.5% + CSMOM 25% + VRP-Core 7.5% + VRP-Convergence 5%</li>
+</ul>
+</li>
+<li>Update <code>run_strategy.py</code> to support <code>vrp_convergence_meta</code> strategy</li>
+<li>Run Phase-2 diagnostics:
+     <code>bash
+     python scripts/diagnostics/run_core_v6_trend_csmom_vrp_core_convergence_phase2.py --start 2020-01-01 --end 2025-10-31</code></li>
+<li>Compare baseline vs variant:<ul>
+<li>Portfolio metrics (Sharpe, CAGR, Vol, MaxDD, HitRate)</li>
+<li>Crisis-period performance (2020 Q1/Q2, 2022)</li>
+<li>Sleeve-level correlations (VRP-Convergence vs Trend, CSMOM, VRP-Core)</li>
+</ul>
+</li>
+<li>Check pass criteria:<ul>
+<li>Portfolio Sharpe improves or stays similar with no worse MaxDD</li>
+<li>Crisis behavior is neutral or improved</li>
+<li>Sleeve-level correlations show VRP-Convergence is not redundant (e.g., corr(VRP-Convergence, VRP-Core) &lt; 0.95)</li>
+</ul>
+</li>
+<li>Store results in <code>data/diagnostics/phase2/core_v6_trend_csmom_vrp_core_convergence/&lt;timestamp&gt;/</code></li>
+<li>
+<p>Register in <code>reports/phase_index/vrp/phase2_core_v6_trend_csmom_vrp_core_convergence.txt</code></p>
+</li>
+<li>
+<p><strong>Documentation Updates</strong>:</p>
+</li>
+<li>Update <code>docs/SOTs/STRATEGY.md</code> with VRP-Convergence section</li>
+<li>Update <code>docs/SOTs/PROCEDURES.md</code> with VRP-Convergence example (this section)</li>
+<li>Update <code>docs/SOTs/DIAGNOSTICS.md</code> with VRP-Convergence Phase-0/1/2 sections</li>
+</ol>
+<p><strong>Key Differences from Other Atomic Sleeves</strong>:
+- VRP-Convergence trades VX1 futures, not the standard futures universe
+- Directional strategy (not market-neutral like CSMOM)
+- Uses same VRP data pipeline as VRP-Core (VIX, VX1 from canonical DB)
+- Both VIX and VX1 are already in vol points (no units conversion needed)</p>
+<p><strong>Case Study: VRP-TermStructure — Phase-0 Economic Failure</strong></p>
+<p>A Phase-0 version of the VRP-TermStructure sleeve tested whether the slope of the VIX futures curve (VX2 – VX1) could support a directional short-volatility rule. The specification followed the Phase-0 standard:</p>
+<ul>
+<li>No vol targeting</li>
+<li>No z-scoring or normalization</li>
+<li>No overlays or filters</li>
+<li>Pure sign-only trading rule</li>
+</ul>
+<p>Phase-0 results showed economic failure (not technical failure). See <code>docs/SOTs/DIAGNOSTICS.md</code> § "VRP-TermStructure Phase-0 Diagnostics" for full metrics and analysis.</p>
+<p>Confirmed correct data alignment, signal generation, and PnL mechanics.</p>
+<p>This constitutes an economic failure, not a technical failure. Per the Sleeve Lifecycle:</p>
+<ul>
+<li>Sleeves failing Phase-0 are not advanced to Phase-1</li>
+<li>Sleeves with structurally invalid economic behavior are PARKED</li>
+<li>Documentation of failure must be retained for reproducibility and future research context</li>
+</ul>
+<p>VRP-TermStructure is therefore marked PARKED with no active development until revisited under a revised economic hypothesis (e.g., term-structure as a regime filter or crisis indicator).</p>
+<p><strong>Case Study: VRP-RollYield — Borderline Phase-0 Result</strong></p>
+<p>The VRP-RollYield sleeve tested a sign-only roll-down carry idea: short VX1 when the front future is above spot VIX on a per-day-to-expiry basis. The Phase-0 specification followed the standard rules:</p>
+<ul>
+<li>No vol targeting</li>
+<li>No z-scoring or overlays</li>
+<li>Simple sign-only rule:</li>
+<li>Compute roll = VX1 – VIX and roll_yield = roll / days_to_expiry</li>
+<li>signal = -1 if roll_yield &gt; 0, else 0</li>
+</ul>
+<p>Phase-0 performance (2020-01-01 to 2025-10-31):</p>
+<ul>
+<li>Sharpe: +0.02 (fails the ≥ 0.10 Phase-0 threshold)</li>
+<li>MaxDD: –85.65% (slightly beyond the catastrophic drawdown line)</li>
+<li>Signal distribution: non-degenerate (~75% short, ~25% flat)</li>
+</ul>
+<p>Diagnostics confirmed:</p>
+<ul>
+<li>Correct data loading and alignment</li>
+<li>Correct signal generation and position lagging</li>
+<li>PnL mechanics consistent with other VRP sleeves</li>
+</ul>
+<p>Interpretation:</p>
+<p>Unlike VRP-Core (which showed a small but clearly positive Sharpe in Phase-0) and VRP-Convergence, the simple roll-yield sign rule delivered only a borderline, near-zero edge with a catastrophic drawdown profile. Under the Sleeve Lifecycle rules, this is treated as a Phase-0 failure:</p>
+<ul>
+<li>The simple economic mapping is not strong enough to justify Phase-1 engineering.</li>
+<li>The sleeve is PARKED in its current form.</li>
+<li>
+<p>Roll-down carry may still be revisited with richer modeling (e.g., multi-tenor baskets, additional filters, or integration with other VRP components), but that would constitute a new Phase-0 specification, not a continuation of this one.</p>
+</li>
+<li>
+<p><strong>Diagnostics</strong>:</p>
+</li>
+<li>
+<p>Run Meta-Sleeve-level diagnostics to see impact of the new atomic sleeve:</p>
+<ul>
+<li>Compare Meta-Sleeve with and without it using <code>run_perf_diagnostics.py</code>.</li>
+<li>Create experimental strategy profile (e.g., <code>core_v3_trend_breakout</code>)</li>
+<li>Run full backtest and compare against baseline (<code>core_v3_no_macro</code>)</li>
+<li>Evaluate Sharpe, MaxDD, year-by-year performance, per-asset stats</li>
+</ul>
+</li>
+<li>
+<p><strong>Phase-1B (Refinement Cycle)</strong> - <em>If Phase-1 fails</em>:</p>
+</li>
+<li>
+<p><strong>Example</strong>: Breakout Mid Phase-1B tuning cycle</p>
+</li>
+<li>Initial Phase-1 test (10% weight, 50/50 feature weights) failed</li>
+<li>Refinement approach:<ul>
+<li>Reduce horizon weight (10% → 3%)</li>
+<li>Test multiple feature weight schemes (70/30, 30/70, 100/0, 0/100)</li>
+<li>Run systematic comparison across all variants</li>
+</ul>
+</li>
+<li><strong>Outcome</strong>: 70/30 configuration (3% weight) passed all criteria</li>
+<li>
+<p><strong>Key Learning</strong>: Integration failures often require weight reduction and feature weight tuning</p>
+</li>
+<li>
+<p><strong>Status</strong>:</p>
+</li>
+<li>
+<p>Record in <code>docs/SOTs/STRATEGY.md</code> which atomic sleeves within the Meta-Sleeve are currently <strong>enabled</strong> vs <strong>experimental</strong>.</p>
+</li>
+<li>Update <code>TREND_RESEARCH.md</code> with Phase-0, Phase-1, and Phase-1B results</li>
+<li>If Phase-1/1B passes, promote to Phase-2 validation</li>
+<li>If Phase-2 passes, promote to "Active Atomic Sleeve" in production configuration</li>
+</ul>
+<h3>5.1 Completed Sleeve Lifecycle Example: Breakout Mid (50-100d)</h3>
+<p><strong>Full Lifecycle Summary</strong>:</p>
+<ol>
+<li><strong>Phase-0 (Sanity Check)</strong>: ✅ PASSED</li>
+<li>Sign-only implementation validated core economic idea</li>
+<li>Sharpe ≥ 0.2 criteria met</li>
+<li>Results stored in <code>reports/sanity_checks/trend/breakout_mid_50_100/latest/</code> (canonical Phase-0)</li>
+<li>Historical runs in <code>reports/sanity_checks/trend/breakout_mid_50_100/archive/</code></li>
+<li>
+<p>Phase index: <code>reports/phase_index/trend/breakout_mid_50_100/phase0.txt</code></p>
+</li>
+<li>
+<p><strong>Phase-1 (Initial Integration)</strong>: ❌ FAILED</p>
+</li>
+<li>Initial test with 10% horizon weight, 50/50 feature weights</li>
+<li>Performance degradation (Sharpe: -0.038 vs baseline 0.086)</li>
+<li>
+<p>Identified as integration problem, not alpha problem</p>
+</li>
+<li>
+<p><strong>Phase-1B (Refinement Cycle)</strong>: ✅ PASSED</p>
+</li>
+<li>Reduced horizon weight to 3%</li>
+<li>Tested 4 feature weight schemes: 70/30, 30/70, 100/0, 0/100</li>
+<li><strong>Winner</strong>: 70/30 configuration (breakout_50: 70%, breakout_100: 30%)</li>
+<li>
+<p>Results: Sharpe 0.0953 vs baseline 0.0857, MaxDD -31.52% vs -32.02%</p>
+</li>
+<li>
+<p><strong>Phase-2 (Validation)</strong>: ✅ PASSED</p>
+</li>
+<li>Full backtest with Phase-1B winning configuration</li>
+<li>Target window: 2021-01-01 to 2025-11-19</li>
+<li>All promotion criteria met:<ul>
+<li>Sharpe ≥ baseline: ✅</li>
+<li>MaxDD ≤ baseline: ✅</li>
+<li>Robust across years: ✅</li>
+<li>Stable correlations: ✅</li>
+</ul>
+</li>
+<li><strong>Verdict</strong>: Approved for Phase-3 (production monitoring)</li>
+</ol>
+<h3>5.2 Failed Promotion Example: Canonical Short-Term (21d)</h3>
+<p><strong>Canonicalization Attempt for Short-Term Atomic Sleeve</strong> (Nov 2025):</p>
+<ol>
+<li><strong>Specification</strong>:</li>
+<li><strong>Type</strong>: Parameter canonicalization (not new atomic sleeve; refines existing short-term sleeve)</li>
+<li><strong>Existing</strong>: Short-term (21d) with legacy weights (0.5, 0.3, 0.2)</li>
+<li><strong>Canonical</strong>: Short-term (21d) with equal-weight (1/3, 1/3, 1/3) composite</li>
+<li><strong>Rationale</strong>: Match pattern from Long-Term and Medium-Term canonicalizations (academically grounded equal-weight)</li>
+<li>
+<p><strong>Features</strong>: Same as legacy (ret_21, breakout_21, slope_fast); reversal filter weight 0 in both variants</p>
+</li>
+<li>
+<p><strong>Phase-0 (Sign-Only Sanity Check)</strong>: ✅ PASSED</p>
+</li>
+<li>Script: <code>scripts/run_trend_short_canonical_phase0.py</code></li>
+<li>Parameters: 21d lookback, skip 5d, equal-weight across assets</li>
+<li><strong>Results</strong>: Sharpe 0.31, hit rate 52.5% (passes Sharpe ≥ 0.2 threshold)</li>
+<li>Results path: <code>reports/sanity_checks/trend/short_canonical/archive/20251119_153628/</code></li>
+<li>Phase index: <code>reports/phase_index/trend/short_canonical/phase0.txt</code></li>
+<li>
+<p><strong>Verdict</strong>: Phase-0 passed, proceed to Phase-1</p>
+</li>
+<li>
+<p><strong>Phase-1 (Standalone Canonical vs Legacy)</strong>: ❌ FAILED</p>
+</li>
+<li>Script: <code>scripts/run_trend_short_canonical_phase1.py</code></li>
+<li>Strategy profiles: <code>short_canonical_phase1</code> (1/3, 1/3, 1/3) vs <code>short_legacy_phase1</code> (0.5, 0.3, 0.2)</li>
+<li><strong>Results</strong>:<ul>
+<li>Canonical: CAGR -4.13%, Sharpe -0.324</li>
+<li>Legacy: CAGR -3.87%, Sharpe -0.308</li>
+<li><strong>Delta</strong>: Legacy outperforms by +0.26% CAGR, +0.016 Sharpe</li>
+</ul>
+</li>
+<li>Phase index: <code>reports/phase_index/trend/short_canonical/phase1.txt</code></li>
+<li>
+<p><strong>Verdict</strong>: Legacy wins standalone test</p>
+</li>
+<li>
+<p><strong>Phase-2 (Integrated A/B Test)</strong>: ❌ FAILED</p>
+</li>
+<li>Strategy profile: <code>core_v3_trend_shortcanon_no_macro</code> vs <code>core_v3_no_macro</code> baseline</li>
+<li><strong>Results</strong> (2018-01-01 to 2025-10-31):<ul>
+<li>Canonical: CAGR 6.63%, Sharpe 0.5735, MaxDD -17.24%</li>
+<li>Legacy: CAGR 6.83%, Sharpe 0.5876, MaxDD -16.72%</li>
+<li><strong>Delta</strong>: Legacy outperforms by +0.20% CAGR, +0.014 Sharpe, +0.52% MaxDD</li>
+</ul>
+</li>
+<li>Phase index: <code>reports/phase_index/trend/short_canonical/phase2.txt</code></li>
+<li>
+<p><strong>Verdict</strong>: Legacy wins integrated test, canonical not promoted</p>
+</li>
+<li>
+<p><strong>Final Outcome</strong>: ❌ NOT PROMOTED</p>
+</li>
+<li><strong>Conclusion</strong>: Legacy weights (0.5, 0.3, 0.2) remain production standard</li>
+<li><strong>Key Insight</strong>: Unlike Long-Term and Medium-Term horizons where equal-weighting improved diversification, Short-Term (21d) benefits from empirically-tuned weights that preserve the economically stronger return signal</li>
+<li><strong>Rationale for rejection</strong>: 21d return is more informative than breakout/slope at this short horizon; equal-weighting dilutes the strongest signal</li>
+<li><strong>Preservation</strong>: Canonical variant preserved as research option (<code>variant="canonical"</code> in code) for future re-testing if universe/regime changes</li>
+<li><strong>Documentation</strong>: Logged in <code>TREND_RESEARCH.md</code> as tested but not promoted</li>
+<li>
+<p>Phase index: <code>reports/phase_index/trend/short_canonical/phase2.txt</code></p>
+</li>
+<li>
+<p><strong>Status</strong>: Phase-0/1/2 in progress (Nov 2025)</p>
+</li>
+<li>Implementation: Complete (variant parameter added to <code>ShortTermMomentumStrategy</code>)</li>
+<li>Integration: Complete (<code>TSMOMMultiHorizon</code> supports <code>short_variant</code> parameter)</li>
+<li>Configuration: Complete (strategy profiles added to <code>configs/strategies.yaml</code>)</li>
+<li>Scripts: Complete (Phase-0 and Phase-1 diagnostic scripts created)</li>
+<li>Documentation: Complete (all docs updated)</li>
+<li>
+<p>Next step: Run Phase-0, Phase-1, Phase-2 diagnostics</p>
+</li>
+<li>
+<p><strong>Phase-3 (Production Integration)</strong>: ✅ COMPLETED</p>
+</li>
+<li>Updated <code>core_v3_no_macro</code> production profile</li>
+<li>Horizon weight: 3% for <code>breakout_mid_50_100</code></li>
+<li>Feature weights: 70% <code>breakout_50</code>, 30% <code>breakout_100</code></li>
+<li>Phase indices updated: <code>reports/phase_index/trend/breakout_mid_50_100/phase0.txt</code>, <code>phase1.txt</code>, <code>phase2.txt</code></li>
+<li>Documentation updated across all relevant files</li>
+</ol>
+<p><strong>Key Learnings</strong>:
+- Integration failures often require weight reduction and feature weight tuning
+- Phase-1B refinement cycle is critical for optimizing integration
+- Lower weights can reduce signal conflicts with existing sleeves
+- 70/30 blend outperformed pure configurations, indicating synergy</p>
+<hr />
+<h2>7. Procedure: Universe / Asset Changes</h2>
+<p><strong>Goal:</strong> Don't rerun sleeve lifecycle; do <strong>regression diagnostics</strong> instead.</p>
+<h3>6.1 When This Applies</h3>
+<ul>
+<li>Add/remove one or more futures.</li>
+<li>Swap SR3 front ↔ SR3 rank 3.</li>
+<li>Change roll rules that effectively change traded contract.</li>
+</ul>
+<h3>6.2 Checklist</h3>
+<ol>
+<li>
+<p>Update universe definition (<code>configs/data.yaml</code>, etc.) and ensure <code>MarketData</code> maps correctly (see Universe section in <code>docs/SOTs/STRATEGY.md</code>).</p>
+</li>
+<li>
+<p>Rebuild any <strong>precomputed features</strong> if necessary (FeatureService).</p>
+</li>
+<li>
+<p>Run <strong>sleeve-level diagnostics</strong> for all <em>active</em> Meta-Sleeves:</p>
+</li>
+<li>
+<p>For each active Meta-Sleeve:</p>
+<ul>
+<li>Run its Phase-1 diagnostic script over the standard test window.</li>
+<li>
+<p>Confirm:</p>
+</li>
+<li>
+<p>Sharpe didn't collapse unexpectedly.</p>
+</li>
+<li>Per-asset stats are sane.</li>
+<li>No obviously broken series.</li>
+</ul>
+</li>
+<li>
+<p>Run <strong>full strategy</strong> with a known baseline profile (e.g., <code>core_v3_no_macro</code>) and new universe.</p>
+</li>
+<li>
+<p>Run <code>run_perf_diagnostics.py</code> with:</p>
+</li>
+<li>
+<p><code>--run_id</code> = new universe run</p>
+</li>
+<li><code>--baseline_id</code> = previous universe run  </li>
+</ol>
+<p>To quantify the impact of the change.</p>
+<ol>
+<li>If things look acceptable, document in <code>docs/SOTs/STRATEGY.md</code> "Universe change: <date>, <summary>".</li>
+</ol>
+<blockquote>
+<p><strong>Important:</strong>  </p>
+<p>We still <strong>keep bad assets</strong> at this stage. Universe pruning is a <strong>Phase-B optimization</strong> task.</p>
+</blockquote>
+<hr />
+<h2>8. Procedure: Parameter Changes (Lookbacks, Weights, etc.)</h2>
+<h3>7.1 When This Applies</h3>
+<ul>
+<li>Change TSMOM lookbacks (e.g., 252 → 200).</li>
+<li>Change CSMOM horizon weights (0.4, 0.35, 0.25 → something else).</li>
+<li>Change clipping, EWMA half-life, etc.</li>
+</ul>
+<p><strong>⚠️ IMPORTANT: Weight Freeze Policy</strong></p>
+<p><strong>Trend Meta-Sleeve v2 internal weights (45/28/20/15) are FROZEN during the architecture build-out phase.</strong></p>
+<ul>
+<li><strong>Do NOT</strong> sweep or optimize these weights now.</li>
+<li><strong>Do NOT</strong> run parameter searches on horizon weights.</li>
+<li>These weights are fixed until <strong>Phase-B: Optimization &amp; Pruning</strong>.</li>
+<li>In Phase-B, weights must be optimized <strong>jointly across all sleeves</strong> with proper out-of-sample controls.</li>
+</ul>
+<p>This prevents overfitting and keeps us focused on architecture completion rather than premature optimization.</p>
+<h3>7.2 Checklist</h3>
+<ol>
+<li>
+<p>Update the config (YAML or class config).</p>
+</li>
+<li>
+<p>Run <strong>sleeve-level diagnostics</strong>:</p>
+</li>
+<li>
+<p>Use Phase-1 diagnostic script for that sleeve.</p>
+</li>
+<li>
+<p>Compare to previous config using <code>run_perf_diagnostics.py</code> if you saved as a full run.</p>
+</li>
+<li>
+<p>If the change is minor and performance is within an expected band:</p>
+</li>
+<li>
+<p>No need to reclassify sleeve phases.</p>
+</li>
+<li>
+<p>Note in <code>docs/SOTs/STRATEGY.md</code> that parameters for that sleeve were updated on <date>.</p>
+</li>
+<li>
+<p>If change is <strong>major</strong> (effectively new behavior):</p>
+</li>
+<li>
+<p>Treat it as a <strong>new atomic sleeve variant</strong>:</p>
+<ul>
+<li>Document under same Meta-Sleeve in <code>docs/SOTs/STRATEGY.md</code>.</li>
+<li>Optionally give it its own Phase-0 mini-check.</li>
+</ul>
+</li>
+</ol>
+<hr />
+<h2>9. Procedure: Overlay / Allocator Changes</h2>
+<h3>8.1 When This Applies</h3>
+<ul>
+<li>Macro overlay logic changes (inputs, mapping, thresholds).</li>
+<li>Vol targeting changes (target vol, caps, lookbacks).</li>
+<li>Allocator changes (constraints, method, turnover penalty).</li>
+</ul>
+<h3>8.2 Checklist</h3>
+<ol>
+<li>
+<p>Update overlay / allocator code and configs (see relevant sections in <code>docs/SOTs/STRATEGY.md</code>).</p>
+</li>
+<li>
+<p>Choose one or more <strong>reference strategy profiles</strong>:</p>
+</li>
+<li>
+<p>E.g., <code>core_v3_no_macro</code>, and later <code>core_v4_with_csmom</code>.</p>
+</li>
+<li>
+<p>Run <strong>full backtests</strong> with:</p>
+</li>
+<li>
+<p>Old overlay/allocator (baseline run_id).</p>
+</li>
+<li>
+<p>New overlay/allocator (variant run_id).</p>
+</li>
+<li>
+<p>Use <code>run_perf_diagnostics.py</code> to compare:</p>
+</li>
+<li>
+<p>Core metrics.</p>
+</li>
+<li>Year-by-year stats.</li>
+<li>Per-asset stats.</li>
+<li>
+<p>Equity ratio over time.</p>
+</li>
+<li>
+<p>If behavior is consistent and improved, update <code>docs/SOTs/STRATEGY.md</code> to point to the new overlay/allocator as the current standard.</p>
+</li>
+</ol>
+<hr />
+<h2>9.1 Allocator Development Lifecycle (v2 Track)</h2>
+<p>Allocator logic is subject to the same promotion discipline as sleeves. The allocator development follows a structured lifecycle to ensure robust, validated conditional exposure control.</p>
+<h3>Allocator Phases</h3>
+<p>| Phase | Objective | Key Activities |
+|-------|-----------|---------------|
+| <strong>Allocator Phase-A</strong> | Architecture &amp; invariants (no tuning) | Define allocator architecture, establish invariants, design conditional logic structure |
+| <strong>Allocator Phase-B</strong> | Deterministic rule-based allocator | Implement rule-based allocator (no optimization), validate deterministic behavior |
+| <strong>Allocator Phase-C</strong> | End-to-end validation | Validate allocator behavior across historical windows, stress test failure modes |
+| <strong>Allocator Phase-D</strong> | Production deployment | Freeze allocator logic, version control, deploy to production track |
+| <strong>Allocator Phase-E</strong> | Post-production enhancements | Iterative improvements following formal promotion process |</p>
+<h3>Phase-A: Architecture &amp; Invariants</h3>
+<p><strong>Objective</strong>: Establish allocator design principles without parameter tuning.</p>
+<p><strong>Key Activities:</strong>
+- Define allocator inputs (Meta-Sleeve signals, regime indicators, portfolio state)
+- Establish invariants (e.g., no leverage beyond X, always maintain Y% cash buffer)
+- Design conditional logic structure (regime detection, crisis response, leverage control)
+- Document architectural decisions</p>
+<p><strong>Deliverables:</strong>
+- Allocator architecture specification
+- Invariant definitions
+- Design document</p>
+<h3>Phase-B: Deterministic Rule-Based Allocator</h3>
+<p><strong>Objective</strong>: Implement rule-based allocator with deterministic behavior.</p>
+<p><strong>Key Activities:</strong>
+- Implement allocator logic based on Phase-A architecture
+- Use fixed thresholds and rules (no optimization)
+- Ensure deterministic output for given inputs
+- Validate rule-based behavior</p>
+<p><strong>Deliverables:</strong>
+- Functional allocator implementation
+- Deterministic behavior validation
+- Rule documentation</p>
+<h3>Phase-C: End-to-End Validation</h3>
+<p><strong>Objective</strong>: Validate allocator behavior across historical windows and stress scenarios.</p>
+<p><strong>Key Activities:</strong>
+- Run allocator on expanded historical window (see Data Expansion Protocol)
+- Validate behavior during crisis periods (2020 Q1, 2022, etc.)
+- Test failure modes and edge cases
+- Verify portfolio-level protection (not just instrument-level)</p>
+<p><strong>Deliverables:</strong>
+- Historical validation results
+- Stress test results
+- Failure mode documentation</p>
+<h3>Phase-D: Production Deployment</h3>
+<p><strong>Objective</strong>: Freeze allocator logic and deploy to production.</p>
+<p><strong>Key Activities:</strong>
+- Freeze allocator code and parameters
+- Version control (e.g., Allocator v1)
+- Deploy to production track
+- Establish monitoring and alerting</p>
+<p><strong>Deliverables:</strong>
+- Versioned allocator release
+- Production deployment documentation
+- Monitoring setup</p>
+<h3>Phase-E: Post-Production Enhancements</h3>
+<p><strong>Objective</strong>: Iterative improvements following formal promotion process.</p>
+<p><strong>Key Activities:</strong>
+- Develop enhancements in research track
+- Paper integration with production copy
+- Portfolio-level diagnostics
+- Formal promotion decision
+- Versioned production release (e.g., Allocator v2)</p>
+<p><strong>Deliverables:</strong>
+- Enhanced allocator version
+- Promotion decision documentation
+- Versioned release</p>
+<hr />
+<h2>9.1.1 Allocator v1 Production Procedures (December 2024)</h2>
+<p><strong>Status</strong>: Phase-D Complete (Production-Ready)</p>
+<p>Allocator v1 has completed Phases A-D and is production-ready. The following procedures govern how to use and validate Allocator v1.</p>
+<h3>Running Allocator v1 in Research Mode</h3>
+<p><strong>Default: Artifacts Only (No Weight Scaling)</strong></p>
+<p>By default, Allocator v1 computes and saves all artifacts but does NOT scale portfolio weights. This allows for research and validation without affecting backtest results.</p>
+<p><strong>Command:</strong>
+<code>bash
+python run_strategy.py --strategy_profile core_v9 --start 2024-01-01 --end 2024-12-15</code></p>
+<p><strong>Configuration (default):</strong>
+<code>yaml
+allocator_v1:
+  enabled: false  # Artifacts computed but not applied</code></p>
+<p><strong>Artifacts Generated:</strong>
+- <code>allocator_state_v1.csv</code> - 10 daily state features
+- <code>allocator_regime_v1.csv</code> - Daily regime labels
+- <code>allocator_risk_v1.csv</code> - Daily risk scalars (computed)
+- <code>allocator_risk_v1_applied.csv</code> - Lagged risk scalars (ready for application)
+- Metadata JSON files for each layer</p>
+<h3>Two-Pass Audit Workflow (Recommended Validation)</h3>
+<p>The two-pass audit is the canonical way to validate Allocator v1 behavior before enabling it for weight scaling.</p>
+<p><strong>Purpose:</strong>
+- Compare baseline (allocator off) vs scaled (allocator applied)
+- Validate that allocator reduces MaxDD without destroying returns
+- Audit regime transitions and de-risking events
+- Ensure deterministic, reproducible behavior</p>
+<p><strong>Command:</strong>
+<code>bash
+python scripts/diagnostics/run_allocator_two_pass.py \
+  --strategy_profile core_v9 \
+  --start 2024-01-01 \
+  --end 2024-12-15</code></p>
+<p><strong>What It Does:</strong>
+1. <strong>Pass 1 (Baseline)</strong>: Runs backtest with <code>allocator_v1.enabled=false</code>
+   - Generates portfolio returns without allocator
+   - Computes and saves all allocator artifacts
+   - Produces <code>allocator_risk_v1_applied.csv</code></p>
+<ol>
+<li><strong>Pass 2 (Scaled)</strong>: Re-runs backtest with <code>mode="precomputed"</code></li>
+<li>Loads <code>allocator_risk_v1_applied.csv</code> from Pass 1</li>
+<li>Applies scalars with 1-rebalance lag</li>
+<li>
+<p>Generates scaled portfolio returns</p>
+</li>
+<li>
+<p><strong>Comparison Report</strong>: Generates <code>two_pass_comparison.md</code> and <code>.json</code></p>
+</li>
+<li>Performance metrics (CAGR, vol, Sharpe, MaxDD, worst month/quarter)</li>
+<li>Allocator usage statistics (% rebalances scaled, mean/min/max scalar)</li>
+<li>Top 10 de-risking events</li>
+<li>Regime distribution and transition counts</li>
+</ol>
+<p><strong>Outputs:</strong>
+- <code>reports/runs/{baseline_run_id}/</code> - Baseline artifacts
+- <code>reports/runs/{scaled_run_id}/</code> - Scaled artifacts
+- <code>reports/runs/{scaled_run_id}/two_pass_comparison.md</code> - Human-readable comparison
+- <code>reports/runs/{scaled_run_id}/two_pass_comparison.json</code> - Machine-readable comparison</p>
+<h3>Running Individual Allocator Diagnostics</h3>
+<p>If you have an existing run and want to re-compute or inspect specific allocator layers:</p>
+<p><strong>Recompute State Features:</strong>
+<code>bash
+python scripts/diagnostics/run_allocator_state_v1.py --run_id &lt;run_id&gt;</code></p>
+<p><strong>Recompute Regime Classification:</strong>
+<code>bash
+python scripts/diagnostics/run_allocator_regime_v1.py --run_id &lt;run_id&gt;</code></p>
+<p><strong>Recompute Risk Scalars:</strong>
+<code>bash
+python scripts/diagnostics/run_allocator_risk_v1.py --run_id &lt;run_id&gt;</code></p>
+<p>These scripts load existing run artifacts and recompute the respective allocator layer, saving updated artifacts back to the run directory.</p>
+<h3>Enabling Allocator v1 for Production</h3>
+<p><strong>⚠️ WARNING</strong>: Do not enable allocator in production until two-pass audit validates expected behavior.</p>
+<p><strong>Configuration (production):</strong>
+<code>yaml
+allocator_v1:
+  enabled: true
+  mode: "precomputed"
+  precomputed_run_id: "&lt;baseline_run_id&gt;"
+  precomputed_scalar_filename: "allocator_risk_v1_applied.csv"
+  apply_missing_scalar_as: 1.0</code></p>
+<p><strong>Behavior:</strong>
+- Loads precomputed scalars from baseline run
+- Applies scalars with 1-rebalance lag at each rebalance date
+- Scales raw weights: <code>weights_scaled = weights_raw * risk_scalar_applied[t-1]</code>
+- Saves both <code>weights_raw.csv</code> and <code>weights_scaled.csv</code></p>
+<h3>Allocator v1 Validation Checklist</h3>
+<p>Before enabling allocator in production:</p>
+<ul>
+<li>[ ] Two-pass audit completed with expected MaxDD reduction</li>
+<li>[ ] Regime classifications are sticky (transitions &lt;20 over multi-year period)</li>
+<li>[ ] Top de-risk events align with known stress periods (2020 Q1, 2022, etc.)</li>
+<li>[ ] Feature coverage is 100% (all 10 features present if optional data available)</li>
+<li>[ ] Row drop rate &lt;5% (no major data quality issues)</li>
+<li>[ ] Comparison report shows allocator acts as risk governor (not return enhancer)</li>
+<li>[ ] Worst month/quarter metrics improved vs baseline</li>
+<li>[ ] No unexpected regime thrashing during normal periods</li>
+</ul>
+<h3>Phase 1C: Risk Targeting + Allocator Integration (Completion Checklist)</h3>
+<p><strong>Status:</strong> ✅ <strong>COMPLETE</strong> (January 2026)</p>
+<p><strong>Phase 1C Acceptance Criteria:</strong></p>
+<p><strong>Golden Proof Run:</strong>
+- [x] <strong>Run ID:</strong> <code>rt_alloc_h_apply_precomputed_2024</code>
+- [x] <strong>Config:</strong> <code>configs/proofs/phase1c_allocator_apply.yaml</code>
+- [x] <strong>Validator:</strong> <code>scripts/diagnostics/validate_phase1c_completion.py &lt;run_id&gt;</code> must PASS</p>
+<p><strong>Acceptance Criteria (All Passed):</strong>
+1. [x] <strong>RT Artifacts:</strong> Panel data bug fixed (all 13 instruments per date, gross matches logs)
+2. [x] <strong>RT Layer:</strong> Leverage calculation correct, weight scaling correct
+3. [x] <strong>Allocator Computation:</strong> Regimes + scalars correct (42% active, min 0.68)
+4. [x] <strong>Allocator Application:</strong> Multipliers applied to weights (% active &gt; 0%)
+5. [x] <strong>Returns Differentiation:</strong> RT + Alloc-H returns differ from RT-only (difference &gt; 1e-6)
+6. [x] <strong>Weight Scaling Verification:</strong> <code>final_weights ≈ post_rt_weights * multiplier</code> (error &lt; 0.01)
+7. [x] <strong>ExecSim Logs:</strong> "Risk scalars applied: X/52 rebalances" where X &gt; 0
+8. [x] <strong>Contract Tests:</strong> All tests pass (<code>test_risk_targeting_contracts.py</code>, <code>test_allocator_profile_activation.py</code>)</p>
+<p><strong>Phase 1C Validation Command:</strong>
+```bash</p>
+<h1>Validate Phase 1C completion</h1>
+<p>python scripts/diagnostics/validate_phase1c_completion.py rt_alloc_h_apply_precomputed_2024</p>
+<h1>Expected output: "OVERALL: PASS - Allocator was applied!"</h1>
+<p>```</p>
+<p><strong>Proof Config Location:</strong>
+- <strong>Stable config:</strong> <code>configs/proofs/phase1c_allocator_apply.yaml</code>
+- <strong>Temp config (legacy):</strong> <code>configs/temp_phase1c_proof_precomputed.yaml</code> (deprecated, use proofs/ version)</p>
+<p><strong>Important Nuance (Documented):</strong></p>
+<p>Phase 1C validation uses a <strong>two-step process</strong>:
+1. <strong>Step 1:</strong> Compute allocator scalars (<code>rt_alloc_h_apply_proof_2024</code> in <code>compute</code> mode)
+2. <strong>Step 2:</strong> Apply scalars via <code>precomputed</code> mode (<code>rt_alloc_h_apply_precomputed_2024</code>)</p>
+<p><strong>This proves:</strong>
+- ✅ Allocator application path works correctly
+- ✅ Config plumbing is correct
+- ✅ Weight scaling is deterministic and auditable
+- ✅ End-to-end integration is sound</p>
+<p><strong>Behavioral Difference (Phase 2/3 Validation):</strong></p>
+<p>There is a difference between:
+- <strong><code>compute</code> mode:</strong> Compute-and-apply in-loop (live-like behavior, has warmup issues)
+- <strong><code>precomputed</code> mode:</strong> Compute once, apply later (replay behavior, production-ready)</p>
+<p><strong>Phase 1C proves the application path and config plumbing.</strong><br />
+<strong>Phase 2/3 will validate compute-and-apply stability</strong> (or explicitly choose <code>precomputed</code> for paper-live v0 if that's acceptable).</p>
+<p><strong>Artifact Validation:</strong>
+```bash</p>
+<h1>Test RT artifacts integrity</h1>
+<p>python scripts/diagnostics/test_rt_artifact_fix.py <run_id></p>
+<h1>Expected: All tests PASS (13 instruments per date, gross consistency)</h1>
+<p>```</p>
+<p><strong>Phase 1C Completion Declaration:</strong></p>
+<p>Phase 1C is complete when:
+- ✅ All acceptance criteria pass
+- ✅ Validation script returns PASS
+- ✅ All contract tests pass
+- ✅ Documentation updated in SOTs</p>
+<p><strong>Date Completed:</strong> 2026-01-10<br />
+<strong>Signed Off:</strong> AI Agent + User Validation</p>
+<hr />
+<h3>Phase 2: Engine Policy v1 (Completion Checklist)</h3>
+<p><strong>Status:</strong> ✅ <strong>COMPLETE</strong> (January 2026)</p>
+<p><strong>Phase 2 Acceptance Criteria:</strong></p>
+<p><strong>Golden Proof Runs:</strong>
+- [x] <strong>Compute Mode Run ID:</strong> <code>policy_trend_gamma_compute_proof_2024</code>
+- [x] <strong>Compute Mode Config:</strong> <code>configs/proofs/phase2_policy_trend_gamma_compute.yaml</code>
+- [x] <strong>Precomputed Mode Run ID:</strong> <code>policy_trend_gamma_apply_precomputed_2024</code>
+- [x] <strong>Precomputed Mode Config:</strong> <code>configs/proofs/phase2_policy_trend_gamma_apply_precomputed.yaml</code>
+- [x] <strong>Validator:</strong> <code>scripts/diagnostics/validate_phase2_policy_v1.py &lt;run_id&gt;</code> must PASS</p>
+<p><strong>Acceptance Criteria (All Must Pass):</strong>
+1. [x] <strong>Artifacts Exist:</strong> <code>engine_policy_state_v1.csv</code>, <code>engine_policy_applied_v1.csv</code>, <code>engine_policy_v1_meta.json</code> present
+2. [x] <strong>Determinism:</strong> Re-run with same config yields identical <code>engine_policy_applied_v1.csv</code> (or identical hash)
+3. [x] <strong>Lag Correct:</strong> Multiplier used at rebalance t equals policy decision from t-1 (lag=1)
+4. [x] <strong>Policy Has Teeth:</strong> Compare baseline vs policy-enabled run — weights differ on at least one rebalance when stress triggers
+5. [x] <strong>Isolation:</strong> Only trend and VRP engines affected (trend gates 15/253 = 5.9%, VRP gates 3/253 = 1.2%); other engines unchanged</p>
+<p><strong>Architectural Constraints (Enforced in Code):</strong>
+- [x] Engine Policy is a validity filter, NOT an optimizer
+- [x] Binary gate only (multiplier ∈ {0, 1})
+- [x] Inputs are context features (gamma/vol-of-vol), NOT portfolio metrics
+- [x] Does NOT use: portfolio drawdown, correlation, sizing (allocator territory)
+- [x] <strong>Hierarchy Rule:</strong> If policy gates engine OFF, nothing downstream can resurrect it</p>
+<p><strong>Phase 2 Validation Commands:</strong>
+```bash</p>
+<h1>Step 1: Run compute mode proof (generates multipliers)</h1>
+<p>python run_strategy.py --config configs/proofs/phase2_policy_trend_gamma_compute.yaml \
+    --run_id policy_trend_gamma_compute_proof_2024</p>
+<h1>Step 2: Run precomputed mode proof (applies multipliers from step 1)</h1>
+<p>python run_strategy.py --config configs/proofs/phase2_policy_trend_gamma_apply_precomputed.yaml \
+    --run_id policy_trend_gamma_apply_precomputed_2024</p>
+<h1>Step 3: Validate</h1>
+<p>python scripts/diagnostics/validate_phase2_policy_v1.py policy_trend_gamma_apply_precomputed_2024</p>
+<h1>Expected output: "OVERALL: PASS - Engine Policy v1 validated!"</h1>
+<p>```</p>
+<p><strong>A/B Run Workflow (Evaluation):</strong>
+```bash</p>
+<h1>Baseline: policy disabled</h1>
+<p>python run_strategy.py --strategy_profile core_v9 --run_id baseline_no_policy \
+    --override "engine_policy_v1.enabled=false"</p>
+<h1>Variant: policy enabled for trend</h1>
+<p>python run_strategy.py --strategy_profile core_v9 --run_id variant_policy_trend \
+    --override "engine_policy_v1.enabled=true" --override "engine_policy_v1.mode=compute"</p>
+<h1>Compare runs</h1>
+<p>python scripts/diagnostics/compare_two_runs.py baseline_no_policy variant_policy_trend
+```</p>
+<p><strong>Important:</strong> A/B comparison is for checking policy mechanics (does it trigger? does it isolate correctly?), NOT for Sharpe approval.</p>
+<p><strong>Date Completed:</strong> 2026-01-12<br />
+<strong>Signed Off:</strong> AI Agent + User Validation</p>
+<hr />
+<h3>Allocator v1 Known Limitations</h3>
+<p><strong>Warmup Period:</strong>
+- State features require 60-day rolling windows
+- Early dates (first ~60 days) will have insufficient data
+- Two-pass audit sidesteps this by using precomputed scalars
+- Future Stage 9 will implement incremental state computation</p>
+<p><strong>Optional Features:</strong>
+- <code>trend_breadth_20d</code> requires <code>trend_unit_returns.csv</code> (Trend sleeve must be active)
+- <code>sleeve_concentration_60d</code> requires <code>sleeve_returns.csv</code> (multi-sleeve portfolio)
+- These features are excluded (not set to NaN) if inputs unavailable
+- Regime classifier still works with 8 core features</p>
+<p><strong>Mode Recommendations:</strong>
+- Use <code>mode: "off"</code> for initial research and artifact generation
+- Use <code>mode: "precomputed"</code> for two-pass audit and production
+- Avoid <code>mode: "compute"</code> until warmup period is resolved</p>
+<h3>Stage 6: Production Mode (LOCKED)</h3>
+<p><strong>Decision:</strong> <code>mode="off"</code> is the default for Allocator v1 (artifacts only, no scaling). <code>mode="precomputed"</code> is the production mode when explicitly configured with a valid <code>precomputed_run_id</code>.</p>
+<p><strong>Rationale:</strong>
+- ✅ No warmup period issues (baseline has full history)
+- ✅ No circular dependency (scalars from baseline portfolio)
+- ✅ Fully deterministic (same baseline → same results)
+- ✅ Complete audit trail (baseline vs scaled comparison)
+- ✅ Institutional standard (compute from history, apply to forward)</p>
+<p><strong>Mode Status:</strong>
+- <strong><code>precomputed</code></strong>: Production-ready ✅
+- <strong><code>compute</code></strong>: Research-only (has warmup issues, not production-safe)
+- <strong><code>off</code></strong>: Always safe (baseline generation)</p>
+<p><strong>See:</strong> <code>docs/ALLOCATOR_V1_PRODUCTION_MODE.md</code> for complete production mode specification.</p>
+<h3>Stage 6.5: Stability &amp; Sanity Review</h3>
+<p><strong>Purpose:</strong> Qualitative validation before production deployment (NOT tuning or optimization)</p>
+<p><strong>Validation Questions:</strong>
+1. <strong>Does the allocator reduce MaxDD meaningfully?</strong> (Target: 2-5% reduction)
+2. <strong>Does it avoid killing returns in NORMAL regimes?</strong> (Target: CAGR reduced &lt;1%)
+3. <strong>Are regime transitions sparse and intuitive?</strong> (Target: &lt;20 per year)
+4. <strong>Does it correctly flag known stress windows?</strong> (2020 Q1, 2022 must appear in top de-risk events)</p>
+<p><strong>Decision Criteria:</strong>
+- <strong>PASS</strong>: All questions "mostly yes" → Lock v1 and deploy
+- <strong>FAIL</strong>: Any critical issue → Review thresholds and retry</p>
+<p><strong>Workflow:</strong>
+1. Run two-pass audit on canonical window (2020-2025)
+2. Review <code>two_pass_comparison.md</code> for metrics
+3. Complete Stage 6.5 validation checklist
+4. Make go/no-go decision</p>
+<p><strong>See:</strong> <code>docs/ALLOCATOR_V1_STAGE_6_5_VALIDATION.md</code> for detailed validation checklist and sign-off template.</p>
+<p><strong>Key Principle:</strong> "Mostly yes" is good enough. Do not over-optimize before going live. Stage 7 (threshold tuning) is post-deployment.</p>
+<h3>Future Enhancements (Phase-E)</h3>
+<p><strong>Stage 7</strong>: Threshold tuning against historical stress events (post-deployment)<br />
+<strong>Stage 8</strong>: Convexity overlays (VIX calls) gated by regime (post-deployment)<br />
+<strong>Stage 9</strong>: True incremental state computation (resolve warmup period, enables <code>compute</code> mode)</p>
+<hr />
+<h2>9.2 Post-Production Sleeve Additions</h2>
+<p><strong>Formal Institutional Rule</strong>: Once a system is live, new sleeves are developed in parallel and never injected directly into production.</p>
+<h3>Required Steps for Post-Production Sleeve Addition</h3>
+<ol>
+<li><strong>Standalone research (Phase-0 / Phase-1)</strong></li>
+<li>New sleeve developed and validated in research track</li>
+<li>Follows standard sleeve lifecycle (Phase-0 → Phase-1)</li>
+<li>
+<p>No capital dependency</p>
+</li>
+<li>
+<p><strong>Paper integration with production copy</strong></p>
+</li>
+<li>Integrate new sleeve with production system copy</li>
+<li>Run parallel paper trading simulation</li>
+<li>
+<p>Compare performance vs production baseline</p>
+</li>
+<li>
+<p><strong>Portfolio-level diagnostics</strong></p>
+</li>
+<li>Analyze portfolio metrics (Sharpe, CAGR, MaxDD, Vol)</li>
+<li>Evaluate crisis-period performance</li>
+<li>Assess correlation and diversification impact</li>
+<li>
+<p>Validate sleeve-level loss attribution</p>
+</li>
+<li>
+<p><strong>Promotion decision</strong></p>
+</li>
+<li>Formal review of research results</li>
+<li>Decision to promote or reject</li>
+<li>
+<p>If promoted, determine allocation weight</p>
+</li>
+<li>
+<p><strong>Versioned production release (e.g., Core v10)</strong></p>
+</li>
+<li>New sleeve integrated into versioned production release</li>
+<li>Production system frozen at new version</li>
+<li>Monitoring and validation established</li>
+</ol>
+<h3>Governance Rules</h3>
+<ul>
+<li><strong>No direct injection</strong>: New sleeves never bypass research track</li>
+<li><strong>Parallel development</strong>: Research operates independently of production</li>
+<li><strong>Formal promotion</strong>: All additions require explicit promotion decision</li>
+<li><strong>Version control</strong>: Production releases are versioned and frozen</li>
+<li><strong>Capital protection</strong>: Production capital is never exposed to untested sleeves</li>
+</ul>
+<hr />
+<h2>10. When Do We Examine "Bad Assets"?</h2>
+<p>You asked specifically: <strong>"At what stage do we look at bad assets?"</strong></p>
+<p>We'll encode that explicitly:</p>
+<h3>Stage 1 – Development (Current Phase)</h3>
+<ul>
+<li>We <strong>observe</strong> per-asset Sharpe and contributions in diagnostics (as we already saw with SR3, 6J, CL in CSMOM).</li>
+<li>We <strong>do not</strong> prune or reweight just because they look bad.</li>
+<li>The purpose is understanding, not optimization.</li>
+</ul>
+<h3>Stage 2 – Architecture Complete</h3>
+<p>Once:</p>
+<ul>
+<li>Trend Meta-Sleeve + CSMOM + other key Meta-Sleeves are implemented and Phase-1/2 integrated.</li>
+<li>Macro overlay, vol targeting, and allocator are in place.</li>
+<li>At least one <strong>full multi-sleeve profile</strong> is running (e.g., <code>core_vX_with_trend_csmom_...</code>).</li>
+</ul>
+<p>Then we run a <strong>system-wide optimization / pruning cycle</strong>, where we:</p>
+<ol>
+<li>
+<p>Freeze a <strong>reference configuration</strong> and run a long backtest with artifacts stored under a clear <code>run_id</code>.</p>
+</li>
+<li>
+<p>Use <code>run_perf_diagnostics.py</code> to examine per-asset stats across:</p>
+</li>
+<li>
+<p>Each Meta-Sleeve individually.</p>
+</li>
+<li>
+<p>The combined portfolio.</p>
+</li>
+<li>
+<p><strong>Weight Optimization (Phase-B Only)</strong>:</p>
+</li>
+<li>
+<p><strong>Trend Meta-Sleeve v2 internal weights</strong> (45/28/20/15) can now be optimized.</p>
+</li>
+<li><strong>Critical</strong>: Weights must be optimized <strong>jointly across all sleeves</strong> (Trend, CSMOM, etc.), not in isolation.</li>
+<li><strong>Requirement</strong>: Use proper out-of-sample controls (train/validation/test splits, walk-forward analysis, etc.).</li>
+<li>
+<p><strong>Documentation</strong>: Record optimization methodology, results, and rationale in <code>docs/SOTs/STRATEGY.md</code> or <code>OPTIMIZATION_NOTES.md</code>.</p>
+</li>
+<li>
+<p>For each asset:</p>
+</li>
+<li>
+<p>If <strong>consistently negative Sharpe</strong> across multiple sleeves and subperiods, and <strong>no diversification benefit</strong>:</p>
+<ul>
+<li>Candidate to be removed from that sleeve (asset multipliers, sleeve-specific universes).</li>
+<li>
+<p>If weak in one sleeve but strong in another:</p>
+</li>
+<li>
+<p>Keep it; let sleeves that understand it carry the load.</p>
+</li>
+</ul>
+</li>
+<li>
+<p>Implement <strong>asset multipliers</strong> or per-sleeve universes only at this stage, <em>not before</em>.</p>
+</li>
+</ol>
+<p>Record these decisions and their rationale in <code>docs/SOTs/STRATEGY.md</code> (or a dedicated <code>OPTIMIZATION_NOTES.md</code>).</p>
+<hr />
+<h2>11. Phase-3 / Phase-B Run Discipline</h2>
+<p><strong>Purpose:</strong> Prevent "oops I compared to the wrong thing" errors by establishing clear rules for run validity.</p>
+<p>For any run whose purpose is:</p>
+<ul>
+<li>Attribution</li>
+<li>Ablation</li>
+<li>Engine refinement</li>
+<li>Portfolio construction changes</li>
+</ul>
+<p>The following checklist must be satisfied:</p>
+<ul>
+<li>The comparison baseline is listed in <code>reports/_PINNED/README.md</code></li>
+<li>The new run has canonical diagnostics generated</li>
+<li>The run intent is documented (engine change, control ablation, etc.)</li>
+<li>No other system components are modified unless explicitly stated</li>
+</ul>
+<p>Runs that do not meet these criteria must not be used for conclusions.</p>
+<p>This locks down the "many runs" problem and ensures comparisons are valid and auditable.</p>
+<hr />
+<h2>12. Quick Reference Checklist</h2>
+<p>When you do anything, ask:</p>
+<blockquote>
+<p><strong>What kind of change is this?</strong></p>
+</blockquote>
+<p>Then:</p>
+<h3>A. New Meta-Sleeve</h3>
+<ul>
+<li>[ ] Design spec in <code>docs/SOTs/STRATEGY.md</code></li>
+<li>[ ] Phase-0 script + run</li>
+<li>[ ] Phase-1 implementation + diagnostics</li>
+<li>[ ] Phase-2 integration + full-run diagnostics</li>
+<li>[ ] Status updated in <code>docs/SOTs/STRATEGY.md</code> and <code>docs/SOTs/DIAGNOSTICS.md</code></li>
+</ul>
+<h3>B. New Atomic Sleeve</h3>
+<ul>
+<li>[ ] Design snippet in Meta-Sleeve section</li>
+<li>[ ] Optional Phase-0 mini-check</li>
+<li>[ ] Phase-1 implementation</li>
+<li>[ ] Meta-Sleeve diagnostics with/without atomic</li>
+<li>[ ] Status updated</li>
+</ul>
+<h3>C. Universe Change (add/remove/swap asset)</h3>
+<ul>
+<li>[ ] Update universe config</li>
+<li>[ ] Rebuild features if needed</li>
+<li>[ ] Re-run sleeve Phase-1 diagnostics</li>
+<li>[ ] Re-run one or more full strategy profiles + perf diagnostics</li>
+<li>[ ] Document change; <strong>no pruning yet</strong></li>
+</ul>
+<h3>D. Parameter Change</h3>
+<ul>
+<li>[ ] Update config</li>
+<li>[ ] Re-run relevant Phase-1 diagnostics</li>
+<li>[ ] (Optional) run full strategy profile &amp; compare</li>
+<li>[ ] Note change in <code>docs/SOTs/STRATEGY.md</code> if significant</li>
+</ul>
+<h3>E. Overlay / Allocator Change</h3>
+<ul>
+<li>[ ] Update overlay/allocator code/config</li>
+<li>[ ] Run full baseline + variant profiles</li>
+<li>[ ] Compare via <code>run_perf_diagnostics.py</code></li>
+<li>[ ] Promote new overlay if better / more robust</li>
+</ul>
+<h3>F. Asset Pruning / Multipliers</h3>
+<ul>
+<li>[ ] Only after architecture is complete</li>
+<li>[ ] Use per-asset diagnostics across sleeves</li>
+<li>[ ] Implement multipliers / exclusions per sleeve</li>
+<li>[ ] Document decisions and reasoning</li>
+</ul>
+<hr />
+<h2>12. Re-Test Conditions for Parked Sleeves</h2>
+<p>A <strong>parked sleeve</strong> (Phase-1 FAIL) is an idea that has been tested and rejected, but is <strong>not deleted</strong>. Parked sleeves are automatically re-tested when the data regime or architecture materially expands.</p>
+<h3>8.1 What is a Parked Sleeve?</h3>
+<p>A parked sleeve is an atomic sleeve or meta-sleeve that:
+- Passed Phase-0 (or partially passed)
+- Failed Phase-1 (did not improve baseline performance)
+- Has academic justification or economic rationale
+- Is documented in <code>docs/SOTs/STRATEGY.md</code> (high-level) and research docs (detailed)</p>
+<p><strong>Examples</strong>:
+- <strong>Persistence (Trend Meta-Sleeve)</strong>: Phase-0 partial pass, Phase-1 fail
+- <strong>Carry Meta-Sleeve</strong>: Phase-0 fail
+- <strong>Rates Curve RV Meta-Sleeve</strong>: Phase-0 fail</p>
+<h3>8.2 Re-Test Triggers</h3>
+<p>A parked sleeve <strong>must be re-tested</strong> when any of the following occur:</p>
+<h4>Trigger 1: Universe Expansion (≥25% growth)</h4>
+<ul>
+<li><strong>When</strong>: Traded universe grows by ≥25% (e.g., from 13 to 20+ assets)</li>
+<li><strong>Rationale</strong>: Many ideas (especially persistence, cross-asset effects) require broad, diverse universes</li>
+<li><strong>Action</strong>: Re-run Phase-0 and Phase-1 for the parked sleeve</li>
+</ul>
+<h4>Trigger 2: Historical Expansion (≥5 years added)</h4>
+<ul>
+<li><strong>When</strong>: Total backtest length increases by ≥5 years (e.g., extending to 2010 or earlier)</li>
+<li><strong>Rationale</strong>: Access to different market regimes may support previously weak ideas</li>
+<li><strong>Action</strong>: Re-run Phase-0 and Phase-1 for the parked sleeve</li>
+</ul>
+<h4>Trigger 3: Architecture Change (Related Component Added)</h4>
+<ul>
+<li><strong>When</strong>: A closely related component is added or changed in the same Meta-Sleeve</li>
+<li><strong>Examples</strong>:</li>
+<li>Adding vol-adjusted trend → re-test Persistence</li>
+<li>Adding cross-asset trend confirmation → re-test Persistence</li>
+<li>Adding short-term reversal filters → re-test Persistence</li>
+<li><strong>Rationale</strong>: Parked ideas may add value only when combined with new enhancements</li>
+<li><strong>Action</strong>: Re-run Phase-0 and Phase-1 for the parked sleeve</li>
+</ul>
+<h4>Trigger 4: Feature Platform Upgrades</h4>
+<ul>
+<li><strong>When</strong>: FeatureService adds materially new features relevant to the parked idea</li>
+<li><strong>Examples</strong>:</li>
+<li>Cross-asset trend validation features</li>
+<li>Multi-horizon acceleration features</li>
+<li>Volatility-adjusted acceleration</li>
+<li><strong>Rationale</strong>: New features may enable better implementation of parked ideas</li>
+<li><strong>Action</strong>: Re-run Phase-0 and Phase-1 for the parked sleeve</li>
+</ul>
+<h4>Trigger 5: Market Regime Shifts (Optional)</h4>
+<ul>
+<li><strong>When</strong>: More than 3 years of new live data accumulate</li>
+<li><strong>Rationale</strong>: New regime may support previously weak ideas</li>
+<li><strong>Action</strong>: Re-run Phase-0 and Phase-1 for the parked sleeve (optional, not mandatory)</li>
+</ul>
+<h3>8.3 Re-Test Procedure</h3>
+<p>When a trigger occurs:</p>
+<ol>
+<li><strong>Document the trigger</strong>: Note in research docs why the sleeve is being re-tested</li>
+<li><strong>Repeat Phase-0</strong>: Run sign-only sanity check with current data</li>
+<li><strong>Repeat Phase-1</strong>: If Phase-0 passes, implement engineered version and run diagnostics</li>
+<li><strong>Evaluate</strong>: Compare Phase-1 results against baseline</li>
+<li><strong>Decision</strong>:</li>
+<li>If Phase-1 <strong>passes</strong>: Sleeve becomes eligible for Phase-2 integration</li>
+<li>If Phase-1 <strong>fails</strong>: Sleeve remains parked, update documentation with new results</li>
+</ol>
+<h3>8.4 Overfitting Prevention</h3>
+<p>Re-testing parked sleeves does <strong>not</strong> constitute overfitting because:</p>
+<ul>
+<li><strong>Definition is fixed</strong>: The sleeve definition (per academic paper or economic rationale) does not change</li>
+<li><strong>Thresholds are fixed</strong>: Phase-0 (Sharpe ≥ 0.2) and Phase-1 (must improve baseline) remain constant</li>
+<li><strong>No parameter tuning</strong>: We do not tweak parameters until something "passes"</li>
+<li><strong>Architecture freeze</strong>: We freeze architecture between phases (see Weight Freeze Policy)</li>
+</ul>
+<p>Re-testing when the data regime expands is <strong>not overfitting</strong> — it's seeing whether a previously parked idea becomes usable when conditions improve.</p>
+<h3>8.5 Documentation Requirements</h3>
+<p>When a parked sleeve is re-tested:</p>
+<ul>
+<li><strong>docs/SOTs/STRATEGY.md</strong>: Update status (if re-test passes, move from PARKED to active)</li>
+<li><strong>Research docs</strong> (e.g., <code>TREND_RESEARCH.md</code>): Add new Phase-0/Phase-1 results section</li>
+<li><strong>docs/SOTs/PROCEDURES.md</strong>: Note the trigger that caused re-test (for audit trail)</li>
+</ul>
+<hr />
+<h2>13. Phase 3A: Policy Features Governance &amp; Acceptance</h2>
+<p><strong>Purpose:</strong> Enforce "Policy Features Present + Policy Has Teeth" gate to prevent silent regression.</p>
+<h3>Phase 3A Acceptance Criteria</h3>
+<p><strong>A. Phase 2 "Teeth" Criteria (Must be true again on canonical baseline):</strong>
+1. ✅ <strong>Weights differ vs baseline when stress triggers:</strong> Compare baseline vs policy-enabled run — weights differ on at least one rebalance when stress triggers
+2. ✅ <strong>Gating counts non-zero in at least one stress window:</strong> Policy gating percentages (<code>policy_gated_trend_pct</code>, <code>policy_gated_vrp_pct</code>) must be &gt; 0.0 (not all zero)</p>
+<p><strong>B. Phase 3A Operational Procedure (What you do after each run):</strong></p>
+<ol>
+<li>
+<p><strong>Generate Committee Pack:</strong>
+   <code>bash
+   python scripts/diagnostics/generate_canonical_diagnostics.py --run_id &lt;run_id&gt;</code>
+   This generates <code>canonical_diagnostics.json</code> and <code>canonical_diagnostics.md</code> (Tool Class 1 outputs).</p>
+</li>
+<li>
+<p><strong>Verify Required Artifacts Present:</strong></p>
+</li>
+<li>Required artifacts: <code>portfolio_returns.csv</code>, <code>equity_curve.csv</code>, <code>weights*.csv</code>, <code>meta.json</code></li>
+<li>
+<p>Use batch script for bulk validation: <code>python scripts/diagnostics/batch_generate_canonical_diagnostics.py --run_ids &lt;run_id&gt;</code></p>
+</li>
+<li>
+<p><strong>Check Policy-Inert Classification:</strong></p>
+</li>
+<li>Review <code>canonical_diagnostics.json</code> → <code>constraint_binding</code> section:<ul>
+<li><code>policy_enabled</code>: bool (from config)</li>
+<li><code>policy_inputs_present</code>: dict (per-feature bools: <code>gamma_stress_proxy</code>, <code>vx_backwardation</code>, <code>vrp_stress_proxy</code>)</li>
+<li><code>policy_inputs_missing</code>: bool</li>
+<li><code>policy_effective</code>: bool (enabled AND inputs present)</li>
+<li><code>policy_inert</code>: bool</li>
+<li><code>policy_inert_reason</code>: str (if inert)</li>
+</ul>
+</li>
+<li>
+<p><strong>Practical rule:</strong> If <code>engine_policy_v1.enabled=true</code> and <code>policy_inputs_missing=true</code>, the run is <strong>Policy-Inert</strong> and cannot be used for attribution/ablations.</p>
+</li>
+<li>
+<p><strong>Add to _PINNED if Baseline / Decision Run:</strong></p>
+</li>
+<li>If the run is a baseline or decision run, document it in <code>reports/_PINNED/README.md</code></li>
+<li>Include run_id, purpose, and status</li>
+<li>
+<p><strong>Only pin if policy is effective (not Policy-Inert)</strong></p>
+</li>
+<li>
+<p><strong>Review Dashboard:</strong></p>
+</li>
+<li>Only after committee pack is generated and artifacts verified</li>
+<li>Use dashboard for interactive exploration and validation</li>
+</ol>
+<h3>Phase 3A Re-Freeze Baseline Sequence</h3>
+<p><strong>See <code>docs/PHASE_3A_BASELINE_REFREEZE.md</code> for the complete step-by-step command sequence.</strong></p>
+<p><strong>Quick Reference:</strong></p>
+<ol>
+<li><strong>Compute Mode Baseline:</strong>
+   ```bash
+   python scripts/run_canonical_frozen_stack.py \
+       --strategy_profile core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro \
+       --compute_run_id canonical_frozen_stack_compute_phase3a_<timestamp></li>
+</ol>
+<p>python scripts/diagnostics/generate_canonical_diagnostics.py \
+       --run_id canonical_frozen_stack_compute_phase3a_<timestamp></p>
+<p>python scripts/diagnostics/validate_phase3a_policy_baseline.py \
+       canonical_frozen_stack_compute_phase3a_<timestamp>
+   ```</p>
+<ol>
+<li><strong>Precomputed Mode Baseline:</strong>
+   ```bash
+   python scripts/run_canonical_frozen_stack.py \
+       --strategy_profile core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro \
+       --skip_compute \
+       --existing_compute_run_id canonical_frozen_stack_compute_phase3a_<timestamp> \
+       --precomputed_run_id canonical_frozen_stack_precomputed_phase3a_<timestamp></li>
+</ol>
+<p>python scripts/diagnostics/generate_canonical_diagnostics.py \
+       --run_id canonical_frozen_stack_precomputed_phase3a_<timestamp></p>
+<p>python scripts/diagnostics/validate_phase3a_policy_baseline.py \
+       canonical_frozen_stack_precomputed_phase3a_<timestamp>
+   ```</p>
+<ol>
+<li><strong>Pin Only If Both Pass:</strong></li>
+<li>✅ <code>policy_inert=false</code> (both runs)</li>
+<li>✅ <code>policy_effective=true</code> (both runs)</li>
+<li>✅ <code>stress_value</code> not-all-NaN for Trend and VRP engines</li>
+<li>✅ At least one multiplier=0 OR explicit zero gating justification</li>
+<li>Add to <code>reports/_PINNED/README.md</code> per template in <code>docs/PHASE_3A_BASELINE_REFREEZE.md</code></li>
+</ol>
+<p><strong>Once pinned, Phase 3A ablations are unblocked.</strong></p>
+<p>This workflow maintains the "measure → attribute → decide" loop and ensures all decision runs have complete diagnostics with explicit Policy-Inert classification.</p>
+<hr />
+<p>End of procedures.</p>
+<footer>Last built: 2026-02-13 18:54 UTC</footer>
+</body>
+</html>

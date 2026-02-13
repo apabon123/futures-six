@@ -12,17 +12,17 @@ This document defines **when** and **how** to run the sleeve lifecycle (Phase-0 
 
 It complements:
 
-- `SOTs/STRATEGY.md` – architecture & execution flow (what the system does)
-- `SOTs/DIAGNOSTICS.md` – diagnostics capabilities & tools (how we analyze runs)
-- `SOTs/ROADMAP.md` – development sequencing and sleeve status
+- [docs/SOTs/STRATEGY.md](docs/SOTs/STRATEGY.md) – sleeve definitions and signal specifications
+- [docs/SOTs/DIAGNOSTICS.md](docs/SOTs/DIAGNOSTICS.md) – required diagnostics and pass/fail criteria
+- [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md) – sleeve status and sequencing
 
-This file is about **process** and **checklists**.
+This file is the single source of truth for promotion workflow, engine-quality vs integration runs, and required artifacts.
 
 ## Related Documents
 
-- **STRATEGY.md**: Current implementation details and architecture
-- **DIAGNOSTICS.md**: Validation results and metrics (single source of truth for Phase-0/1/2 results)
-- **ROADMAP.md**: Sleeve status and development priorities (single source of truth for status)
+- [docs/SOTs/STRATEGY.md](docs/SOTs/STRATEGY.md): Sleeve definitions (do not duplicate sleeve logic here)
+- [docs/SOTs/DIAGNOSTICS.md](docs/SOTs/DIAGNOSTICS.md): Required diagnostics and artifacts
+- [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md): Sleeve status and priorities
 
 ---
 
@@ -35,7 +35,7 @@ This file is about **process** and **checklists**.
 
 2. **Sleeve lifecycle is about the *idea*, not every tiny config tweak**
 
-   From `SOTs/STRATEGY.md` (sleeve lifecycle):
+   From `docs/SOTs/STRATEGY.md` (sleeve lifecycle):
 
    - **Phase-0 – Simple Sanity Check**
      - Sign-only, no overlays, equal-weight / DV01-neutral.
@@ -214,6 +214,7 @@ Final rows used for metrics: 1754
 - [ ] Confirm row counts match between variant and baseline
 - [ ] Verify no silent NA propagation (rows_dropped should be 0 or minimal)
 - [ ] Check that all enabled sleeves have valid features from effective start date
+- [ ] **All metasleeves and atomic sleeves must be explicitly enabled or disabled in configuration files.** Reliance on default enable/disable behavior is prohibited for governed runs.
 
 **For Diagnostics Comparisons:**
 
@@ -411,7 +412,7 @@ Adding/changing assets or tuning parameters uses **regression diagnostics**, not
 
 ### 4.1 Design Spec
 
-Before touching code, create a short design section in `SOTs/STRATEGY.md`:
+Before touching code, create a short design section in `docs/SOTs/STRATEGY.md`:
 
 - Economic thesis (why this sleeve should have edge).
 - Universe it will trade.
@@ -550,7 +551,7 @@ python scripts/diagnostics/run_vrp_phase0.py --start 2020-01-01 --end 2025-10-31
 - Phase-0 signal test: `data/diagnostics/vrp_phase0/phase0_signal_test/`
 - Phase index: `reports/phase_index/vrp/phase0.txt`
 
-**Results**: See `SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-0 Signal Test" for full metrics and analysis.
+**Results**: See `docs/SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-0 Signal Test" for full metrics and analysis.
 
 **Note**: Any prior runs with spread ~21 vol points were invalid due to units mismatch.
 
@@ -583,7 +584,7 @@ python scripts/diagnostics/run_vrp_phase0.py --start 2020-01-01 --end 2025-10-31
 - Signal distribution shows meaningful variation (not stuck at extremes)
 - Improvement over Phase-0 (z-scoring and vol targeting should help)
 
-**Results**: See `SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-1 Diagnostics" for full metrics and analysis.
+**Results**: See `docs/SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-1 Diagnostics" for full metrics and analysis.
 
 **Phase-2 (Portfolio Integration)**:
 
@@ -635,7 +636,7 @@ python scripts/diagnostics/run_vrp_phase0.py --start 2020-01-01 --end 2025-10-31
    - MaxDD, hit rate, per-asset stats.
    - Subperiod behavior (pre/post 2022 if relevant).
 
-6. Log result in `SOTs/DIAGNOSTICS.md` under **Phase-0 Sanity Checks** and in `SOTs/STRATEGY.md` under that Meta-Sleeve's status.   
+6. Log result in `docs/SOTs/DIAGNOSTICS.md` under **Phase-0 Sanity Checks** and in `docs/SOTs/STRATEGY.md` under that Meta-Sleeve's status.   
 
 **If Phase-0 fails → Meta-Sleeve stays disabled.**
 
@@ -649,7 +650,7 @@ Once Phase-0 passes:
    - Vol normalization inside sleeve if appropriate.
    - Cross-sectional ranking logic where applicable.
 
-2. Integrate into `FeatureService` and strategy agents (see `SOTs/STRATEGY.md` sections for existing sleeves as templates).
+2. Integrate into `FeatureService` and strategy agents (see `docs/SOTs/STRATEGY.md` sections for existing sleeves as templates).
 
 3. Add a **Phase-1 diagnostics script**, e.g.:
 
@@ -663,7 +664,7 @@ Once Phase-0 passes:
 
 5. Update phase index: `python scripts/update_phase_index.py <meta_sleeve> <sleeve_name> phase1 <run_id>`
 
-6. Update `SOTs/STRATEGY.md` status:
+6. Update `docs/SOTs/STRATEGY.md` status:
 
    - "Meta-Sleeve X: Phase-1 PASSED; ready for overlay integration."
 
@@ -698,7 +699,7 @@ Once Phase-0 passes:
 
 **Sleeve**: VRP-Core (canonical VRP sleeve)
 
-**Lifecycle**: Passed Phase-0 (see `SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-0 Signal Test"), Phase-1 (see `SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-1 Diagnostics"), and Phase-2 (integration vs Trend+CSMOM baseline; see `SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-2 Diagnostics").
+**Lifecycle**: Passed Phase-0 (see `docs/SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-0 Signal Test"), Phase-1 (see `docs/SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-1 Diagnostics"), and Phase-2 (integration vs Trend+CSMOM baseline; see `docs/SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-2 Diagnostics").
 
 **Baseline Change**:
 - **Previous baseline**: `core_v4_trend_csmom_no_macro` (Trend 75%, CSMOM 25%)
@@ -709,13 +710,13 @@ Once Phase-0 passes:
 - CAGR improved slightly (+0.11%)
 - Max drawdown did not worsen (slight improvement)
 - Crisis-period performance (2020 Q1, 2020 Q2, 2022) was neutral or better
-- **Full Phase-2 analysis**: See `SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-2 Diagnostics"
+- **Full Phase-2 analysis**: See `docs/SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-2 Diagnostics"
 
 **Outcome**: VRP-Core is promoted into the baseline; Core v4 is retained for historical comparison but tagged as superseded.
 
 #### VRP-Convergence Baseline Promotion (Core v6)
 
-**Lifecycle**: Passed Phase-0 (see `SOTs/DIAGNOSTICS.md` § "VRP-Convergence Phase-0 Diagnostics"), Phase-1 (see `SOTs/DIAGNOSTICS.md` § "VRP-Convergence Phase-1 Diagnostics"), and Phase-2 (portfolio integration vs Core v5; see `SOTs/DIAGNOSTICS.md` § "VRP-Convergence Phase-2 Diagnostics").
+**Lifecycle**: Passed Phase-0 (see `docs/SOTs/DIAGNOSTICS.md` § "VRP-Convergence Phase-0 Diagnostics"), Phase-1 (see `docs/SOTs/DIAGNOSTICS.md` § "VRP-Convergence Phase-1 Diagnostics"), and Phase-2 (portfolio integration vs Core v5; see `docs/SOTs/DIAGNOSTICS.md` § "VRP-Convergence Phase-2 Diagnostics").
 
 #### VRP-Alt Baseline Promotion (Core v7) — Non-Standard Lifecycle
 
@@ -764,7 +765,7 @@ This lifecycle path is now a documented procedure for future borderline VRP slee
 - Sharpe: 0.5774 → 0.5796 (+0.0022)
 - CAGR: 6.74% → 6.77% (+0.03%)
 - MaxDD: -17.22% → -17.18% (+0.04%, less negative)
-- **Full Phase-2 analysis**: See `SOTs/DIAGNOSTICS.md` § "VRP-Convergence Phase-2 Diagnostics"
+- **Full Phase-2 analysis**: See `docs/SOTs/DIAGNOSTICS.md` § "VRP-Convergence Phase-2 Diagnostics"
 
 **Decision**: Core v6 was the canonical baseline for Phase-2 comparisons. Core v5 is retained as a historical reference baseline.
 
@@ -778,7 +779,7 @@ This lifecycle path is now a documented procedure for future borderline VRP slee
 
    - `run_id` is logged and frozen.
    - Diagnostics run vs baseline.
-   - Results summarized in `SOTs/DIAGNOSTICS.md` under **Production Monitoring**.
+   - Results summarized in `docs/SOTs/DIAGNOSTICS.md` under **Production Monitoring**.
 
 3. Only in **Phase-3 / Optimization** do we start:
 
@@ -794,7 +795,7 @@ This lifecycle path is now a documented procedure for future borderline VRP slee
 
 1. **Spec**:  
 
-   - Add a short section in `SOTs/STRATEGY.md` under that Meta-Sleeve:
+   - Add a short section in `docs/SOTs/STRATEGY.md` under that Meta-Sleeve:
 
      - What horizon? (50-100d medium-term)
      - What features? (50-day and 100-day breakout scores)
@@ -834,7 +835,7 @@ This lifecycle path is now a documented procedure for future borderline VRP slee
 **Example: Adding VRP-Convergence inside the VRP Meta-Sleeve (Phase-0 → Phase-1 → Phase-2).**
 
 1. **Spec**:  
-   - Add a section in `SOTs/STRATEGY.md` under VRP Meta-Sleeve:
+   - Add a section in `docs/SOTs/STRATEGY.md` under VRP Meta-Sleeve:
      - Economic idea: VIX (spot) vs VX1 (front-month futures) convergence
      - What features? (spread_conv = VIX - VX1, optional curve_slope_vx = VX2 - VX1)
      - What role in the Meta-Sleeve? (Second atomic VRP sleeve alongside VRP-Core)
@@ -916,7 +917,7 @@ A Phase-0 version of the VRP-TermStructure sleeve tested whether the slope of th
 - No overlays or filters
 - Pure sign-only trading rule
 
-Phase-0 results showed economic failure (not technical failure). See `SOTs/DIAGNOSTICS.md` § "VRP-TermStructure Phase-0 Diagnostics" for full metrics and analysis.
+Phase-0 results showed economic failure (not technical failure). See `docs/SOTs/DIAGNOSTICS.md` § "VRP-TermStructure Phase-0 Diagnostics" for full metrics and analysis.
 
 Confirmed correct data alignment, signal generation, and PnL mechanics.
 
@@ -980,7 +981,7 @@ Unlike VRP-Core (which showed a small but clearly positive Sharpe in Phase-0) an
 
 6. **Status**:
 
-   - Record in `SOTs/STRATEGY.md` which atomic sleeves within the Meta-Sleeve are currently **enabled** vs **experimental**.
+   - Record in `docs/SOTs/STRATEGY.md` which atomic sleeves within the Meta-Sleeve are currently **enabled** vs **experimental**.
    - Update `TREND_RESEARCH.md` with Phase-0, Phase-1, and Phase-1B results
    - If Phase-1/1B passes, promote to Phase-2 validation
    - If Phase-2 passes, promote to "Active Atomic Sleeve" in production configuration
@@ -1098,7 +1099,7 @@ Unlike VRP-Core (which showed a small but clearly positive Sharpe in Phase-0) an
 
 ### 6.2 Checklist
 
-1. Update universe definition (`configs/data.yaml`, etc.) and ensure `MarketData` maps correctly (see Universe section in `SOTs/STRATEGY.md`).
+1. Update universe definition (`configs/data.yaml`, etc.) and ensure `MarketData` maps correctly (see Universe section in `docs/SOTs/STRATEGY.md`).
 
 2. Rebuild any **precomputed features** if necessary (FeatureService).
 
@@ -1122,7 +1123,7 @@ Unlike VRP-Core (which showed a small but clearly positive Sharpe in Phase-0) an
 
    To quantify the impact of the change.
 
-6. If things look acceptable, document in `SOTs/STRATEGY.md` "Universe change: <date>, <summary>".
+6. If things look acceptable, document in `docs/SOTs/STRATEGY.md` "Universe change: <date>, <summary>".
 
 > **Important:**  
 
@@ -1161,13 +1162,13 @@ This prevents overfitting and keeps us focused on architecture completion rather
 3. If the change is minor and performance is within an expected band:
 
    - No need to reclassify sleeve phases.
-   - Note in `SOTs/STRATEGY.md` that parameters for that sleeve were updated on <date>.
+   - Note in `docs/SOTs/STRATEGY.md` that parameters for that sleeve were updated on <date>.
 
 4. If change is **major** (effectively new behavior):
 
    - Treat it as a **new atomic sleeve variant**:
 
-     - Document under same Meta-Sleeve in `SOTs/STRATEGY.md`.
+     - Document under same Meta-Sleeve in `docs/SOTs/STRATEGY.md`.
      - Optionally give it its own Phase-0 mini-check.
 
 ---
@@ -1182,7 +1183,7 @@ This prevents overfitting and keeps us focused on architecture completion rather
 
 ### 8.2 Checklist
 
-1. Update overlay / allocator code and configs (see relevant sections in `SOTs/STRATEGY.md`).
+1. Update overlay / allocator code and configs (see relevant sections in `docs/SOTs/STRATEGY.md`).
 
 2. Choose one or more **reference strategy profiles**:
 
@@ -1200,7 +1201,7 @@ This prevents overfitting and keeps us focused on architecture completion rather
    - Per-asset stats.
    - Equity ratio over time.
 
-5. If behavior is consistent and improved, update `SOTs/STRATEGY.md` to point to the new overlay/allocator as the current standard.
+5. If behavior is consistent and improved, update `docs/SOTs/STRATEGY.md` to point to the new overlay/allocator as the current standard.
 
 ---
 
@@ -1705,7 +1706,7 @@ Then we run a **system-wide optimization / pruning cycle**, where we:
    - **Trend Meta-Sleeve v2 internal weights** (45/28/20/15) can now be optimized.
    - **Critical**: Weights must be optimized **jointly across all sleeves** (Trend, CSMOM, etc.), not in isolation.
    - **Requirement**: Use proper out-of-sample controls (train/validation/test splits, walk-forward analysis, etc.).
-   - **Documentation**: Record optimization methodology, results, and rationale in `SOTs/STRATEGY.md` or `OPTIMIZATION_NOTES.md`.
+   - **Documentation**: Record optimization methodology, results, and rationale in `docs/SOTs/STRATEGY.md` or `OPTIMIZATION_NOTES.md`.
 
 4. For each asset:
 
@@ -1718,7 +1719,7 @@ Then we run a **system-wide optimization / pruning cycle**, where we:
 
 5. Implement **asset multipliers** or per-sleeve universes only at this stage, *not before*.
 
-Record these decisions and their rationale in `SOTs/STRATEGY.md` (or a dedicated `OPTIMIZATION_NOTES.md`).
+Record these decisions and their rationale in `docs/SOTs/STRATEGY.md` (or a dedicated `OPTIMIZATION_NOTES.md`).
 
 ---
 
@@ -1756,11 +1757,11 @@ Then:
 
 ### A. New Meta-Sleeve
 
-- [ ] Design spec in `SOTs/STRATEGY.md`
+- [ ] Design spec in `docs/SOTs/STRATEGY.md`
 - [ ] Phase-0 script + run
 - [ ] Phase-1 implementation + diagnostics
 - [ ] Phase-2 integration + full-run diagnostics
-- [ ] Status updated in `SOTs/STRATEGY.md` and `SOTs/DIAGNOSTICS.md`
+- [ ] Status updated in `docs/SOTs/STRATEGY.md` and `docs/SOTs/DIAGNOSTICS.md`
 
 ### B. New Atomic Sleeve
 
@@ -1783,7 +1784,7 @@ Then:
 - [ ] Update config
 - [ ] Re-run relevant Phase-1 diagnostics
 - [ ] (Optional) run full strategy profile & compare
-- [ ] Note change in `SOTs/STRATEGY.md` if significant
+- [ ] Note change in `docs/SOTs/STRATEGY.md` if significant
 
 ### E. Overlay / Allocator Change
 
@@ -1811,7 +1812,7 @@ A parked sleeve is an atomic sleeve or meta-sleeve that:
 - Passed Phase-0 (or partially passed)
 - Failed Phase-1 (did not improve baseline performance)
 - Has academic justification or economic rationale
-- Is documented in `SOTs/STRATEGY.md` (high-level) and research docs (detailed)
+- Is documented in `docs/SOTs/STRATEGY.md` (high-level) and research docs (detailed)
 
 **Examples**:
 - **Persistence (Trend Meta-Sleeve)**: Phase-0 partial pass, Phase-1 fail
@@ -1882,9 +1883,9 @@ Re-testing when the data regime expands is **not overfitting** — it's seeing w
 
 When a parked sleeve is re-tested:
 
-- **SOTs/STRATEGY.md**: Update status (if re-test passes, move from PARKED to active)
+- **docs/SOTs/STRATEGY.md**: Update status (if re-test passes, move from PARKED to active)
 - **Research docs** (e.g., `TREND_RESEARCH.md`): Add new Phase-0/Phase-1 results section
-- **SOTs/PROCEDURES.md**: Note the trigger that caused re-test (for audit trail)
+- **docs/SOTs/PROCEDURES.md**: Note the trigger that caused re-test (for audit trail)
 
 ---
 

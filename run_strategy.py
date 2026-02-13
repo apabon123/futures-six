@@ -100,6 +100,13 @@ def main():
         default=None,
         help="Path to strategies.yaml config file. If not specified, uses configs/strategies.yaml"
     )
+    parser.add_argument(
+        "--strict_universe",
+        action="store_true",
+        default=False,
+        help="If set, raise an error if any sleeve emits weights for symbols not in the master universe. "
+             "Default: False (logs a warning instead). Recommended for production gating."
+    )
     
     args = parser.parse_args()
     
@@ -107,6 +114,7 @@ def main():
     end_date = args.end
     run_id = args.run_id
     strategy_profile = args.strategy_profile
+    strict_universe = args.strict_universe
     config_path = Path(args.config_path) if args.config_path else CONFIG_PATH
     
     logger.info("=" * 80)
@@ -120,6 +128,8 @@ def main():
         logger.info(f"Run ID: {run_id}")
     if args.config_path:
         logger.info(f"Config Path: {config_path}")
+    if strict_universe:
+        logger.info("Strict Universe: ENABLED (will fail on universe mismatches)")
     
     try:
         config = load_config(config_path)
@@ -645,7 +655,8 @@ def main():
             strategies=strategy_instances,
             weights=strategy_weights,
             features=features_dict,
-            feature_service=feature_service
+            feature_service=feature_service,
+            strict_universe=strict_universe
         )
         logger.info(f"  Config: {strategy.describe()}")
         

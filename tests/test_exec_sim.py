@@ -182,11 +182,11 @@ class TestExecSimRebalanceSchedule:
         
         rebalance_dates = exec_sim._build_rebalance_dates(market, risk_vol, start, end)
         
-        # Should have some Friday dates
+        # Should have some rebalance dates
         assert len(rebalance_dates) > 0
         
-        # All dates should be Fridays (dayofweek == 4)
-        assert all(d.dayofweek == 4 for d in rebalance_dates)
+        # W-FRI: each date is Friday or Thursday (when Friday is US holiday, e.g. Good Friday)
+        assert all(d.dayofweek in (3, 4) for d in rebalance_dates)
         
         # All dates should be in range
         assert all(start <= d <= end for d in rebalance_dates)

@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SYSTEM_CONSTRUCTION — Futures-Six Project Hub</title>
+<style>
+:root { --bg: #1a1b26; --fg: #c0caf5; --muted: #565f89; --accent: #7aa2f7; }
+body { font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--fg); margin: 0; padding: 1.5rem 2rem; line-height: 1.6; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+nav { display: flex; gap: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--muted); padding-bottom: 1rem; }
+nav a { font-weight: 500; }
+h1, h2, h3 { color: var(--fg); margin-top: 1.5rem; }
+h1 { font-size: 1.75rem; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid var(--muted); padding: 0.5rem 0.75rem; text-align: left; }
+th { background: rgba(122,162,247,0.15); }
+.badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.85rem; }
+.badge-production { background: #1f7a1f; color: #fff; }
+.badge-engine_quality { background: #1f5a7a; color: #fff; }
+.badge-integration { background: #5a3a7a; color: #fff; }
+.badge-diagnostic { background: #7a5a1a; color: #fff; }
+.card { background: rgba(48,52,70,0.6); border: 1px solid var(--muted); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+.card h3 { margin-top: 0; }
+.card a { font-weight: 500; }
+.muted { color: var(--muted); font-size: 0.9rem; }
+pre, code { background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; }
+pre { padding: 1rem; overflow-x: auto; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted); color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<nav><a href="../index.html">Home</a> | <a href="../runs/index.html">Runs</a> | <a href="../ops/index.html">Ops</a> | <a href="index.html">Docs</a></nav>
+<h1>SYSTEM_CONSTRUCTION</h1><h1>Futures-Six — System Construction &amp; Architectural Decomposition</h1>
+<h2>Related Documents</h2>
+<ul>
+<li><a href="STRATEGY.html">docs/SOTs/STRATEGY.md</a>: Sleeve definitions and signal specifications</li>
+<li><a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a>: Promotion workflow and evaluation rules</li>
+<li><a href="ROADMAP.html">docs/SOTs/ROADMAP.md</a>: Sleeve status and sequencing</li>
+<li><a href="DIAGNOSTICS.html">docs/SOTs/DIAGNOSTICS.md</a>: Required diagnostics and pass/fail criteria</li>
+</ul>
+<hr />
+<h2>1. Purpose of This Document</h2>
+<p>Futures-Six is constructed as an institutional-grade systematic macro platform.</p>
+<p>The system explicitly separates:</p>
+<ul>
+<li><strong>Economic return generation</strong> (Engines / Meta-Sleeves)</li>
+<li><strong>Conditional risk control</strong> (Allocator)</li>
+</ul>
+<p>This document defines that separation.</p>
+<p><strong>Its purpose is to:</strong></p>
+<ul>
+<li>Prevent logic leakage between layers</li>
+<li>Clarify where new ideas belong</li>
+<li>Ensure architectural consistency as the system evolves</li>
+<li>Make the system legible and auditable</li>
+</ul>
+<p><strong>This document is conceptual, not operational.</strong></p>
+<hr />
+<h2>2. What an Engine Is</h2>
+<p>An <strong>Engine</strong> (Meta-Sleeve) is an unconditional economic hypothesis.</p>
+<h3>Definition</h3>
+<p>An engine expresses an economic return source that operates continuously and does not decide when to turn itself off.</p>
+<h3>Required Properties</h3>
+<p>An engine must be:</p>
+<ul>
+<li><strong>Always-on</strong></li>
+<li><strong>Unconditional</strong></li>
+<li><strong>Directional or relative</strong> (but not state-aware)</li>
+<li><strong>Independent of portfolio context</strong></li>
+<li><strong>Portable across allocators</strong></li>
+<li><strong>Evaluated on unconditional behavior</strong></li>
+</ul>
+<h3>What Engines Do</h3>
+<ul>
+<li>Generate expected returns over time</li>
+<li>Accept losses as part of the economic hypothesis</li>
+<li>Remain active through all market conditions</li>
+</ul>
+<h3>What Engines Do Not Do</h3>
+<p>Engines do not:</p>
+<ul>
+<li>Detect regimes</li>
+<li>Gate themselves</li>
+<li>Scale risk based on stress</li>
+<li>Activate crisis protection</li>
+<li>Respond to drawdowns</li>
+</ul>
+<h3>Canonical Examples</h3>
+<ul>
+<li>Trend</li>
+<li>Cross-Sectional Momentum</li>
+<li>Carry</li>
+<li>Volatility Risk Premium</li>
+<li>Curve Relative Value</li>
+</ul>
+<h3>Engine evaluation context</h3>
+<p>Engines are evaluated in isolation from the production portfolio during research. Portfolio composition during engine research is considered part of experimental governance and must not be confused with production portfolio construction.</p>
+<hr />
+<h2>3. What an Allocator Is</h2>
+<p>The <strong>Allocator</strong> is a risk control system, not an alpha engine.</p>
+<h3>Definition</h3>
+<p>The allocator decides how much of the engines is allowed to express at any point in time.</p>
+<h3>Core Responsibility</h3>
+<ul>
+<li>Control exposure</li>
+<li>Control leverage</li>
+<li>Control risk under stress</li>
+<li>Preserve system survivability</li>
+</ul>
+<h3>What the Allocator Does</h3>
+<ul>
+<li>Observes market state</li>
+<li>Classifies risk regimes</li>
+<li>Transforms risk budgets</li>
+<li>Applies exposure constraints</li>
+<li>Activates defensive overlays</li>
+</ul>
+<h3>What the Allocator Does Not Do</h3>
+<p>The allocator does not:</p>
+<ul>
+<li>Generate returns</li>
+<li>Predict markets</li>
+<li>Override engine direction</li>
+<li>Optimize Sharpe</li>
+</ul>
+<hr />
+<h2>4. Evaluation Window Contract</h2>
+<p>Evaluation windows in Futures-Six are <strong>computed</strong>, not chosen. This ensures that performance figures are anchored in technical reality, not cherry-picked start dates.</p>
+<h3>Contract Rules</h3>
+<ol>
+<li><strong>The system does not trade until <code>effective_start_date</code></strong>: Weights are undefined or zero until the system is thermally stable (warmup complete).</li>
+<li><strong>Authoritative performance begins at <code>evaluation_start_date</code></strong>: This date marks when all enabled governance stages (Policy, Risk Targeting, Allocator) are fully effective (not in inert or defaulted state).</li>
+<li><strong>Dual metrics exist for auditability</strong>:</li>
+<li><strong>"Available returns span"</strong> (<code>metrics_full</code>): Context for the entire path from the first weight.</li>
+<li><strong>"Evaluation window"</strong> (<code>metrics_eval</code>): The authoritative baseline for system comparison.</li>
+</ol>
+<p>This data-driven anchoring prevents the "warmup bias" where early, under-diversified returns can distort full-run Sharpe ratios.
+- Learn directly from P&amp;L</p>
+<hr />
+<h2>4. Canonical System Architecture (Frozen Conceptual Stack)</h2>
+<p><strong>Futures-Six is constructed as a layered, single-responsibility system.</strong></p>
+<p>Each layer answers one and only one question, and no layer is allowed to subsume the responsibilities of another.</p>
+<h3>The Canonical Execution Stack (Authoritative Order)</h3>
+<p>The canonical execution stack is:</p>
+<ol>
+<li><strong>Engine Signals</strong> (alpha)</li>
+<li><strong>Engine Policy</strong> (gates / throttles)</li>
+<li><strong>Portfolio Construction</strong> (static weights)</li>
+<li><strong>Discretionary Overlay</strong> (bounded tilts)</li>
+<li><strong>Risk Targeting</strong> (vol → leverage)</li>
+<li><strong>Allocator</strong> (risk brake)</li>
+<li><strong>Margin &amp; Execution Constraints</strong></li>
+</ol>
+<p><strong>This ordering is authoritative. All future development must preserve these boundaries.</strong></p>
+<h3>Stage Effectiveness Contract (Phase 3A Governance)</h3>
+<p>A stage in the canonical stack is considered <strong>Effective</strong> if and only if:
+1. The stage is <strong>enabled</strong> in configuration.
+2. All required inputs are <strong>present</strong> and have valid data.
+3. The stage produces a <strong>non-default</strong> output when conditions require it.</p>
+<p>If a stage is enabled but missing required inputs (e.g., missing history for volatility calculation), it is classified as <strong>INERT</strong>.</p>
+<p><strong>Governance Rule:</strong>
+- <strong>"Effective" ≠ "Binding"</strong>: A stage can be effective but non-binding (e.g., policy multiplier = 1.0 because no stress is detected). This is valid.
+- <strong>"Inert" is NOT Acceptable</strong>: An inert stage means the system is flying blind. Runs with inert stages are <strong>ineligible</strong> for attribution or ablation analysis.</p>
+<h3>System-Level Evaluation Window</h3>
+<p>Futures-Six inherits feature warm-up and minimum history requirements from its constituent sleeves (Phase 0–2 promotion criteria).</p>
+<p>System-level performance evaluation begins on the first date at which all promoted sleeves and required policy / risk / allocator features are fully formed and stable.</p>
+<p>This date is determined programmatically from feature readiness and is fixed prior to Phase 3A attribution and paper-trading decisions.</p>
+<p><strong>See:</strong>
+- Sleeve Phase 0–2 promotion rules (<code>PROCEDURES.md</code>)
+- Feature warm-up requirements (Individual Sleeve READMEs)</p>
+<h3>Infrastructure: External Data Source and Path</h3>
+<p>Futures-Six consumes read-only continuous futures data produced by the external project <strong>databento-es-options</strong>. The location of that data is resolved via <strong>configs/data.yaml</strong> → <code>db.path</code>. The canonical infrastructure assumption is <strong>../databento-es-options/data/silver</strong> (project-relative path with sibling-repo layout).</p>
+<hr />
+<h3>1️⃣ Engine Signals (Alpha Generation)</h3>
+<p><strong>Purpose:</strong> Generate directional or convex return streams.</p>
+<p><strong>Allowed:</strong>
+- Signal construction
+- Lookbacks
+- Feature transforms
+- Entry / exit logic
+- Holding period definitions</p>
+<p><strong>Not Allowed:</strong>
+- Risk scaling
+- Volatility targeting
+- Regime logic
+- Portfolio awareness
+- Discretionary overrides</p>
+<p><strong>Examples:</strong>
+- Trend signals
+- Cross-sectional momentum
+- Carry
+- VRP
+- Intraday / micro-alpha (e.g., RSV, dealer flow)</p>
+<p><strong>Key Principle:</strong> Engines express belief, not permission.</p>
+<hr />
+<h3>2️⃣ Engine Policy (Validity &amp; Selectivity)</h3>
+<p><strong>Purpose:</strong> Determine whether and how much an engine should participate given context.</p>
+<p><strong>Key Principle:</strong> Engine Policy is a validity filter, not an optimizer.</p>
+<p><strong>Allowed:</strong>
+- Binary gates (ON / OFF)
+- Continuous throttles (0–100%)
+- Contextual conditioning:
+  - gamma imbalance
+  - skew
+  - dispersion
+  - vol-of-vol
+  - event risk (CPI, NFP, FOMC)
+- Slow-moving, explainable rules</p>
+<p><strong>Not Allowed:</strong>
+- Directional signals
+- Sharpe optimization
+- Fast PnL feedback
+- Weight optimization
+- Portfolio-level leverage control</p>
+<p><strong>PnL Usage (Strictly Limited):</strong>
+- Allowed only for impairment detection
+- Used asymmetrically (to reduce or disable, not to add)</p>
+<p><strong>Engine Policy answers:</strong> "Is this engine structurally valid in this environment?"</p>
+<hr />
+<h3>3️⃣ Portfolio Construction (Static Weights)</h3>
+<p><strong>Purpose:</strong> Define the baseline composition of the system.</p>
+<p><strong>Allowed:</strong>
+- Static engine weights
+- Long-term conviction weights
+- Transparent aggregation rules</p>
+<p><strong>Not Allowed:</strong>
+- Dynamic optimization
+- Regime-dependent reweighting
+- PnL-driven allocation
+- Allocator logic</p>
+<p><strong>Key Principle:</strong> These weights are base weights, later modified by policy, discretion, and risk controls.</p>
+<hr />
+<h3>4️⃣ Discretionary Overlay (Bounded Tilts)</h3>
+<p><strong>Purpose:</strong> Provide a controlled outlet for high-level discretionary conviction without breaking systematic discipline.</p>
+<p><strong>Placement:</strong> After portfolio construction, before risk targeting.</p>
+<p><strong>Allowed:</strong>
+- Bounded multipliers on:
+  - asset classes
+  - regions
+  - sleeves / themes
+- Slow frequency (weekly / rebalance)
+- Explicit intent logging</p>
+<p><strong>Not Allowed:</strong>
+- Signal overrides
+- Individual trade control
+- Bypassing policy or allocator
+- Unbounded leverage changes</p>
+<p><strong>Hierarchy Rule:</strong> If an engine is gated OFF by policy, discretion cannot turn it back on. Discretion may tilt exposure, never bypass risk.</p>
+<hr />
+<h3>5️⃣ Risk Targeting (Volatility → Leverage)</h3>
+<p><strong>Purpose:</strong> Define how large the portfolio is by design.</p>
+<p><strong>Key Principle:</strong> This layer encodes risk appetite, not risk control.</p>
+<p><strong>Allowed:</strong>
+- Target portfolio volatility
+- Equivalent leverage choice (e.g., 7×)
+- Static or very slow updates</p>
+<p><strong>Not Allowed:</strong>
+- Regime logic
+- Stress detection
+- Engine selection
+- Dynamic brakes</p>
+<p><strong>Key Principle:</strong> This layer is always on and upstream of the allocator.</p>
+<p><strong>Risk targeting answers:</strong> "How big do I trade in normal conditions?"</p>
+<hr />
+<h3>6️⃣ Allocator (Risk Brake)</h3>
+<p><strong>Purpose:</strong> Enforce survivability constraints during stress.</p>
+<p><strong>Key Principle:</strong> Allocator is a temporary brake, not a steering wheel.</p>
+<p><strong>Allowed:</strong>
+- Portfolio-level scalars
+- Coarse regimes (e.g., NORMAL / CRISIS)
+- Stress &amp; tail indicators:
+  - drawdown cascades
+  - correlation spikes
+  - extreme volatility
+- Rare intervention (especially in high-risk profiles)</p>
+<p><strong>Not Allowed:</strong>
+- Engine-level weighting
+- Signal awareness
+- Alpha optimization
+- Discretionary overrides</p>
+<p><strong>Allocator Profiles:</strong> Multiple allocator profiles may exist (H / M / L), differing only in risk tolerance, not architecture.</p>
+<p><strong>Allocator answers:</strong> "Is it safe to remain fully levered right now?"</p>
+<hr />
+<h3>7️⃣ Margin &amp; Execution Constraints</h3>
+<p><strong>Purpose:</strong> Enforce hard, external constraints.</p>
+<p><strong>Allowed:</strong>
+- Margin checks
+- Contract sizing limits
+- Liquidity constraints
+- Execution mechanics</p>
+<p><strong>Not Allowed:</strong>
+- Strategy logic
+- Risk decisions
+- Feedback into allocator or policy</p>
+<p><strong>Key Principle:</strong> Margin is a post-construction constraint, not a decision signal.</p>
+<hr />
+<h3>Candidate Variable Classification (Authoritative)</h3>
+<p>| Variable | Correct Layer |
+|----------|---------------|
+| Gamma imbalance | Engine Policy (primary), Allocator (tail only) |
+| Skew | Engine Policy |
+| Dispersion | Engine Policy |
+| Vol-of-vol | Engine Policy |
+| Event calendar | Engine Policy |
+| Portfolio drawdown | Allocator |
+| Cross-asset correlation | Allocator |
+| RSV / order flow | Engine Signal |
+| PnL (short-term) | ❌ Not allowed |
+| PnL (impairment) | Engine Policy (defensive only) |</p>
+<hr />
+<h3>Explicit Anti-Patterns (Do Not Implement)</h3>
+<ul>
+<li>❌ Allocator weighting sleeves</li>
+<li>❌ Engine policy optimizing Sharpe</li>
+<li>❌ Discretion bypassing gates or brakes</li>
+<li>❌ Margin logic inside allocator</li>
+<li>❌ Regime-dependent leverage inside risk targeting</li>
+<li>❌ Fast feedback loops</li>
+</ul>
+<p><strong>Violations of these rules break auditability and production safety.</strong></p>
+<hr />
+<p>Evaluation and promotion workflow is defined in <a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a>.</p>
+<hr />
+<h3>Phase 1C: Risk Targeting + Allocator Integration</h3>
+<p><strong>Objectives:</strong>
+1. ✅ Implement Risk Targeting layer (Layer 5: vol → leverage)
+2. ✅ Implement Allocator-H/M/L profiles (Layer 6: risk brake)
+3. ✅ Prove end-to-end integration (RT → Allocator application)
+4. ✅ Validate artifact integrity and deterministic output
+5. ✅ Establish contract tests to prevent regressions</p>
+<p><strong>Golden Proof Run (Phase 1C Acceptance Artifact):</strong></p>
+<p><strong>Run ID:</strong> <code>rt_alloc_h_apply_precomputed_2024</code></p>
+<p><strong>Config:</strong>
+```yaml
+risk_targeting:
+  enabled: true
+  target_vol: 0.20
+  leverage_cap: 7.0
+  leverage_floor: 1.0</p>
+<p>allocator_v1:
+  enabled: true
+  mode: "precomputed"  # Uses scalars from rt_alloc_h_apply_proof_2024
+  precomputed_run_id: "rt_alloc_h_apply_proof_2024"
+  profile: "H"
+```</p>
+<p><strong>Validator:</strong> <code>scripts/diagnostics/validate_phase1c_completion.py rt_alloc_h_apply_precomputed_2024</code> must PASS</p>
+<p><strong>Acceptance Criteria (All Passed):</strong>
+1. ✅ Allocator artifacts show active intervention (% active &lt; 0.999: 42.3%, min scalar: 0.68)
+2. ✅ RT + Alloc-H returns differ from RT-only (difference: 0.000944)
+3. ✅ Weight scaling verified: <code>final_weights ≈ post_rt_weights * multiplier</code> (max error &lt; 0.001)
+4. ✅ ExecSim logs show: "Risk scalars applied: X/52 rebalances" where X &gt; 0</p>
+<p><strong>Proof Config Location:</strong> <code>configs/proofs/phase1c_allocator_apply.yaml</code></p>
+<p><strong>Important Nuance (Documented for Future Reference):</strong></p>
+<p>Phase 1C validation uses a <strong>two-step process</strong>:
+1. <strong>Step 1:</strong> Compute allocator scalars in one run (<code>rt_alloc_h_apply_proof_2024</code> in <code>compute</code> mode)
+2. <strong>Step 2:</strong> Apply scalars via <code>precomputed</code> mode in another run (<code>rt_alloc_h_apply_precomputed_2024</code>)</p>
+<p><strong>This is acceptable for Phase 1C</strong> because it proves:
+- ✅ Allocator application path works correctly
+- ✅ Config plumbing is correct
+- ✅ Weight scaling is deterministic and auditable
+- ✅ End-to-end integration is sound</p>
+<p><strong>Behavioral Difference (To Be Validated in Phase 2/3):</strong></p>
+<p>There is a difference between:
+- <strong><code>compute</code> mode:</strong> Compute-and-apply in-loop (live-like behavior)
+- <strong><code>precomputed</code> mode:</strong> Compute once, apply later (replay behavior)</p>
+<p><strong>Phase 1C proves the application path and config plumbing.</strong><br />
+<strong>Phase 2/3 will validate compute-and-apply stability</strong> (or explicitly choose <code>precomputed</code> for paper-live v0 if that's acceptable).</p>
+<p><strong>Phase 1C Implementation Summary:</strong></p>
+<p><strong>Risk Targeting Layer:</strong>
+- ✅ Leverage calculation: correct (target vol → leverage conversion)
+- ✅ Weight scaling: correct (normalizes to unit gross, applies leverage)
+- ✅ Artifacts: panel data fix (dedupe by <code>['date', 'instrument']</code>)
+- ✅ Vol gap explanation: rebalance frequency effect (7.3% realized vs 20% target is expected)</p>
+<p><strong>Allocator Profiles:</strong>
+- ✅ Profile-H: High risk tolerance (rare intervention, tail-only)
+- ✅ Profile-M: Medium risk tolerance (balanced)
+- ✅ Profile-L: Low risk tolerance (conservative, institutional-style)
+- ✅ Contract tests: prevent regressions in regime scalar mappings</p>
+<p><strong>Artifacts (All Validated):</strong>
+- ✅ <code>risk_targeting/leverage_series.csv</code> (time series)
+- ✅ <code>risk_targeting/realized_vol.csv</code> (time series)
+- ✅ <code>risk_targeting/weights_pre_risk_targeting.csv</code> (panel: date × instrument)
+- ✅ <code>risk_targeting/weights_post_risk_targeting.csv</code> (panel: date × instrument)
+- ✅ <code>risk_targeting/params.json</code> (once per run)
+- ✅ <code>allocator/regime_series.csv</code> (time series)
+- ✅ <code>allocator/multiplier_series.csv</code> (time series)
+- ✅ <code>allocator_risk_v1_applied.csv</code> (rebalance-aligned)</p>
+<p><strong>Contract Tests:</strong>
+- ✅ <code>tests/test_risk_targeting_contracts.py</code> — RT semantic correctness
+- ✅ <code>tests/test_allocator_profile_activation.py</code> — Allocator profile correctness
+- ✅ All tests pass, prevent regressions</p>
+<p><strong>See Also:</strong>
+- <code>docs/PHASE_1C_FINAL_ANALYSIS.md</code> — Detailed analysis
+- <code>docs/PHASE_1C_BUG_FIXES_COMPLETE.md</code> — Bug fixes summary
+- <code>docs/PHASE_1C_PROOF_RUN.md</code> — Proof run documentation
+- <code>docs/PHASE_1C_HANDOFF.md</code> — Status summary</p>
+<hr />
+<h3>Phase 2: Engine Policy v1 (COMPLETE — January 2026)</h3>
+<p><strong>Status:</strong> ✅ <strong>COMPLETE</strong> — Production-Ready</p>
+<p><strong>Phase 2 Objectives:</strong>
+1. ✅ Implement Engine Policy layer (Layer 2: validity filter)
+2. ✅ Binary gate for Trend engine: gamma_stress_proxy @ 95th percentile
+3. ✅ Binary gate for VRP engine: extreme stress proxy (VVIX &gt;= 99th OR backwardation + stress)
+4. ✅ Mirror allocator artifact philosophy (state + applied + meta)
+5. ✅ Support <code>compute</code> and <code>precomputed</code> modes
+6. ✅ Validator script for acceptance testing</p>
+<p><strong>Implementation Summary:</strong></p>
+<p><strong>Module:</strong> <code>src/agents/engine_policy_v1.py</code>
+- <code>EnginePolicyV1</code> class with <code>compute_state()</code>, <code>compute_applied_multipliers()</code>, <code>apply()</code>
+- Binary gate only (multiplier ∈ {0, 1}) — enforces SYSTEM_CONSTRUCTION constraint
+- Reads feature from config (generic, not hardcoded)
+- Applies 1-rebalance lag (same concept as allocator)</p>
+<p><strong>Features:</strong>
+- <code>gamma_stress_proxy</code>: VVIX 95th percentile (or VIX change variance fallback)
+- <code>vx_backwardation</code>: Binary indicator (VX1 &gt; VX2)
+- <code>vrp_stress_proxy</code>: Composite (VVIX &gt;= 99th OR gamma_stress + backwardation)</p>
+<p><strong>Config Schema:</strong> <code>configs/strategies.yaml</code>
+<code>yaml
+engine_policy_v1:
+  enabled: true
+  mode: "compute"           # "off" | "compute" | "precomputed"
+  precomputed_run_id: null  # Required if mode="precomputed"
+  lag_rebalances: 1
+  apply_missing_multiplier_as: 1.0
+  engines:
+    trend:
+      enabled: true
+      rule: "gamma_vol_stress_gate_v1"
+      feature: "gamma_stress_proxy"
+      threshold: 1
+      invert: false
+    vrp:
+      enabled: true
+      rule: "vrp_extreme_stress_gate_v1"
+      feature: "vrp_stress_proxy"
+      threshold: 1
+      invert: false</code></p>
+<p><strong>Artifacts (saved to <code>reports/runs/{run_id}/</code>):</strong>
+- <code>engine_policy_state_v1.csv</code> — Daily: date, engine, stress_value, stress_percentile, policy_state, policy_multiplier
+- <code>engine_policy_applied_v1.csv</code> — Rebalance-level (pivot format): rebalance_date, trend_multiplier, vrp_multiplier
+- <code>engine_policy_v1_meta.json</code> — Config snapshot, version, determinism hash (compute mode) or source_determinism_hash + applied_csv_hash (precomputed mode)
+- <strong>Core run artifacts always generated:</strong> <code>portfolio_returns.csv</code>, <code>equity_curve.csv</code>, <code>weights.csv</code>, <code>meta.json</code> (regardless of mode)
+- <strong>Meta.json includes:</strong> <code>engine_policy_source_run_id</code> linking precomputed runs to their compute baseline</p>
+<p><strong>Artifact Contract:</strong>
+- <strong>Compute mode</strong>: Must write <code>engine_policy_applied_v1.csv</code> (pivot format: rebalance_date, trend_multiplier, vrp_multiplier)
+- <strong>Precomputed mode</strong>: Must materialize (copy) <code>engine_policy_applied_v1.csv</code> from source run to target run directory (self-contained)
+- <strong>Diagnostics</strong>: Reports <code>policy_artifact_missing: false</code> if artifact exists, <code>policy_gated_trend_pct</code> and <code>policy_gated_vrp_pct</code> as numeric (0.0 if no binding, not NaN)</p>
+<p><strong>Stack Integration:</strong>
+- Inserted between Engine Signals (Layer 1) and Portfolio Construction (Layer 3)
+- Multiplies engine weights before overlay/aggregation
+- <strong>Hierarchy preserved:</strong> If policy sets trend multiplier to 0, nothing downstream can resurrect it</p>
+<p><strong>Golden Proof Runs (Phase 2 Acceptance Artifacts):</strong></p>
+<p><strong>Compute Mode Proof:</strong>
+- <strong>Run ID:</strong> <code>policy_trend_gamma_compute_proof_2024</code>
+- <strong>Config:</strong> <code>configs/proofs/phase2_policy_trend_gamma_compute.yaml</code>
+- <strong>Mode:</strong> <code>compute</code> (compute state daily, apply with lag)</p>
+<p><strong>Precomputed Mode Proof:</strong>
+- <strong>Run ID:</strong> <code>policy_trend_gamma_apply_precomputed_2024</code>
+- <strong>Config:</strong> <code>configs/proofs/phase2_policy_trend_gamma_apply_precomputed.yaml</code>
+- <strong>Mode:</strong> <code>precomputed</code> (load multipliers from compute proof)</p>
+<p><strong>Validator:</strong> <code>scripts/diagnostics/validate_phase2_policy_v1.py {run_id}</code> must PASS</p>
+<p><strong>Acceptance Criteria:</strong>
+1. ✅ Artifacts exist (state, applied, meta)
+2. ✅ Determinism (re-run produces identical applied.csv)
+3. ✅ Lag correct (multiplier at t = policy from t-1)
+4. ✅ Policy has teeth (weights differ vs baseline when stress triggers)
+5. ✅ Isolation (Trend gates 15/253 = 5.9%, VRP gates 3/253 = 1.2%; other engines unchanged)</p>
+<p><strong>Non-Negotiable Architectural Constraints (Enforced in Code):</strong>
+- ✅ Engine Policy is a validity filter, not an optimizer
+- ✅ v1 is binary gate only (multiplier ∈ {0, 1})
+- ✅ Inputs are context features (gamma/vol-of-vol), not portfolio metrics
+- ✅ Does NOT use: portfolio drawdown, correlation, sizing (allocator territory)
+- ✅ No Sharpe optimization, no fast PnL feedback</p>
+<p><strong>Candidate Variable Classification (Engine Policy v1):</strong></p>
+<p>| Variable | Status |
+|----------|--------|
+| gamma_stress_proxy | ✅ Used (Trend policy, 95th percentile) |
+| vx_backwardation | ✅ Used (VRP policy component) |
+| vrp_stress_proxy | ✅ Used (VRP policy, composite: VVIX &gt;= 99th OR backwardation + stress) |
+| skew | 🔜 Future v2 |
+| dispersion | 🔜 Future v2 |
+| vol-of-vol | 🔜 Future v2 |
+| event calendar | 🔜 Future v2 |
+| portfolio drawdown | ❌ Allocator only |
+| correlation | ❌ Allocator only |</p>
+<hr />
+<h3>Final Canonical Statement</h3>
+<p><strong>Engines express belief.</strong><br />
+<strong>Policy enforces validity.</strong><br />
+<strong>Discretion expresses conviction.</strong><br />
+<strong>Risk targeting sizes the book.</strong><br />
+<strong>Allocator enforces survival.</strong></p>
+<p><strong>This hierarchy is non-negotiable.</strong></p>
+<hr />
+<h2>5. Allocator Architectural Decomposition</h2>
+<p>The allocator is composed of four strictly ordered subsystems.</p>
+<p><strong>A. State Estimation</strong><br />
+<strong>B. Regime Interpretation</strong><br />
+<strong>C. Risk Transformation</strong><br />
+<strong>D. Exposure Application</strong></p>
+<p>Each subsystem has allowed and forbidden responsibilities.</p>
+<h3>A. State Estimation</h3>
+<p><strong>"What does the world look like right now?"</strong></p>
+<p>This layer measures observable conditions.</p>
+<p><strong>Examples:</strong></p>
+<ul>
+<li>Realized volatility</li>
+<li>Volatility acceleration</li>
+<li>Cross-asset correlation</li>
+<li>Trend dispersion / breadth</li>
+<li>Liquidity or stress proxies</li>
+</ul>
+<p><strong>Rules:</strong></p>
+<ul>
+<li>Descriptive only</li>
+<li>Continuous outputs</li>
+<li>No decisions</li>
+<li>No exposure changes</li>
+</ul>
+<p><strong>Model Placement:</strong></p>
+<ul>
+<li>Regime models (e.g., HMMs) are permitted here only</li>
+<li>Outputs are treated as features, not commands</li>
+</ul>
+<h3>B. Regime Interpretation</h3>
+<p><strong>"What risk state are we in?"</strong></p>
+<p>This layer maps observations to risk regimes.</p>
+<p><strong>Examples:</strong></p>
+<ul>
+<li>Normal</li>
+<li>Elevated risk</li>
+<li>Stress</li>
+<li>Crisis</li>
+</ul>
+<p><strong>Rules:</strong></p>
+<ul>
+<li>Rule-based</li>
+<li>Sticky (hysteresis)</li>
+<li>Descriptive, not predictive</li>
+<li>Multiple inputs may vote</li>
+</ul>
+<p><strong>Model Placement:</strong></p>
+<ul>
+<li>Regime model outputs may contribute probabilistically</li>
+<li>No single model has authority</li>
+</ul>
+<h3>C. Risk Transformation</h3>
+<p><strong>"How should risk change given the regime?"</strong></p>
+<p>This is the core allocator logic.</p>
+<p><strong>Examples:</strong></p>
+<ul>
+<li>Volatility targeting</li>
+<li>Gross exposure scaling</li>
+<li>Sleeve risk compression</li>
+<li>Convexity budget decisions</li>
+</ul>
+<p><strong>Rules:</strong></p>
+<ul>
+<li>Deterministic</li>
+<li>Monotonic (worse regime → less risk)</li>
+<li>Bounded</li>
+<li>Explainable</li>
+</ul>
+<p><strong>🚫 No learning</strong><br />
+<strong>🚫 No regime inference</strong><br />
+<strong>🚫 No prediction</strong></p>
+<h3>D. Exposure Application</h3>
+<p><strong>"How do we mechanically apply this decision?"</strong></p>
+<p>This layer executes allocator decisions.</p>
+<p><strong>Examples:</strong></p>
+<ul>
+<li>Scale sleeve weights</li>
+<li>Cap leverage</li>
+<li>Apply drawdown governors</li>
+<li>Activate convexity overlays</li>
+</ul>
+<p><strong>Rules:</strong></p>
+<ul>
+<li>Mechanical only</li>
+<li>No logic discovery</li>
+<li>No state awareness</li>
+</ul>
+<hr />
+<h2>6. Common Misclassifications</h2>
+<p>This section defines frequent boundary errors.</p>
+<h3>Ideas That Feel Like Engines but Are Allocator Logic</h3>
+<ul>
+<li>"Only trade trend when volatility is low"</li>
+<li>"Turn off carry during stress"</li>
+<li>"Activate VX when crash probability rises"</li>
+</ul>
+<p><strong>These are allocator decisions.</strong></p>
+<h3>Ideas That Feel Like Allocator Logic but Are Engines</h3>
+<ul>
+<li>"Short volatility when VIX &gt; realized volatility"</li>
+<li>"Trend signal scaled by its own volatility"</li>
+<li>"Carry conditioned on curve shape"</li>
+</ul>
+<p><strong>These are engines if unconditional.</strong></p>
+<h3>Rule of Thumb</h3>
+<ul>
+<li>If an idea <strong>decides when risk should be taken</strong>, it belongs in the allocator.</li>
+<li>If an idea <strong>earns returns regardless of regime</strong>, it is an engine.</li>
+</ul>
+<hr />
+<h2>7. Lifecycle: How Ideas Move Through the System</h2>
+<ol>
+<li>Engines are researched and validated in isolation</li>
+<li>Engines are integrated into the baseline portfolio</li>
+<li>Allocator logic is layered on top</li>
+<li>Production logic is frozen</li>
+<li>New ideas enter via a parallel research track</li>
+<li>Promotions are versioned and explicit</li>
+</ol>
+<p><strong>Engines and allocator logic evolve independently.</strong></p>
+<hr />
+<h2>8. Why This Separation Matters</h2>
+<p>This architecture:</p>
+<ul>
+<li>Prevents hidden timing logic</li>
+<li>Preserves engine portability</li>
+<li>Enables safe leverage</li>
+<li>Supports institutional governance</li>
+<li>Makes failures explainable</li>
+<li>Scales from small to large capital</li>
+</ul>
+<p><strong>Futures-Six prioritizes survivability and clarity over cleverness.</strong></p>
+<hr />
+<h2>9. Allocator v1 Implementation (Stages 4A-5.5)</h2>
+<p><strong>Status:</strong> Production-ready (December 2024)</p>
+<h3>Overview</h3>
+<p>Allocator v1 is the first production implementation of the allocator architecture defined above. It follows the four-layer decomposition exactly:</p>
+<p><strong>A. State Estimation</strong> → <code>AllocatorStateV1</code> (10 features)<br />
+<strong>B. Regime Interpretation</strong> → <code>RegimeClassifierV1</code> (4 regimes)<br />
+<strong>C. Risk Transformation</strong> → <code>RiskTransformerV1</code> (risk scalars)<br />
+<strong>D. Exposure Application</strong> → ExecSim integration (weight scaling)</p>
+<h3>Implementation Layers</h3>
+<h4>A. State Estimation (<code>AllocatorStateV1</code>)</h4>
+<p><strong>Purpose:</strong> Measure observable portfolio and market conditions</p>
+<p><strong>10 Canonical Features:</strong>
+- <strong>Vol / Acceleration:</strong> <code>port_rvol_20d</code>, <code>port_rvol_60d</code>, <code>vol_accel</code>
+- <strong>Drawdown / Path:</strong> <code>dd_level</code>, <code>dd_slope_10d</code>
+- <strong>Cross-Asset Correlation:</strong> <code>corr_20d</code>, <code>corr_60d</code>, <code>corr_shock</code>
+- <strong>Engine Health:</strong> <code>trend_breadth_20d</code>, <code>sleeve_concentration_60d</code></p>
+<p><strong>Properties:</strong>
+- Descriptive only (no decisions)
+- Continuous outputs (daily)
+- Deterministic computation
+- 8 required + 2 optional features</p>
+<p><strong>Artifact:</strong> <code>allocator_state_v1.csv</code> (saved with every run)</p>
+<h4>B. Regime Interpretation (<code>RegimeClassifierV1</code>)</h4>
+<p><strong>Purpose:</strong> Map state to discrete risk regimes</p>
+<p><strong>4 Risk Regimes:</strong>
+- <strong>NORMAL:</strong> Typical market conditions
+- <strong>ELEVATED:</strong> Increased volatility or correlation
+- <strong>STRESS:</strong> Significant drawdown or volatility spike<br />
+- <strong>CRISIS:</strong> Extreme conditions requiring defensive positioning</p>
+<p><strong>Logic:</strong>
+- Rule-based classification (no ML)
+- Uses 4 stress condition signals (vol acceleration, correlation shock, drawdown depth, drawdown slope)
+- Hysteresis (separate enter/exit thresholds)
+- Anti-thrash (minimum 5 days in regime)
+- Sticky by design (prevents regime flapping)</p>
+<p><strong>Artifact:</strong> <code>allocator_regime_v1.csv</code> (daily regime series)</p>
+<h4>C. Risk Transformation (<code>RiskTransformerV1</code>)</h4>
+<p><strong>Purpose:</strong> Convert regime to portfolio-level risk scalar</p>
+<p><strong>Canonical Mapping:</strong>
+- NORMAL → 1.00 (no adjustment)
+- ELEVATED → 0.85 (15% reduction)
+- STRESS → 0.55 (45% reduction)
+- CRISIS → 0.30 (70% reduction)</p>
+<p><strong>Properties:</strong>
+- Deterministic mapping
+- Monotonic (worse regime → lower scalar)
+- Bounded [0.25, 1.0]
+- EWMA smoothed (alpha=0.25, ~5d half-life)</p>
+<p><strong>Artifact:</strong> <code>allocator_risk_v1.csv</code> (daily risk scalars)</p>
+<h4>D. Exposure Application (ExecSim Integration)</h4>
+<p><strong>Purpose:</strong> Apply risk scalars to portfolio weights</p>
+<p><strong>Implementation Modes:</strong>
+1. <strong><code>mode: "off"</code></strong> - Compute artifacts only, no weight scaling (<strong>DEFAULT</strong>)
+   - Default mode ensures "off by default unless explicitly configured" stance
+   - Prevents accidental "live apply" without explicit precomputed_run_id
+   - Matches "Decisions are commitments" discipline
+2. <strong><code>mode: "precomputed"</code></strong> - Load scalars from prior run, apply with lag (Stage 5.5)
+   - <strong>Requires:</strong> <code>precomputed_run_id</code> must be set, otherwise defaults to 'off'
+   - Production-ready mode for two-pass audit and paper-live deployment
+3. <strong><code>mode: "compute"</code></strong> - On-the-fly computation (has warmup issues, research-only)
+   - Not recommended for production due to warmup period issues</p>
+<p><strong>Application Convention:</strong>
+- 1-rebalance lag: <code>risk_scalar[t-1]</code> applied to <code>weights[t]</code>
+- No lookahead bias
+- Preserves engine direction (scales uniformly)</p>
+<p><strong>Artifacts:</strong> 
+- <code>weights_raw.csv</code> - Pre-scaling weights (for diagnostics)
+- <code>weights_scaled.csv</code> - Post-scaling weights (if allocator enabled)
+- <code>allocator_risk_v1_applied_used.csv</code> - Applied scalars at rebalance dates
+- <strong>Core run artifacts always generated:</strong> <code>portfolio_returns.csv</code>, <code>equity_curve.csv</code>, <code>weights.csv</code>, <code>meta.json</code> (regardless of mode)</p>
+<h3>Warmup Period Handling</h3>
+<p><strong>Issue:</strong> Early dates in backtest may not have sufficient history for risk calculations (covariance requires 252 days).</p>
+<p><strong>Solution:</strong> System automatically skips dates with insufficient history during warmup period:
+- Dates are filtered during rebalance schedule building (<code>_build_rebalance_dates</code>)
+- Additional error handling in backtest loop catches any remaining warmup issues
+- Effective start date (first actual rebalance) is logged and recorded in <code>meta.json</code>
+- This ensures clean artifact generation without warmup artifacts polluting results</p>
+<p><strong>Logging:</strong>
+- Requested start date vs effective start date logged at run start
+- Warmup period (in days) explicitly logged
+- <code>meta.json</code> includes both <code>start_date</code> (requested) and <code>effective_start_date</code> (actual first rebalance)</p>
+<h3>Key Design Principles</h3>
+<p><strong>1. Separation of Concerns</strong>
+- Each layer has a single responsibility
+- No cross-layer logic leakage
+- Testable in isolation</p>
+<p><strong>2. Determinism</strong>
+- No ML or optimization (rule-based only)
+- Fully reproducible
+- Auditable at every step
+- Auditability includes not only deterministic computation, but also explicit identification of which historical runs constitute the system's performance reference points</p>
+<p><strong>3. Stickiness</strong>
+- Hysteresis prevents thrashing
+- Anti-thrash rules enforce minimum regime duration
+- Smoothing prevents jerk</p>
+<p><strong>4. Artifact-First</strong>
+- All computations saved automatically
+- Complete audit trail
+- Offline analysis without re-running backtests</p>
+<p><strong>5. Mode Flexibility</strong>
+- Can run in "off" mode for research
+- Two-pass audit for validation
+- Precomputed mode for production</p>
+<h3>Two-Pass Audit Framework (Stage 5.5)</h3>
+<p><strong>Purpose:</strong> Validate allocator impact before live deployment</p>
+<p><strong>Workflow:</strong>
+1. <strong>Pass 1 (Baseline):</strong> Run with <code>allocator_v1.enabled=false</code>
+   - Generates portfolio returns
+   - Computes state/regime/risk artifacts
+   - Saves <code>allocator_risk_v1_applied.csv</code></p>
+<ol>
+<li><strong>Pass 2 (Scaled):</strong> Run with <code>mode="precomputed"</code></li>
+<li>Loads scalars from Pass 1</li>
+<li>Applies them with proper lag</li>
+<li>
+<p>Generates scaled portfolio</p>
+</li>
+<li>
+<p><strong>Comparison Report:</strong></p>
+</li>
+<li>CAGR, vol, Sharpe, MaxDD</li>
+<li>Worst month/quarter</li>
+<li>Scalar usage statistics</li>
+</ol>
+<p><strong>Scripts:</strong>
+- <code>scripts/diagnostics/run_allocator_two_pass.py</code> (orchestration)
+- <code>scripts/diagnostics/compare_two_runs.py</code> (comparison report)</p>
+<h3>Configuration</h3>
+<p>In <code>configs/strategies.yaml</code>:</p>
+<p><code>yaml
+allocator_v1:
+  enabled: false              # Master switch
+  mode: "off"                 # DEFAULT: "off" (artifacts only). Set to "precomputed" with precomputed_run_id for production
+  # Modes:
+  #   "off":        Compute artifacts only, no weight scaling (baseline generation) - DEFAULT
+  #   "compute":    On-the-fly computation (research-only, has warmup issues)
+  #   "precomputed": Load scalars from validated baseline run (PRODUCTION MODE)
+  #                  ⚠️ REQUIRES precomputed_run_id to be set, otherwise defaults to 'off'
+  precomputed_run_id: null    # Required if mode="precomputed"
+  precomputed_scalar_filename: "allocator_risk_v1_applied.csv"
+  apply_missing_scalar_as: 1.0
+  state_version: "v1.0"
+  regime_version: "v1.0"
+  risk_version: "v1.0"</code></p>
+<h3>Validation Status</h3>
+<p><strong>Acceptance Criteria Met:</strong>
+- ✅ All 10 state features computed correctly
+- ✅ Regime classification is sticky (no thrashing)
+- ✅ Risk scalars are bounded and deterministic
+- ✅ Two-pass audit produces different results (scalars applied)
+- ✅ Complete artifact trail
+- ✅ Comparison reports generated</p>
+<p><strong>Production-Ready:</strong> December 2024</p>
+<h3>Future Enhancements</h3>
+<p><strong>Stage 6:</strong> Sleeve-level risk scalars (differential scaling by engine type)<br />
+<strong>Stage 7:</strong> Threshold tuning against historical stress events<br />
+<strong>Stage 8:</strong> Convexity overlays (VIX calls) gated by regime<br />
+<strong>Stage 9:</strong> True incremental state computation (resolve warmup period)</p>
+<h3>References</h3>
+<ul>
+<li><strong>Implementation Docs:</strong> <code>docs/ALLOCATOR_V1_STAGE_4_COMPLETE.md</code>, <code>docs/ALLOCATOR_V1_QUICK_START.md</code></li>
+<li><strong>Source Code:</strong> <code>src/allocator/</code> (state_v1, regime_v1, risk_v1, scalar_loader)</li>
+<li><strong>Diagnostics:</strong> <code>scripts/diagnostics/run_allocator_*.py</code></li>
+<li><strong>Tests:</strong> Two-pass audit validates allocator reduces MaxDD without destroying returns</li>
+</ul>
+<hr />
+<p>End of Document</p>
+<footer>Last built: 2026-02-13 18:54 UTC</footer>
+</body>
+</html>

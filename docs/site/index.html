@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Hub — Futures-Six Project Hub</title>
+<style>
+:root { --bg: #1a1b26; --fg: #c0caf5; --muted: #565f89; --accent: #7aa2f7; }
+body { font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--fg); margin: 0; padding: 1.5rem 2rem; line-height: 1.6; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+nav { display: flex; gap: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--muted); padding-bottom: 1rem; }
+nav a { font-weight: 500; }
+h1, h2, h3 { color: var(--fg); margin-top: 1.5rem; }
+h1 { font-size: 1.75rem; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid var(--muted); padding: 0.5rem 0.75rem; text-align: left; }
+th { background: rgba(122,162,247,0.15); }
+.badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.85rem; }
+.badge-production { background: #1f7a1f; color: #fff; }
+.badge-engine_quality { background: #1f5a7a; color: #fff; }
+.badge-integration { background: #5a3a7a; color: #fff; }
+.badge-diagnostic { background: #7a5a1a; color: #fff; }
+.card { background: rgba(48,52,70,0.6); border: 1px solid var(--muted); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+.card h3 { margin-top: 0; }
+.card a { font-weight: 500; }
+.muted { color: var(--muted); font-size: 0.9rem; }
+pre, code { background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; }
+pre { padding: 1rem; overflow-x: auto; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted); color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<nav><a href="index.html">Home</a> | <a href="runs/index.html">Runs</a> | <a href="ops/index.html">Ops</a> | <a href="docs/index.html">Docs</a></nav>
+
+<h1>Futures-Six Project Hub</h1>
+<p>Static, local-first hub for pinned runs, ops commands, and SOT documentation.</p>
+<ul>
+  <li><a href="runs/index.html">Pinned Runs Dashboard</a> — Core v8/v9, Phase-3 baselines, VRP canonical, etc.</li>
+  <li><a href="ops/index.html">Ops Hub</a> — Gates, preflight, run scripts.</li>
+  <li><a href="docs/index.html">Docs Hub</a> — SOTs and key docs rendered to HTML.</li>
+</ul>
+<p class="muted">No server required. Open index.html directly (file://). Refresh by rerunning: python scripts/site/build_site.py</p>
+
+<footer>Last built: 2026-02-13 18:54 UTC</footer>
+</body>
+</html>

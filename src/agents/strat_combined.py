@@ -6,11 +6,20 @@ with configurable weights before passing to overlays.
 """
 
 import logging
-from typing import Dict, Optional, Union, List, Tuple
+from typing import Dict, Optional, Union, List, Tuple, Set, FrozenSet
 from datetime import datetime
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+# Sleeve-scoped instrument eligibility: VRP sleeves may ONLY trade these symbols.
+# This is enforced at signal combination time to prevent unintentional leakage.
+VRP_ALLOWED_SYMBOLS: FrozenSet[str] = frozenset({'VX1', 'VX2', 'VX3'})
+
+# Sleeve names that belong to the VRP engine
+VRP_SLEEVE_NAMES: FrozenSet[str] = frozenset({
+    'vrp_core_meta', 'vrp_convergence_meta', 'vrp_alt_meta'
+})
 
 
 class CombinedStrategy:
@@ -26,7 +35,8 @@ class CombinedStrategy:
         strategies: Dict,
         weights: Dict[str, float],
         features: Optional[Dict] = None,
-        feature_service: Optional[object] = None
+        feature_service: Optional[object] = None,
+        strict_universe: bool = False
     ):
         """
         Initialize CombinedStrategy.
@@ -36,11 +46,13 @@ class CombinedStrategy:
             weights: Dictionary of weights for each strategy (must sum to 1.0)
             features: Optional dictionary of pre-computed features
             feature_service: Optional FeatureService instance for on-demand feature computation
+            strict_universe: If True, raise error when any sleeve emits symbols not in master universe
         """
         self.strategies = strategies
         self.weights = weights
         self.features = features or {}
         self.feature_service = feature_service
+        self.strict_universe = strict_universe
         
         # Validate weights sum to 1.0
         total_weight = sum(weights.values())
@@ -158,6 +170,31 @@ class CombinedStrategy:
                     else:
                         strategy_sigs = strategy.signals(market, date_dt)
                     
+                    # Validate VRP sleeve scope: VRP sleeves may only emit VRP_ALLOWED_SYMBOLS
+                    if strategy_name in VRP_SLEEVE_NAMES:
+                        emitted = set(strategy_sigs.keys())
+                        invalid = emitted - VRP_ALLOWED_SYMBOLS
+                        if invalid:
+                            logger.error(
+                                f"[CombinedStrategy] VRP sleeve '{strategy_name}' emitted "
+                                f"symbols outside VRP scope: {invalid}. Dropping them."
+                            )
+                            strategy_sigs = {k: v for k, v in strategy_sigs.items()
+                                             if k in VRP_ALLOWED_SYMBOLS}
+                    else:
+                        # Non-VRP sleeves must NOT trade VX instruments.
+                        # Strip any VX signals to prevent TSMOM/Carry/etc from
+                        # accidentally generating positions in VX.
+                        vx_emitted = set(strategy_sigs.keys()) & VRP_ALLOWED_SYMBOLS
+                        if vx_emitted:
+                            logger.debug(
+                                f"[CombinedStrategy] Non-VRP sleeve '{strategy_name}' "
+                                f"emitted VX symbols {vx_emitted}; stripping them "
+                                f"(only VRP sleeves may trade VX)."
+                            )
+                            strategy_sigs = {k: v for k, v in strategy_sigs.items()
+                                             if k not in VRP_ALLOWED_SYMBOLS}
+                    
                     # Apply weight and add to combined signals
                     weighted_sigs = {}
                     for symbol, signal in strategy_sigs.items():
@@ -190,12 +227,31 @@ class CombinedStrategy:
         
         combined = pd.Series(all_signals)
         
-        # Ensure all universe symbols are present (fill missing with 0)
+        # GUARDRAIL: Check for symbols emitted by sleeves that are NOT in master universe.
+        # This prevents silent drops that cause zero PnL for entire sleeves.
+        emitted_symbols = set(combined.index)
+        universe_set = set(market.universe)
+        dropped = emitted_symbols - universe_set
+        
+        if dropped:
+            msg = (
+                f"[CombinedStrategy] UNIVERSE MISMATCH: Sleeves emitted symbols not in master universe. "
+                f"Dropped symbols: {sorted(dropped)}. "
+                f"Master universe ({len(universe_set)} symbols): {sorted(universe_set)}. "
+                f"This means those sleeves contribute ZERO PnL. "
+                f"Fix: add these symbols to configs/data.yaml universe or vx_universe."
+            )
+            if self.strict_universe:
+                raise RuntimeError(msg)
+            else:
+                logger.warning(msg)
+        
+        # Reindex to master universe: keep all universe symbols, fill missing with 0.
+        # Symbols NOT in the universe are dropped (with warning above).
         for symbol in market.universe:
             if symbol not in combined.index:
                 combined[symbol] = 0.0
         
-        # Sort by universe order
         combined = combined.reindex(market.universe, fill_value=0.0)
         
         # Cache for potential reuse

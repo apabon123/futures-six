@@ -29,6 +29,16 @@ universe:
   6B:  { roll: calendar }
   6J:  { roll: calendar }
 
+# VX Instruments (VRP sleeve) — loaded from market_data table via timestamp column
+# These are continuous VX futures contracts, separate from the main OHLCV pipeline.
+# Keys are portfolio-level symbols; db_symbol maps to actual DB symbol in market_data table.
+# Mapping MUST match src/market_data/vrp_loaders.py: VX_FRONT=101XN, VX_SECOND=201XN, VX_THIRD=301XN
+# Used consistently in: VRP features, carry curve (VX2-VX1, VX3-VX2), crisis sleeve.
+vx_universe:
+  VX1: "@VX=101XN"   # VX front month
+  VX2: "@VX=201XN"   # VX second month
+  VX3: "@VX=301XN"   # VX third month
+
 # Default parameters for data methods
 defaults:
   vol_lookbacks: [21, 63, 252]

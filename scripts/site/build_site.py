@@ -90,10 +90,16 @@ ATTRIBUTION_DISPLAY_ALIASES = {
     "vrp_convergence_meta": "vrp_convergence",
     "vrp_alt_meta": "vrp_alt",
 }
+# Engine names in attribution JSON that are fine as-is; unknown keys trigger a build-time WARN
+CANONICAL_ATTRIBUTION_NAMES = frozenset({"tsmom", "tsmom_multihorizon", "trend", "csmom", "vx_carry", "curve_rv"})
+
+VRP_ATOMIC_NAMES = frozenset({"vrp_core", "vrp_convergence", "vrp_alt"})
+WEIGHT_TOLERANCE = 1e-6
 
 
 def _normalize_metasleeves(metasleeves: list) -> list:
     """Normalize metasleeves: derive VRP weight from atomic weights (single source of truth)."""
+    meta_names = {s.get("name", "") for s in metasleeves}
     out = []
     for s in metasleeves:
         entry = dict(s)
@@ -102,9 +108,27 @@ def _normalize_metasleeves(metasleeves: list) -> list:
             # Atomic-only format: weight = sum of atomic weights
             total = sum(a.get("weight", 0) for a in atomics)
             entry["weight"] = total
-            entry["_atomic_names"] = [a.get("name", "") for a in atomics]
+            atomic_names = [a.get("name", "") for a in atomics]
+            entry["_atomic_names"] = atomic_names
+            # Build-time assertion: if explicit weight given, it must match sum
+            if "weight" in s and s["weight"] is not None:
+                explicit = float(s["weight"])
+                assert abs(explicit - total) < WEIGHT_TOLERANCE, (
+                    f"VRP metasleeve weight mismatch: explicit={explicit} vs sum(atomics)={total}"
+                )
+            # Assert no VRP atomic is listed at metasleeve level
+            for an in atomic_names:
+                if an in VRP_ATOMIC_NAMES and an in meta_names:
+                    raise AssertionError(
+                        f"VRP atomic sleeve '{an}' must not appear at metasleeve level"
+                    )
         elif atomics and isinstance(atomics[0], str):
             entry["_atomic_names"] = list(atomics)
+            for an in atomics:
+                if an in VRP_ATOMIC_NAMES and an in meta_names:
+                    raise AssertionError(
+                        f"VRP atomic sleeve '{an}' must not appear at metasleeve level"
+                    )
         else:
             entry["_atomic_names"] = []
         out.append(entry)
@@ -285,10 +309,31 @@ def build_runs_dashboard(site_dir: Path, runs: list) -> None:
     (site_dir / "runs" / "index.html").write_text(html, encoding="utf-8")
 
 
-def _render_attribution(attribution: Optional[dict]) -> str:
+def _warn_unknown_attribution_keys(attribution: dict, run_id: str) -> None:
+    """Warn if attribution has keys not in alias map or canonical set (new sleeve may need alias)."""
+    known = set(ATTRIBUTION_DISPLAY_ALIASES) | CANONICAL_ATTRIBUTION_NAMES
+    meta = attribution.get("metasleeve_summary", [])
+    atomic = attribution.get("atomic_summary", attribution.get("per_sleeve", {}))
+    keys = set()
+    for r in meta:
+        k = r.get("metasleeve", "")
+        if k:
+            keys.add(k)
+    if isinstance(atomic, dict):
+        keys.update(atomic.keys())
+    unknown = keys - known
+    if unknown:
+        print(f"[site] WARN: unknown attribution keys for {run_id}: {sorted(unknown)}. "
+              f"Add to ATTRIBUTION_DISPLAY_ALIASES or CANONICAL_ATTRIBUTION_NAMES if expected.",
+              file=sys.stderr)
+
+
+def _render_attribution(attribution: Optional[dict], run_id: str = "") -> str:
     """Render attribution section HTML from docs/pinned/<run_id>.attribution.json."""
     if not attribution:
         return "<p>Attribution not available for this run.</p>"
+
+    _warn_unknown_attribution_keys(attribution, run_id)
 
     parts = []
     # Consistency check
@@ -377,7 +422,7 @@ def build_run_detail(site_dir: Path, run: dict) -> None:
 
     # Attribution section
     attribution = load_attribution(rid)
-    attribution_block = _render_attribution(attribution)
+    attribution_block = _render_attribution(attribution, rid)
 
     body = f"""
 <h1>{display}</h1>

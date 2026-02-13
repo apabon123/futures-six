@@ -1,5 +1,14 @@
 # Futures-Six — System Construction & Architectural Decomposition
 
+## Related Documents
+
+- [docs/SOTs/STRATEGY.md](docs/SOTs/STRATEGY.md): Sleeve definitions and signal specifications
+- [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md): Promotion workflow and evaluation rules
+- [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md): Sleeve status and sequencing
+- [docs/SOTs/DIAGNOSTICS.md](docs/SOTs/DIAGNOSTICS.md): Required diagnostics and pass/fail criteria
+
+---
+
 ## 1. Purpose of This Document
 
 Futures-Six is constructed as an institutional-grade systematic macro platform.
@@ -64,6 +73,10 @@ Engines do not:
 - Carry
 - Volatility Risk Premium
 - Curve Relative Value
+
+### Engine evaluation context
+
+Engines are evaluated in isolation from the production portfolio during research. Portfolio composition during engine research is considered part of experimental governance and must not be confused with production portfolio construction.
 
 ---
 
@@ -372,43 +385,13 @@ Futures-Six consumes read-only continuous futures data produced by the external 
 
 ---
 
-### Current System Status (As of January 2026)
-
-- **Engines:** v1 COMPLETE
-- **Engine Policy:** ✅ **Phase 2 COMPLETE** (Trend + VRP Gates)
-- **Portfolio Construction:** Static v1
-- **Discretionary Overlay:** Defined, optional
-- **Risk Targeting:** ✅ **Phase 1C COMPLETE** (Production-Ready)
-- **Allocator v1:** Institutional / Low-Risk Reference (Production-Ready)
-- **Allocator v2 (H/M/L):** ✅ **Phase 1C COMPLETE** (H/M/L Profiles Production-Ready)
-
-**Phase 1C Completion (January 2026):**
-1. ✅ Risk Targeting layer implemented and validated
-2. ✅ Allocator-H/M/L profiles implemented and validated
-3. ✅ End-to-end integration validated (RT → Allocator application)
-4. ✅ All artifacts auditable and deterministic
-5. ✅ Contract tests prevent regressions
-
-**Phase 2 Completion (January 2026):**
-1. ✅ Engine Policy v1 module implemented (`src/agents/engine_policy_v1.py`)
-2. ✅ Binary gate for Trend engine: gamma_stress_proxy @ 95th percentile (VVIX or VIX change variance)
-3. ✅ Binary gate for VRP engine: vrp_stress_proxy (VVIX >= 99th percentile OR gamma_stress + backwardation)
-4. ✅ Config schema added (`engine_policy_v1` in `strategies.yaml`)
-5. ✅ Wired into canonical stack between Engine Signals and Portfolio Construction
-6. ✅ Artifacts: `engine_policy_state_v1.csv`, `engine_policy_applied_v1.csv`, `engine_policy_v1_meta.json`
-7. ✅ Validator script: `scripts/diagnostics/validate_phase2_policy_v1.py`
-8. ✅ Golden proofs validated: Trend gates 15/253 (5.9%), VRP gates 3/253 (1.2%)
-
-**Next development steps:**
-1. Paper-live v0 prep (Phase 3)
+Evaluation and promotion workflow is defined in [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md).
 
 ---
 
-### Phase 1C: Risk Targeting + Allocator Integration (COMPLETE — January 2026)
+### Phase 1C: Risk Targeting + Allocator Integration
 
-**Status:** ✅ **COMPLETE** — Production-Ready
-
-**Phase 1C Objectives:**
+**Objectives:**
 1. ✅ Implement Risk Targeting layer (Layer 5: vol → leverage)
 2. ✅ Implement Allocator-H/M/L profiles (Layer 6: risk brake)
 3. ✅ Prove end-to-end integration (RT → Allocator application)

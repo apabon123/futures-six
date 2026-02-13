@@ -6,9 +6,9 @@ This document describes the performance diagnostics framework for analyzing back
 
 ## Related Documents
 
-- **STRATEGY.md**: Implementation details and architecture (what the system is)
-- **PROCEDURES.md**: Development process and checklists (how the system is built)
-- **ROADMAP.md**: Sleeve status and development priorities (what the system will become)
+- [docs/SOTs/STRATEGY.md](docs/SOTs/STRATEGY.md): Sleeve definitions and signal specifications
+- [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md): Promotion workflow, run creation, required artifacts
+- [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md): Sleeve status and sequencing
 
 ## Overview
 
@@ -48,6 +48,7 @@ The authoritative registry of pinned runs is maintained in:
 - New pinned runs must:
   - Have all required artifacts
   - Have `canonical_diagnostics.json` and `.md` generated
+  - Have attribution artifacts generated (`reports/runs/<run_id>/analysis/attribution/`)
   - Be explicitly added to `reports/_PINNED/README.md` with purpose noted
 
 This separation ensures:
@@ -130,6 +131,24 @@ Diagnostics must explicitly cover:
    - Sequence of losses leading to maximum drawdown
    - Recovery patterns
    - Time-to-recovery analysis
+
+### Attribution Diagnostics
+
+Any run used for promotion, ablation, or roadmap decisions must include attribution artifacts. Required attribution diagnostics include:
+
+- Attribution by metasleeve (daily and cumulative contribution return)
+- Attribution by atomic sleeve
+- Residual consistency check (sleeve contributions sum to portfolio return within tolerance)
+- Sleeve contribution correlation matrix
+- No-signal diagnostics (per-sleeve active vs no-signal days)
+
+Artifacts are written under `reports/runs/<run_id>/analysis/attribution/` (e.g. `attribution_by_metasleeve.csv`, `attribution_summary.json`, `ATTRIBUTION_SUMMARY.md`).
+
+Promotion rules are defined in [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md).
+
+### Universe consistency check
+
+Runs must fail if a sleeve emits signals for instruments not present in the configured universe, unless explicitly allowed by sleeve scope (e.g. VRP meta-sleeve restricted to VX1/VX2/VX3). This is enforced by the `--strict_universe` gate in `run_strategy.py` for governed runs.
 
 ### Production Readiness Criteria
 
@@ -348,7 +367,7 @@ python scripts/run_perf_diagnostics.py \
   --baseline_id core_v3_no_macro
 ```
 
-**Note**: These diagnostics were used to evaluate the equal-weight short-term variant (Phase-0/1/2 completed Nov 2025). The variant was **not promoted** to production; legacy weights (0.5, 0.3, 0.2) remain the production standard. The diagnostic commands and canonical variant code (`variant="canonical"`) are preserved for future re-testing if the universe, timeframe, or surrounding architecture changes. See `TREND_RESEARCH.md` and `SOTs/PROCEDURES.md` for full results and rationale.
+**Note**: These diagnostics were used to evaluate the equal-weight short-term variant (Phase-0/1/2 completed Nov 2025). The variant was **not promoted** to production; legacy weights (0.5, 0.3, 0.2) remain the production standard. The diagnostic commands and canonical variant code (`variant="canonical"`) are preserved for future re-testing if the universe, timeframe, or surrounding architecture changes. See `TREND_RESEARCH.md` and `docs/SOTs/PROCEDURES.md` for full results and rationale.
 
 # Phase-2 index: reports/phase_index/trend/short_canonical/phase2.txt
 ```
@@ -2716,6 +2735,8 @@ The VRP-Core Phase-1 diagnostics (`scripts/diagnostics/run_vrp_core_phase1.py`) 
 - ES returns: For realized vol calculation
 - VX1 prices: For P&L calculation (@VX=101XN)
 
+**RV ffill policy:** RV series are forward-filled across isolated missing return days (e.g., holiday/weekend artifacts) to avoid false "no-signal" days. This does not invent new price data; it stabilizes the RV feature used for signal generation.
+
 **Warmup Period:**
 - 273 trading days (252d z-score + 21d realized vol)
 
@@ -3402,7 +3423,7 @@ The Phase-0 sanity check process follows this workflow:
    - Identify which atomic sleeves contribute positively
    - Determine optimal weighting for meta-signal combination
 
-4. **Document Findings**: Update `SOTs/STRATEGY.md` with Phase-0 results
+4. **Document Findings**: Update `docs/SOTs/STRATEGY.md` with Phase-0 results
    - Pass/fail status
    - Key metrics (Sharpe, CAGR, MaxDD)
    - Subperiod analysis insights

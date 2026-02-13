@@ -282,6 +282,110 @@ def load_vx_curve(
     ).df()
 
 
+def _asof_merge_series(
+    target_dates: pd.DatetimeIndex,
+    series_df: pd.DataFrame,
+    date_col: str,
+    value_col: str,
+    direction: str = "backward",
+) -> pd.Series:
+    """
+    As-of merge a series onto target dates with backward fill.
+    Per-series: each series is independently merged.
+
+    Args:
+        target_dates: Sorted DatetimeIndex of target dates
+        series_df: DataFrame with date_col and value_col
+        date_col: Name of date column
+        value_col: Name of value column
+        direction: 'backward' = use most recent available value
+
+    Returns:
+        Series indexed by target_dates with backward-filled values
+    """
+    if series_df.empty:
+        return pd.Series(index=target_dates, dtype=float)
+
+    left = pd.DataFrame({"date": target_dates}).sort_values("date")
+    right = series_df[[date_col, value_col]].copy()
+    right = right.rename(columns={date_col: "date", value_col: "value"})
+    right["date"] = pd.to_datetime(right["date"])
+    right = right.drop_duplicates(subset=["date"]).sort_values("date")
+
+    merged = pd.merge_asof(left, right, on="date", direction=direction)
+    return merged.set_index("date")["value"]
+
+
+def load_vrp_inputs_asof(
+    con: duckdb.DuckDBPyConnection,
+    target_dates: pd.DatetimeIndex,
+    series_id_vix: str = "VIXCLS",
+) -> pd.DataFrame:
+    """
+    Load VRP inputs with as-of merge and backward fill (per-series).
+
+    For each target date, uses the most recent available observation from
+    each series. Handles FRED gaps (e.g. holidays) by backward-filling.
+
+    Args:
+        con: DuckDB connection to canonical database
+        target_dates: Target dates to produce values for (e.g. trading days)
+        series_id_vix: FRED series ID for VIX (default: "VIXCLS")
+
+    Returns:
+        DataFrame with columns: date, vix, vix3m, vx1, vx2, vx3
+        One row per target date; each series backward-filled per-series.
+    """
+    if len(target_dates) == 0:
+        return pd.DataFrame(columns=["date", "vix", "vix3m", "vx1", "vx2", "vx3"])
+
+    target = target_dates.sort_values()
+    start = (target.min() - pd.Timedelta(days=400)).strftime("%Y-%m-%d")
+    end = (target.max() + pd.Timedelta(days=7)).strftime("%Y-%m-%d")
+
+    # Load raw series (each independently)
+    vix_raw = con.execute(
+        """
+        SELECT date AS date, value::DOUBLE AS vix
+        FROM f_fred_observations
+        WHERE series_id = ? AND date BETWEEN ? AND ?
+        ORDER BY date
+        """,
+        [series_id_vix, start, end],
+    ).df()
+
+    vix3m_raw = con.execute(
+        """
+        SELECT timestamp::DATE AS date, settle::DOUBLE AS vix3m
+        FROM market_data_cboe
+        WHERE symbol = 'VIX3M' AND timestamp::DATE BETWEEN ? AND ?
+          AND settle IS NOT NULL
+        ORDER BY timestamp
+        """,
+        [start, end],
+    ).df()
+
+    vx_raw = load_vx_curve(con, start, end)
+
+    # Per-series as-of merge (backward fill)
+    vix_series = _asof_merge_series(target, vix_raw, "date", "vix")
+    vix3m_series = _asof_merge_series(target, vix3m_raw, "date", "vix3m")
+
+    vx1_series = _asof_merge_series(target, vx_raw, "date", "vx1") if "vx1" in vx_raw.columns else pd.Series(index=target, dtype=float)
+    vx2_series = _asof_merge_series(target, vx_raw, "date", "vx2") if "vx2" in vx_raw.columns else pd.Series(index=target, dtype=float)
+    vx3_series = _asof_merge_series(target, vx_raw, "date", "vx3") if "vx3" in vx_raw.columns else pd.Series(index=target, dtype=float)
+
+    df = pd.DataFrame({
+        "date": target,
+        "vix": vix_series.values,
+        "vix3m": vix3m_series.values,
+        "vx1": vx1_series.values,
+        "vx2": vx2_series.values,
+        "vx3": vx3_series.values,
+    })
+    return df
+
+
 def load_vrp_inputs(
     con: duckdb.DuckDBPyConnection,
     start: str,

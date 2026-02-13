@@ -137,6 +137,17 @@ class MarketData:
                 # Old format: list of database symbols
                 self.universe = tuple(universe_cfg)
         
+        # Parse VX universe (VRP sleeve instruments, loaded separately)
+        vx_cfg = self.config.get('vx_universe', {})
+        self._vx_symbol_map = {}  # portfolio symbol -> DB symbol, e.g. VX1 -> @VX=101XN
+        # Store the standard (non-VX) universe for components that should not trade VX
+        self.standard_universe = self.universe
+        if vx_cfg and isinstance(vx_cfg, dict):
+            for short_name, db_symbol in vx_cfg.items():
+                self._vx_symbol_map[short_name] = db_symbol
+            # Extend universe with VX symbols
+            self.universe = self.universe + tuple(self._vx_symbol_map.keys())
+        
         self.asof = pd.to_datetime(asof) if asof else None
         
         # Establish read-only connection
@@ -447,6 +458,67 @@ class MarketData:
         
         return prices_raw, prices_cont, contract_ids
     
+    def _load_vx_data(self):
+        """
+        Load VX continuous futures data and merge into price/return caches.
+        
+        VX data lives in the market_data table (timestamp column, not date)
+        and uses DB symbols like @VX=101XN. This method loads close prices,
+        computes log returns, and appends them to the existing caches using
+        portfolio-level symbols (VX1, VX2, VX3).
+        """
+        if not self._vx_symbol_map:
+            return
+        
+        conn_type = type(self.conn).__module__
+        if 'duckdb' not in conn_type:
+            logger.warning("[READ-ONLY] VX data loading only supported for DuckDB connections")
+            return
+        
+        for short_name, db_symbol in self._vx_symbol_map.items():
+            try:
+                df = self.conn.execute(
+                    f"""
+                    SELECT timestamp::DATE AS date, close::DOUBLE AS close
+                    FROM market_data
+                    WHERE symbol = '{db_symbol}'
+                    ORDER BY date
+                    """
+                ).df()
+                
+                if df.empty:
+                    logger.warning(f"[READ-ONLY] No VX data for {short_name} ({db_symbol})")
+                    continue
+                
+                df['date'] = pd.to_datetime(df['date'])
+                df = df.drop_duplicates(subset=['date'], keep='first')
+                df = df.set_index('date').sort_index()
+                
+                # Add to price caches (VX continuous contracts are already roll-adjusted)
+                if self._prices_raw_cache is not None:
+                    self._prices_raw_cache[short_name] = df['close']
+                if self._prices_cont_cache is not None:
+                    self._prices_cont_cache[short_name] = df['close']
+                if self._contract_ids_cache is not None:
+                    self._contract_ids_cache[short_name] = db_symbol
+                
+                logger.info(
+                    f"[READ-ONLY] Loaded VX data: {short_name} ({db_symbol}), "
+                    f"{len(df)} rows, {df.index[0].date()} to {df.index[-1].date()}"
+                )
+            except Exception as e:
+                logger.error(f"[READ-ONLY] Failed to load VX data for {short_name} ({db_symbol}): {e}")
+    
+    def _ensure_vx_in_caches(self):
+        """Ensure VX data is loaded into caches (idempotent)."""
+        if not self._vx_symbol_map:
+            return
+        # Check if any VX symbol is already in the cache
+        if self._prices_cont_cache is not None:
+            first_vx = next(iter(self._vx_symbol_map))
+            if first_vx not in self._prices_cont_cache.columns:
+                self._load_vx_data()
+    
     @property
     def prices_raw(self) -> pd.DataFrame:
         """
@@ -459,6 +531,7 @@ class MarketData:
             logger.info("[READ-ONLY] Building continuous prices (first access)...")
             self._prices_raw_cache, self._prices_cont_cache, self._contract_ids_cache = \
                 self._build_continuous_prices()
+            self._load_vx_data()
         return self._prices_raw_cache
     
     @property
@@ -473,6 +546,7 @@ class MarketData:
             logger.info("[READ-ONLY] Building continuous prices (first access)...")
             self._prices_raw_cache, self._prices_cont_cache, self._contract_ids_cache = \
                 self._build_continuous_prices()
+            self._load_vx_data()
         return self._prices_cont_cache
     
     @property
@@ -487,6 +561,7 @@ class MarketData:
             logger.info("[READ-ONLY] Building continuous prices (first access)...")
             self._prices_raw_cache, self._prices_cont_cache, self._contract_ids_cache = \
                 self._build_continuous_prices()
+            self._load_vx_data()
         return self._contract_ids_cache
     
     @property

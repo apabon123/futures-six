@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ROADMAP — Futures-Six Project Hub</title>
+<style>
+:root { --bg: #1a1b26; --fg: #c0caf5; --muted: #565f89; --accent: #7aa2f7; }
+body { font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--fg); margin: 0; padding: 1.5rem 2rem; line-height: 1.6; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+nav { display: flex; gap: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--muted); padding-bottom: 1rem; }
+nav a { font-weight: 500; }
+h1, h2, h3 { color: var(--fg); margin-top: 1.5rem; }
+h1 { font-size: 1.75rem; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid var(--muted); padding: 0.5rem 0.75rem; text-align: left; }
+th { background: rgba(122,162,247,0.15); }
+.badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.85rem; }
+.badge-production { background: #1f7a1f; color: #fff; }
+.badge-engine_quality { background: #1f5a7a; color: #fff; }
+.badge-integration { background: #5a3a7a; color: #fff; }
+.badge-diagnostic { background: #7a5a1a; color: #fff; }
+.card { background: rgba(48,52,70,0.6); border: 1px solid var(--muted); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+.card h3 { margin-top: 0; }
+.card a { font-weight: 500; }
+.muted { color: var(--muted); font-size: 0.9rem; }
+pre, code { background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; }
+pre { padding: 1rem; overflow-x: auto; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted); color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<nav><a href="../index.html">Home</a> | <a href="../runs/index.html">Runs</a> | <a href="../ops/index.html">Ops</a> | <a href="index.html">Docs</a></nav>
+<h1>ROADMAP</h1><h1>ROADMAP.md — Futures-Six: Strategic Development Roadmap (2026–2028)</h1>
+<p><strong>Source-of-Truth Document</strong></p>
+<p><strong>Last updated: Feb 2026</strong></p>
+<hr />
+<h2>1. Purpose of This Document</h2>
+<p><strong>ROADMAP.md</strong> is a strategic, forward-looking, non-code source of truth that governs:</p>
+<ul>
+<li>Long-term development sequencing</li>
+<li>Meta-sleeve expansion plans</li>
+<li>Production deployment planning</li>
+<li>Research targets (Sharpe, diversification, crisis behavior)</li>
+<li>Iterative improvement cycles after initial production release</li>
+<li>High-level architecture constraints and priorities</li>
+</ul>
+<p>This document complements:</p>
+<p>| Document | Purpose |
+|----------|---------|
+| STRATEGY.md | What the system is |
+| PROCEDURES.md | How the system is built |
+| DIAGNOSTICS.md | How the system is validated |
+| ROADMAP.md | What the system will become |</p>
+<p><strong>This is the single source of truth for sleeve status, priorities, and development sequencing.</strong></p>
+<h2>Related Documents</h2>
+<ul>
+<li><a href="STRATEGY.html">docs/SOTs/STRATEGY.md</a>: Sleeve definitions, signal specifications, position geometry</li>
+<li><a href="SYSTEM_CONSTRUCTION.html">docs/SOTs/SYSTEM_CONSTRUCTION.md</a>: Architecture, layers, data flow</li>
+<li><a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a>: Promotion workflow, run creation, required artifacts</li>
+<li><a href="DIAGNOSTICS.html">docs/SOTs/DIAGNOSTICS.md</a>: Required diagnostics and pass/fail criteria</li>
+</ul>
+<hr />
+<h2>2. Strategic Objective (2026–2028)</h2>
+<p>Futures-Six targets institutional CTA/Macro performance with:</p>
+<ul>
+<li><strong>Sharpe 1.5–2.0 unlevered</strong></li>
+<li>
+<ul>
+<li>Safe portfolio-level leverage (allocator applied)</li>
+</ul>
+</li>
+<li>Low correlation sleeves</li>
+<li>Diversified economic themes</li>
+<li>100% deterministic, reproducible engineering</li>
+</ul>
+<p><strong>The FIRST milestone is a production-ready system, not maximized Sharpe.</strong></p>
+<p>Sharpe improvement happens in Post-Production Expansion Cycles.</p>
+<p><strong>Explicit Statement</strong>: Futures-Six intentionally launches with a minimum viable but architecturally complete system. Additional sleeves and refinements are accretive and governed post-launch. The initial production release (Core v9) represents a complete, institutionally realistic CTA/Macro architecture, not a maximally optimized system.</p>
+<hr />
+<h2>3. Current State (as of Core v9)</h2>
+<p><strong>Completed Meta-Sleeves:</strong></p>
+<ul>
+<li><strong>Trend Meta-Sleeve</strong> — COMPLETE</li>
+<li><strong>CSMOM Meta-Sleeve</strong> — COMPLETE</li>
+<li><strong>VRP Meta-Sleeve</strong> (ongoing):</li>
+<li>VRP-Core — PROMOTED</li>
+<li>VRP-Convergence — PROMOTED</li>
+<li>VRP-Alt — PROMOTED (Dec 2025)</li>
+<li>Additional VRP sleeves still required for stability and diversification.</li>
+</ul>
+<p><strong>Baseline:</strong></p>
+<ul>
+<li>Core v9 (Trend 52.4% + CSMOM 21.85% + VRP-Core 6.555% + VRP-Convergence 2.185% + VRP-Alt 13.11% + VX Carry 4.6% + Curve RV 8%)</li>
+</ul>
+<p><strong>Performance (Canonical Window: 2020-01-06 to 2025-10-31):</strong></p>
+<ul>
+<li><strong>Core v8</strong>: Sharpe 0.5820, CAGR 6.81%, MaxDD -17.13%, Vol 12.70%</li>
+<li><strong>Core v9</strong>: Sharpe 0.6605, CAGR 9.35%, MaxDD -15.32%, Vol 12.01%</li>
+<li><strong>Improvement</strong>: Sharpe +0.0785, CAGR +2.54%, MaxDD +1.81%, Vol -0.69%</li>
+</ul>
+<p><em>Note: All canonical metrics computed on canonical evaluation window (2020-01-06 to 2025-10-31). See <code>configs/canonical_window.yaml</code> for the authoritative window definition. See STRATEGY.md § "Baseline Evolution Summary" for full Core v3-v9 comparison table.</em></p>
+<h3>Phase-3 Status Note</h3>
+<p>As of Phase-3A, Futures-Six maintains a formal set of pinned baseline runs used for:</p>
+<ul>
+<li>Attribution</li>
+<li>Ablation testing</li>
+<li>Regression tracking</li>
+</ul>
+<p>Performance improvements beyond this point are evaluated only relative to pinned baselines, ensuring controlled, auditable progress.</p>
+<h4>Phase 3A Status (Jan 2026) -&gt; COMPLETE</h4>
+<ul>
+<li>[x] <strong>Policy Feature Plumbing</strong><ul>
+<li>[x] Extract <code>gamma_stress_proxy</code>, <code>vx_backwardation</code>, <code>vrp_stress_proxy</code> to <code>meta.json</code></li>
+<li>[x] Ensure policy features are purely data-driven (no config hardcoding)</li>
+</ul>
+</li>
+<li>[x] <strong>Governed Baseline Re-Freeze</strong><ul>
+<li>[x] Re-run canonical baseline with full feature tracking</li>
+<li>[x] Pin new baseline: <code>canonical_frozen_stack_precomputed_phase3a_governed_...</code></li>
+</ul>
+</li>
+<li>[x] <strong>RT &amp; Allocator Governance</strong><ul>
+<li>[x] Fix RT telemetry (finite stats in meta.json)</li>
+<li>[x] Formalize "Effective vs Inert" contract</li>
+</ul>
+</li>
+<li>[x] <strong>Phase 3A Statistical Baseline — Fully Governed</strong><ul>
+<li>[x] Established pinned baseline: <code>phase3a_statistical_baseline_governed_20251031</code></li>
+<li>[x] Effective/Eval start: 2020-03-20</li>
+<li>[x] Implemented dual metrics (<code>returns span</code> vs <code>eval window</code>)</li>
+<li>[x] Implemented strict precomputed lineage validation</li>
+</ul>
+</li>
+</ul>
+<p><strong>🔜 Next Steps (Calibration Sprint):</strong>
+- RT + Allocator calibration (distribution targets)
+- Median gross 4.0–4.5×
+- P90 gross 5.5–6.5×
+- Cap rarely binds</p>
+<p><strong>⏸ Defer:</strong>
+- Ablations until RT/Allocator behavior is frozen.
+- [ ] <strong>Next: Phase 3A Attribution Ablations</strong> (Policy / RT / Allocator / Sleeves)</p>
+<h3>Core v7 Upgrade — VRP-Alt Integration (15%)</h3>
+<p><strong>Completed</strong>: Phase-0, Phase-1, Phase-2, and scaling analysis for VRP-Alt.</p>
+<p><strong>VRP-Alt promoted at 15% weight</strong> into VRP Meta-Sleeve.</p>
+<p><strong>Core v7 now defined as:</strong>
+- Trend: 60%
+- CSMOM: 25%
+- VRP-Core: 7.5%
+- VRP-Convergence: 2.5%
+- VRP-Alt: 15%</p>
+<p>VRP-Convergence remains deprioritized but still present.</p>
+<p><strong>Next action</strong>: Continue VRP Meta-Sleeve diversification with additional VRP sleeves.</p>
+<hr />
+<h2>4. Short-Term Roadmap (Next 6–9 Months)</h2>
+<p><strong>Goal: Complete VRP Meta-Sleeve + Implement Carry Meta-Sleeve + Add Crisis Meta-Sleeve (Minimal) + Deploy First Production Version</strong></p>
+<p><strong>Pre-Phase-B Meta-Sleeve Set:</strong>
+- Trend ✅
+- CSMOM ✅
+- VRP ✅
+- Carry 🚧 (IN PROGRESS)
+- Curve RV ✅ (Phase-2 Complete, PROMOTED to Core v9)
+- Crisis 🚧 (Phase-0 IN PROGRESS — Minimal, defensive-only)</p>
+<p>This establishes a complete, institutionally realistic CTA/Macro architecture prior to allocator design and Phase-B optimization.</p>
+<h3>4.1 Complete VRP Meta-Sleeve</h3>
+<p><strong>VRP Meta-Sleeve Status:</strong>
+- ✅ VRP-Core: Complete (Phase-2 integrated) — <strong>First canonical VRP sleeve</strong>
+- ✅ VRP-Alt: Complete (Phase-2 integrated, promoted Dec 2025) — <strong>Second canonical VRP sleeve</strong>
+- ⏸️ VRP-Convergence: Economically parked / deprioritized (2.5% weight, kept for historical continuity)
+- ❌ VRP-FrontSpread (directional): <strong>PARKED — Phase-0 FAIL</strong>
+- ❌ VRP-Convexity (VVIX threshold): <strong>PARKED — Phase-0 FAIL</strong> (threshold short VX1)
+- ❌ VRP-RollYield: PARKED (Borderline Phase-0 result)
+- ⏳ VRP-CalendarDecay: Future (Medium Priority)
+- ❌ VRP-TermStructure: PARKED (Phase-0 failure)</p>
+<p><strong>Target v1 VRP Meta-Sleeve Composition:</strong>
+- VRP-Core (required)
+- VRP-Convergence (required)
+- (Optional) VRP-CalendarDecay</p>
+<p><strong>Governance note (2026-Q1 update):</strong> Although VRP atomic sleeves were previously promoted into Core v7–v9, all new VRP research and refactoring is now evaluated under the Phase-4 engine-quality workflow. New VRP variants and refactors must first pass engine-quality runs (control + VRP only), and only afterwards be evaluated in integration runs against Core v9.</p>
+<hr />
+<h2>Remaining VRP Sleeves That MUST Exist for a Serious VRP Meta-Sleeve</h2>
+<p>Below is the canonical list that institutional volatility premia research converges on. This is how you fill the VRP Meta-Sleeve with 4–6 sleeves.</p>
+<h3>🔵 VRP Sleeve #1 — VRP-Core (✓ COMPLETE)</h3>
+<p>Your only validated signal so far. Uses VIX − RV21 spread.</p>
+<hr />
+<h3>🔵 VRP Sleeve #2 — VRP-Alt (VRP-Richness, ALT-VRP) ✅ COMPLETE</h3>
+<p><strong>Description:</strong> VIX vs RV5; short VX1 when VIX &gt; RV5 (sensitive to spike decay). See <a href="STRATEGY.html">docs/SOTs/STRATEGY.md</a> § "VRP-Alt" for signal and geometry.</p>
+<p><strong>Stage:</strong> Production (Core v7+ at 15% weight)</p>
+<p><strong>Next step:</strong> Maintain; no active changes.</p>
+<hr />
+<h3>🔵 VRP Sleeve #3 — VRP-Convexity Premium (VVIX Relative Value)</h3>
+<p><strong>Description:</strong> VVIX threshold short VX1. See <a href="STRATEGY.html">docs/SOTs/STRATEGY.md</a> § "VRP-Convexity".</p>
+<p><strong>Stage:</strong> Parked (Phase-0 fail)</p>
+<p><strong>Next step:</strong> Revisit only as conditioning feature or spread-style trade.</p>
+<hr />
+<h3>🔵 VRP Sleeve #3 — VRP-FrontSpread (Directional) ❌ PARKED</h3>
+<p><strong>Description:</strong> VX1 − VX2 richness spread; short VX1 when VX1 &gt; VX2. See <a href="STRATEGY.html">docs/SOTs/STRATEGY.md</a> § "VRP-FrontSpread".</p>
+<p><strong>Stage:</strong> Parked (Phase-0 fail)</p>
+<p><strong>Next step:</strong> Revisit only as calendar-spread trade or regime input.</p>
+<hr />
+<h3>🔵 VRP Sleeve #4 — VRP-Structural (RV252) ❌ PARKED</h3>
+<p><strong>Description:</strong> VIX vs RV252; short VX when VIX &gt; RV252. See <a href="STRATEGY.html">docs/SOTs/STRATEGY.md</a> § "VRP-Structural".</p>
+<p><strong>Stage:</strong> Parked (Phase-0 fail)</p>
+<p><strong>Next step:</strong> Revisit only as conditioning feature or different instrument.</p>
+<hr />
+<h3>🔵 VRP Sleeve #4 — VRP-Mid (RV126) ❌ PARKED</h3>
+<p><strong>Description:</strong> VIX vs RV126; short VX when VIX &gt; RV126. See <a href="STRATEGY.html">docs/SOTs/STRATEGY.md</a> § "VRP-Mid".</p>
+<p><strong>Stage:</strong> Parked (Phase-0 fail)</p>
+<p><strong>Next step:</strong> Revisit only as conditioning feature or different instrument.</p>
+<hr />
+<h3>🔵 VRP Sleeve #5 — VRP-CalendarDecay (Tenor Ladder Decay)</h3>
+<p>This is closer to how actual volatility desks trade VRP.</p>
+<p><strong>Idea:</strong></p>
+<p>Each VX future decays toward its "anchor":
+- VX1 → VIX
+- VX2 → VX1
+- VX3 → VX2</p>
+<p><strong>Phase-0:</strong></p>
+<ul>
+<li>Short VX2 if VX2 &gt; VX1</li>
+<li>Short VX3 if VX3 &gt; VX2</li>
+</ul>
+<p>Or basket-weighted (tenor decay sleeve).</p>
+<p>This is more robust than RollYield, which relied on VX1 alone.</p>
+<p><strong>Status:</strong> Not yet implemented. Medium priority for Phase-0 testing.</p>
+<hr />
+<h3>🔵 VRP Sleeve #6 — VIX Curve Curvature (Fly) — PLANNED (v2, Low Priority)</h3>
+<p><strong>Instruments</strong>: VX1, VX2, VX3</p>
+<p><strong>Expression:</strong></p>
+<p>Calendar fly (e.g., <code>2*VX2 − VX1 − VX3</code>)</p>
+<p><strong>Motivation:</strong></p>
+<p>Test whether VIX term-structure curvature contains incremental information beyond VX2–VX1 carry.</p>
+<p><strong>Notes:</strong></p>
+<ul>
+<li>Liquidity beyond VX2 is limited</li>
+<li>Expected redundancy with VX calendar carry</li>
+<li>Included for research completeness; promotion unlikely unless behavior is clearly distinct</li>
+</ul>
+<p><strong>Status:</strong></p>
+<ul>
+<li>Not tested in v1</li>
+<li>Deferred to post-v1 expansion cycle (v2)</li>
+<li>Low priority relative to other VRP sleeves</li>
+</ul>
+<hr />
+<h3>🔵 VRP Sleeve #7 — VRP-ReverseConvergence (Crisis Turning Point Sleeve)</h3>
+<p>This is a long-vol sleeve, which is needed for stabilization.</p>
+<p><strong>Idea:</strong></p>
+<p>When backwardation gets extreme, VRP carry unwinds violently.</p>
+<p>$$VIX - VX1 &gt; 3 \Rightarrow go\ long\ VX1$$</p>
+<p>This can be:
+- A Crisis Meta-Sleeve component
+- OR a VRP shock absorber sleeve
+- OR an exposure dial for VRP-Core</p>
+<p>Phase-0 should show positive Sharpe because a long-vol sleeve during extreme backwardation often works.</p>
+<p><strong>Status:</strong> Not yet implemented. Lower priority (may belong in Crisis Meta-Sleeve).</p>
+<hr />
+<h3>❌ PARKED Sleeves</h3>
+<p><strong>VRP-RollYield (Status: PARKED — Borderline Phase-0)</strong></p>
+<p>VRP-RollYield was intended to capture front-month roll-down carry by shorting VX1 when the future traded above VIX on a per-day-to-expiry basis. A Phase-0 sign-only implementation:</p>
+<p>Short VX1 when:</p>
+<p>$$roll_yield = \frac{VX1 - VIX}{days_to_expiry} &gt; 0$$</p>
+<p>Phase-0 results over the canonical 2020–2025 window:</p>
+<ul>
+<li>Sharpe +0.02 (below the ≥ 0.10 Phase-0 bar)</li>
+<li>MaxDD –85.65% (slightly worse than the catastrophic threshold)</li>
+<li>Non-degenerate signal (short ~75% of days)</li>
+</ul>
+<p>The diagnostics indicate a borderline, near-zero economic edge with an unacceptable path profile. Unlike VRP-Core and VRP-Convergence, the raw roll-yield sign rule does not meet the standard for promotion.</p>
+<p><strong>Decision:</strong> VRP-RollYield in this simple form is PARKED. The roadmap treats roll-down carry as a research topic for a future variant, potentially as a multi-tenor basket or integrated component.</p>
+<p><strong>VRP-TermStructure (slope-only directional trades)</strong></p>
+<p><strong>Status:</strong> PARKED</p>
+<p><strong>Phase-0 Results:</strong>
+- Confirmed via Phase-0: VX2 − VX1 slope is not a directional VRP signal
+- Does not map cleanly to outright front-month selling
+- High overlap with VIX–VX1 but weaker economics
+- Better used as regime feature → not return engine</p>
+<p><strong>Decision:</strong> We PARK it here. The roadmap will revisit term-structure dynamics in one of the following forms:
+- As a regime filter for VRP-Core, VRP-Convergence, or other VRP sleeves
+- As part of a future Crisis / Long-Vol Meta-Sleeve
+- As a candidate for calendar-spread-based sleeves rather than outright VX1 directionality</p>
+<hr />
+<h4>Final Expected VRP Meta-Sleeve Composition</h4>
+<p>For a clean, institutional, stable VRP Meta-Sleeve, the ideal set is:</p>
+<p>| Sleeve | Status | Priority | Rationale |
+|--------|--------|----------|-----------|
+| VRP-Core | ✅ Complete | Required | <strong>First canonical VRP sleeve</strong> |
+| VRP-Alt (RV5) | ✅ Complete | Required | <strong>Second canonical VRP sleeve</strong> (promoted Dec 2025), well-supported, diversifies VRP-Core |
+| VRP-Convergence | ⏸️ Parked | Deprioritized | Economically parked (2.5% weight, kept for historical continuity only) |
+| VRP-FrontSpread (directional) | ❌ PARKED | N/A | <strong>Phase-0 FAIL</strong> — Calendar-richness does not map to profitable outright VX1 short |
+| VRP-Convexity Premium (VVIX threshold) | ❌ PARKED | N/A | <strong>Phase-0 FAIL</strong> — VVIX data available; threshold expression failed |
+| VRP-Structural (RV252) | ❌ PARKED | N/A | <strong>Phase-0 FAIL</strong> (VX1/VX2/VX3) — Not an engine in simple form; revisit only as conditioning or different instrument/expression |
+| VRP-Mid (RV126) | ❌ PARKED | N/A | <strong>Phase-0 FAIL</strong> (VX2/VX3) — Not an engine in simple form; revisit only as conditioning or different instrument/expression |
+| VRP-CalendarDecay | ⏳ Future | Medium | Tenor-specific carry |
+| VRP-ReverseConvergence | ⏳ Future | Low | Possibly Crisis Meta-Sleeve |
+| VRP-RollYield | ❌ PARKED | N/A | Borderline Phase-0 result |
+| VRP-TermStructure | ❌ PARKED | N/A | Phase-0 failure |</p>
+<p><strong>Target: 4–6 sleeves in v1 VRP Meta-Sleeve:</strong>
+1. VRP-Core ✅ (First canonical VRP sleeve)
+2. VRP-Alt (RV5) ✅ (Second canonical VRP sleeve, promoted Dec 2025)
+3. (Optional) VRP-CalendarDecay ⏳ (Future)
+4. (Optional) Additional VRP sleeves ⏳ (Future)</p>
+<p><strong>Note</strong>: VRP-Convergence is economically parked (2.5% weight) and not counted toward the v1 target composition.</p>
+<h3>4.1.3 VRP Meta-Sleeve Assembly (Post 4-Sleeve Completion)</h3>
+<p>A proper meta-sleeve requires:</p>
+<ul>
+<li>Sleeve-level return covariance modeling</li>
+<li>ERC or Max-Diversification weighting</li>
+<li>Stability filters (regime filters optional)</li>
+</ul>
+<p><strong>Diagnostics:</strong></p>
+<ul>
+<li>Diversification benefit</li>
+<li>Crisis behavior</li>
+<li>VRP sleeve correlations</li>
+<li>Sleeve-level turnover</li>
+</ul>
+<h3>4.2 Build Carry Meta-Sleeve (IN PROGRESS)</h3>
+<p><strong>Status:</strong> 🚧 IN PROGRESS</p>
+<p>Carry Meta-Sleeve is chosen because:</p>
+<ul>
+<li>Carry sleeves have low correlation with Trend &amp; VRP</li>
+<li>Carry is a major component of major CTAs</li>
+<li>Carry improves long-term Sharpe in a diversified system</li>
+</ul>
+<p><strong>Completed / Promoted:</strong></p>
+<ul>
+<li>✅ <strong>SR3 Calendar Carry</strong> — <strong>PROMOTED</strong> (Dec 2025)</li>
+<li><strong>Phase-0</strong>: PASS (Sharpe 0.6384, R2-R1 canonical pair)</li>
+<li><strong>Phase-1</strong>: PASS (Implementation complete, execution rules frozen)</li>
+<li><strong>Phase-2</strong>: PASS (Portfolio integration: MaxDD improvement +0.80%, correlation 0.04, Sharpe preserved)</li>
+<li><strong>Role</strong>: Risk stabilizer / diversifier (5% research weight)</li>
+<li><strong>See</strong>: <code>docs/SOTs/DIAGNOSTICS.md</code> § "SR3 Calendar Carry" for full development history and promotion decision</li>
+</ul>
+<p><strong>Phase-0 Status (Dec 2025):</strong></p>
+<ul>
+<li>✅ <strong>VX Calendar Carry</strong> — <strong>COMPLETE / PROMOTED</strong> (Dec 2025)</li>
+<li><strong>Canonical Atomic Sleeve</strong>: VX2–VX1_short (promoted to Core v8 baseline)</li>
+<li><strong>Secondary Atomic Sleeve</strong>: VX3–VX2_short (Phase-2 PASS, validated backup, non-default)</li>
+<li><strong>Phase-0</strong>: PASS (both short-spread variants show strong standalone carry expectancy)</li>
+<li><strong>Phase-1</strong>: PASS (z-scoring, vol targeting, execution rules frozen; two atomic sleeves)</li>
+<li><strong>Phase-2</strong>: PASS (Portfolio integration: Sharpe +0.0377, MaxDD +1.02%, Vol -0.71%, correlation -0.0508)</li>
+<li><strong>Status</strong>: PROMOTED — Canonical atomic sleeve integrated into Core v8 baseline (5% research weight)</li>
+<li><strong>Promotion Rationale</strong>: VX2–VX1_short shows slightly stronger Phase-2 improvements and liquidity advantages. VX3–VX2_short retained as validated secondary option with excellent diversification.</li>
+<li><strong>Note</strong>: Secondary variant retained as fallback for future trading reality considerations</li>
+<li>
+<p><strong>See</strong>: <code>docs/SOTs/DIAGNOSTICS.md</code> § "VX Calendar Carry" for full development history and promotion decision</p>
+</li>
+<li>
+<p>❌ <strong>FX/Commodity Carry</strong>: Parked for redesign</p>
+</li>
+<li><strong>Phase-0 Sanity Check Result</strong>: Negative Sharpe (-0.69) across all assets (2020-2025)</li>
+<li><strong>Findings</strong>: Sign-only roll yield strategy showed negative alpha in recent years</li>
+<li><strong>Status</strong>: Remains on roadmap for redesign (e.g., sector-based roll yield, DV01-neutral carry, regime-dependent filters)</li>
+</ul>
+<p><strong>Planned Atomic Sleeves (first wave)</strong></p>
+<ul>
+<li>Futures Basis Carry (e.g., ES, TY, CL, NG, GC)</li>
+<li>Yield Curve Carry</li>
+<li>Roll Down/Carry on Vol (distinct from VRP roll yield)</li>
+<li>Cross-Sectional Carry (FX-like logic applied to commodities/bonds)</li>
+</ul>
+<p>We will likely build 3–4 sleeves for v1.</p>
+<p><strong>Goal for Carry v1</strong></p>
+<ul>
+<li>Add 0.15–0.25 Sharpe to the system</li>
+<li>Improve diversification</li>
+<li>Contribute positively during low-volatility equity regimes</li>
+</ul>
+<h3>4.3 Build Curve Relative Value (Curve RV) Meta-Sleeve</h3>
+<p><strong>Status:</strong> v1 COMPLETE (Core v9); v2 PLANNED (Post-v1)</p>
+<p><strong>Description:</strong> SR3 curve momentum (Rank Fly 5%, Pack Slope 3%); market-neutral spreads and flies. See <a href="STRATEGY.html">docs/SOTs/STRATEGY.md</a> for signal definitions.</p>
+<p><strong>Stage:</strong> Production (Core v9)</p>
+<p><strong>Next step:</strong> v2 Treasury Curve RV (deferred).</p>
+<h4>v2 (PLANNED) — Treasury Curve RV</h4>
+<p><strong>Instruments</strong>: ZT (2-year) / ZF (5-year) / ZN (10-year) / UB (30-year)</p>
+<p><strong>Planned Expressions:</strong>
+- 2s10s slope momentum
+- 5s30s slope momentum
+- 2s5s10s fly momentum
+- 5s10s30s fly momentum</p>
+<p><strong>Requirements:</strong>
+- DV01-aware construction (rates contracts have different DV01s)
+- Phase-0 to be conducted post-v1 freeze</p>
+<p><strong>Status</strong>: Deferred to v2 expansion cycle</p>
+<h4>Deferred / Separate Sleeves</h4>
+<p><strong>Cross-Market Basis RV (SOFR ↔ Treasuries):</strong>
+- Macro RV, not pure Curve RV
+- Deferred to v2+</p>
+<p><strong>VIX Curve Shape:</strong>
+- Treated under VRP / Volatility sleeves
+- Explicitly excluded from Curve RV</p>
+<p><strong>Architectural Guardrail:</strong> Curve RV is a distinct economic engine and will not be blended or hybridized with Carry or Crisis during Phase-0/1.</p>
+<h3>4.4 Build Crisis / Tail Risk Meta-Sleeve (v1 COMPLETE — NO PROMOTION)</h3>
+<p><strong>Status:</strong> ✅ v1 COMPLETE — NO PROMOTION</p>
+<p><strong>Summary:</strong>
+- Phase-0/1/2 completed
+- VX3 failed Phase-2 due to 2020 Q1 fast-crash window
+- Always-on convexity not adopted in v1</p>
+<p><strong>Phase-0 Results</strong>: ✅ COMPLETE
+- Long VX2: PASS (MaxDD +0.91%, Worst-month +0.49%)
+- Long VX2 - VX1 spread: PASS (MaxDD +0.76%, Worst-month +0.41%)
+- Long UB: PASS (parked for post-v1 reconsideration)</p>
+<p><strong>Phase-1 Results</strong> (2025-12-17): ✅ COMPLETE
+- <strong>Long VX3</strong>: ✅ <strong>PROMOTED</strong> to Phase-2 (MaxDD +0.41%, Worst-month +0.23%, CAGR +0.17% vs Core)
+- <strong>Long VX2</strong>: Retained as benchmark ceiling reference (not promoted)
+- <strong>Long VX2 - VX1 spread</strong>: ❌ <strong>PARKED</strong> (Phase-1 FAIL — insufficient tail preservation)
+- <strong>Long VX3 - VX2 spread</strong>: ❌ <strong>PARKED</strong> (Phase-1 FAIL — insufficient tail preservation)</p>
+<p><strong>Phase-2 Results</strong> (2025-12-17): ❌ FAIL
+- Overall tail metrics improved vs Core v9 (MaxDD, worst-month, worst-quarter, 2022 drawdown)
+- But 2020 Q1 fast-crash window showed portfolio-level drawdown deterioration
+- Instrument-level VX behavior is correct (VX1 &gt; VX2 &gt; VX3 in 2020 Q1), but portfolio-level integration fails</p>
+<p><strong>Final Decision</strong>: Crisis Meta-Sleeve v1 — NO PROMOTION
+- Long VX3 fails Phase-2 due to deterioration in 2020 Q1 fast-crash behavior
+- Always-on convexity not adopted in v1
+- Crisis protection deferred to allocator logic (v2+)</p>
+<p><strong>Disposition:</strong>
+- <strong>VX2</strong>: Retained as benchmark only (not promoted)
+- <strong>VX3</strong>: Parked as "tail smoother candidate" for allocator-era research
+- <strong>UB</strong>: Remains parked (conditional hedge, post-v1 reconsideration)
+- <strong>VX Spreads</strong>: Parked (Phase-1 FAIL)</p>
+<p><strong>Post-v1 / Allocator Track:</strong>
+Crisis protection to be implemented as allocator-driven convexity allocation (e.g., conditional VX exposure, potential VX2/VX3 blending) subject to allocator research lifecycle.</p>
+<p><strong>Optional Parked Ideas</strong> (non-committal, allocator-era research):
+- Conditional convexity activation
+- VX2/VX3 blend rules
+- Shock/vol regime detection
+- Options-based convexity (explicitly deferred, high complexity)</p>
+<p><strong>Future Candidate Atomic Sleeves (Post-Phase-0):</strong>
+- VIX convexity sleeve (long VIX calls or synthetic convexity via VX futures curvature)
+- VX curve inversion sleeve (crisis filter)
+- Equity skew sleeve
+- Vol-of-vol sleeve (VVIX or alternative derived data)
+- Synthetic straddle/strangle-like proxies using futures spreads</p>
+<p><strong>Architectural Guardrail:</strong> Crisis Meta-Sleeve is a distinct economic engine and will not be blended or hybridized with Carry or Curve RV during Phase-0/1.</p>
+<h3>4.5 Production Release (Target: After All Pre-Phase-B Meta-Sleeves)</h3>
+<p>Once Trend, CSMOM, VRP, Carry, Curve RV (Phase-0), and Crisis (minimal) are complete:</p>
+<ul>
+<li>System is eligible for first production deployment.</li>
+</ul>
+<p><strong>Production includes:</strong></p>
+<ul>
+<li>Canonicalized data pipelines</li>
+<li>Allocator Layer v1</li>
+<li>ERC or Ridge-RP</li>
+<li>Portfolio-level volatility targeting</li>
+<li>Live signal generation</li>
+<li>Logging + run consistency checks</li>
+<li>Monitoring dashboards</li>
+<li>rolling Sharpe</li>
+<li>rolling correlations</li>
+<li>sleeve contributions</li>
+<li>drawdown attribution</li>
+</ul>
+<p><strong>Sharpe target for first production release:</strong>
+0.8–1.1 unlevered (expected with complete pre-Phase-B meta-sleeve set)</p>
+<h3>4.6 Post-v1 Roadmap: Allocator &amp; Production</h3>
+<p><strong>Explicit Sequencing:</strong></p>
+<p>Futures-Six intentionally launches with a minimum viable but architecturally complete system. Additional sleeves and refinements are accretive and governed post-launch.</p>
+<p><strong>Ordered Roadmap:</strong></p>
+<ol>
+<li><strong>Allocator v1 (rule-based, deterministic)</strong></li>
+<li>Allocator Phase-A: Architecture &amp; invariants (no tuning)</li>
+<li>Allocator Phase-B: Deterministic rule-based allocator</li>
+<li>
+<p>Allocator Phase-C: End-to-end validation</p>
+</li>
+<li>
+<p><strong>Expanded historical validation (structural window)</strong></p>
+</li>
+<li>Validate system on expanded historical window (e.g., 2010–present)</li>
+<li>Structural validation (not parameter optimization)</li>
+<li>
+<p>Failure mode discovery and architecture refinement</p>
+</li>
+<li>
+<p><strong>End-to-end production readiness checks</strong></p>
+</li>
+<li>Historical stress windows (2020 Q1, 2022, etc.)</li>
+<li>Sleeve-level loss attribution</li>
+<li>Allocator behavior under stress</li>
+<li>Correlation spikes and path-dependent drawdowns</li>
+<li>
+<p>Tooling hardening: committee-pack generator + batch generator + pinned baselines for ablation matrix</p>
+</li>
+<li>
+<p><strong>Production freeze (Core v9)</strong></p>
+</li>
+<li>Freeze production engines</li>
+<li>Freeze allocator logic</li>
+<li>
+<p>Version control and deployment</p>
+</li>
+<li>
+<p><strong>Capital deployment</strong></p>
+</li>
+<li>Deploy production system with real capital</li>
+<li>
+<p>Establish monitoring and alerting</p>
+</li>
+<li>
+<p><strong>Parallel research track (Core v10 candidates)</strong></p>
+</li>
+<li>New sleeves developed in research track</li>
+<li>New allocator logic developed in research track</li>
+<li>Paper integration with production copy</li>
+<li>Formal promotion process for additions</li>
+</ol>
+<hr />
+<h2>5. Medium-Term Roadmap (Post-Production Expansion Cycle)</h2>
+<p><strong>Goal: Increase Sharpe to institutional target range (1.5–2.0).</strong></p>
+<p>After production deployment, the next development wave focuses on Phase-B optimization and allocator work:</p>
+<h3>5.1 Allocator Development Sequencing</h3>
+<p><strong>Post-Production Allocator Work:</strong></p>
+<p>Allocator development follows the structured lifecycle defined in <code>PROCEDURES.md</code> § "Allocator Development Lifecycle (v2 Track)":</p>
+<ol>
+<li><strong>Allocator Phase-A</strong>: Architecture &amp; invariants (no tuning)</li>
+<li>Define allocator architecture</li>
+<li>Establish invariants</li>
+<li>
+<p>Design conditional logic structure</p>
+</li>
+<li>
+<p><strong>Allocator Phase-B</strong>: Deterministic rule-based allocator</p>
+</li>
+<li>Implement rule-based allocator</li>
+<li>Validate deterministic behavior</li>
+<li>
+<p>No optimization at this stage</p>
+</li>
+<li>
+<p><strong>Allocator Phase-C</strong>: End-to-end validation</p>
+</li>
+<li>Validate across expanded historical window</li>
+<li>Stress test failure modes</li>
+<li>
+<p>Portfolio-level validation</p>
+</li>
+<li>
+<p><strong>Allocator Phase-D</strong>: Production deployment</p>
+</li>
+<li>Freeze allocator logic</li>
+<li>Version control (e.g., Allocator v1)</li>
+<li>
+<p>Deploy to production</p>
+</li>
+<li>
+<p><strong>Allocator Phase-E</strong>: Post-production enhancements</p>
+</li>
+<li>Iterative improvements in research track</li>
+<li>Formal promotion process</li>
+<li>Versioned releases (e.g., Allocator v2)</li>
+</ol>
+<h4>5.1.1 Allocator v1 Status (December 2024)</h4>
+<p><strong>Status:</strong> Phase-D COMPLETE (production-ready)</p>
+<p>See <a href="SYSTEM_CONSTRUCTION.html">docs/SOTs/SYSTEM_CONSTRUCTION.md</a> for allocator architecture, layers, and implementation. See <a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a> for allocator promotion and two-pass audit workflow.</p>
+<h3>5.2 Phase-B Optimization (Post-Production)</h3>
+<p><strong>Optimization Scope:</strong>
+- Meta-sleeve weight optimization
+- Correlation-aware allocation
+- Turnover and cost management</p>
+<p><strong>Note</strong>: Optimization occurs only after allocator architecture is validated and production system is frozen.</p>
+<h3>5.2 Additional Meta-Sleeves (Optional, Long-Term)</h3>
+<h4>5.2.1 Value Meta-Sleeve</h4>
+<p>Economic risk premia via:</p>
+<ul>
+<li>mean-reversion signals</li>
+<li>value spreads in commodities</li>
+<li>deep carry interactions</li>
+<li>bond valuation signals</li>
+</ul>
+<h4>5.2.2 Macro Regime Sleeve</h4>
+<ul>
+<li>Yield curve steepening/flattening</li>
+<li>Inflation momentum</li>
+<li>ISM/PPI/credit spreads filters</li>
+</ul>
+<p>Used only as conditional overlays, not direct forecasts</p>
+<hr />
+<h2>6. Long-Term Roadmap (2–3 years)</h2>
+<p><strong>Goal: 7–10 atomic sleeves per meta-sleeve</strong></p>
+<p>Mirroring AQR / Man-AHL architecture.</p>
+<p><strong>Target distribution:</strong></p>
+<p>| Meta-Sleeve | Target # Atomic Sleeves |
+|-------------|-------------------------|
+| Trend | 7–10 |
+| CSMOM | 3–5 |
+| VRP | 5–7 |
+| Carry | 5–7 |
+| Curve RV | 3–5 |
+| Crisis | 5–8 |
+| Macro (optional) | 3–5 |</p>
+<hr />
+<h2>7. Sharpe Targets (Strategic)</h2>
+<p><strong>Target 1 — Pre-Production:</strong>
+- Sharpe 0.8–1.1</p>
+<p><strong>Target 2 — Post Carry Sleeve:</strong>
+- Sharpe 1.1–1.3</p>
+<p><strong>Target 3 — Post Curve RV + Crisis Sleeves:</strong>
+- Sharpe 1.4–1.7</p>
+<p><strong>Target 4 — Full 6 Meta-Sleeve System (Pre-Phase-B):</strong>
+- Sharpe 1.6–2.0</p>
+<p><strong>Based on discussions and empirical evidence:</strong></p>
+<ul>
+<li>Trend contributes ~0.5–0.7</li>
+<li>VRP contributes ~0.2–0.3</li>
+<li>Carry contributes ~0.1–0.25</li>
+<li>Curve RV contributes ~0.05–0.15</li>
+<li>Crisis/convexity contributes 0.15–0.30</li>
+<li>CSMOM adds ~0.05–0.10</li>
+</ul>
+<p><strong>Total ≈ 1.2–1.6 unlevered before Phase-B optimization.</strong></p>
+<hr />
+<h2>8. Dependencies &amp; Sequencing Rules</h2>
+<p><strong>Pre-Phase-B Meta-Sleeve Sequencing:</strong>
+- Trend and CSMOM complete → VRP can be added
+- VRP must be complete → Carry Meta-Sleeve can start
+- Carry Meta-Sleeve in progress → Curve RV Meta-Sleeve Phase-2 complete ✅ → Crisis Meta-Sleeve (minimal) can begin
+- All pre-Phase-B meta-sleeves complete → Production release eligible</p>
+<p><strong>Post-Production:</strong>
+- Production release → Phase-B optimization and allocator work begins
+- Sharpe target progress → Additional meta-sleeves added (optional)</p>
+<p><strong>Architectural Guardrail:</strong> Carry, Curve RV, and Crisis Meta-Sleeves are distinct economic engines and will not be blended or hybridized during Phase-0/1. Allocator logic, regime conditioning, and optimization remain Phase-B objectives, after all core Meta-Sleeves exist.</p>
+<hr />
+<h2>9. Risks &amp; Monitoring Focus</h2>
+<ul>
+<li>VRP Sharpe underperformance</li>
+<li>Correlation spikes between sleeves</li>
+<li>Crisis regime degradation</li>
+<li>Overfitting in Phase-1 sleeves</li>
+<li>Warmup window fragility</li>
+<li>Canonical data source drift</li>
+<li>Target volatility mismatch across sleeves</li>
+</ul>
+<hr />
+<h2>10. Roadmap Summary (Executive)</h2>
+<p><strong>Step 1: Finish VRP Meta-Sleeve</strong>
+- VRP-Core ✅
+- VRP-Convergence ✅
+- VRP-RollYield ❌ (PARKED)
+- VRP-TermStructure ❌ (PARKED)
+- (Optional) VRP-CalendarDecay
+- Meta-sleeve assembly</p>
+<p><strong>Step 2: Build Carry Meta-Sleeve</strong>
+- 3–4 atomic sleeves
+- Promote and integrate
+- Improve Sharpe + diversification</p>
+<p><strong>Step 3: Production Deployment</strong>
+- Allocator
+- Vol targeting
+- Monitoring
+- Deterministic pipeline</p>
+<p><strong>Step 4: Post-Production Wave</strong>
+- Crisis Meta-Sleeve
+- Value Meta-Sleeve
+- Macro overlays</p>
+<p><strong>Step 5: Long-Term Expansion</strong>
+- Move toward 7–10 atomic sleeves per meta-sleeve
+- Institutional Sharpe target (1.5–2.0)</p>
+<footer>Last built: 2026-02-13 18:54 UTC</footer>
+</body>
+</html>

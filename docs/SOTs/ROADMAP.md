@@ -30,9 +30,10 @@ This document complements:
 
 ## Related Documents
 
-- **STRATEGY.md**: Current implementation details and architecture
-- **PROCEDURES.md**: Development process and checklists
-- **DIAGNOSTICS.md**: Validation results and metrics (single source of truth for Phase-0/1/2 results)
+- [docs/SOTs/STRATEGY.md](docs/SOTs/STRATEGY.md): Sleeve definitions, signal specifications, position geometry
+- [docs/SOTs/SYSTEM_CONSTRUCTION.md](docs/SOTs/SYSTEM_CONSTRUCTION.md): Architecture, layers, data flow
+- [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md): Promotion workflow, run creation, required artifacts
+- [docs/SOTs/DIAGNOSTICS.md](docs/SOTs/DIAGNOSTICS.md): Required diagnostics and pass/fail criteria
 
 ---
 
@@ -164,6 +165,8 @@ This establishes a complete, institutionally realistic CTA/Macro architecture pr
 - VRP-Convergence (required)
 - (Optional) VRP-CalendarDecay
 
+**Governance note (2026-Q1 update):** Although VRP atomic sleeves were previously promoted into Core v7–v9, all new VRP research and refactoring is now evaluated under the Phase-4 engine-quality workflow. New VRP variants and refactors must first pass engine-quality runs (control + VRP only), and only afterwards be evaluated in integration runs against Core v9.
+
 ---
 
 ## Remaining VRP Sleeves That MUST Exist for a Serious VRP Meta-Sleeve
@@ -178,128 +181,51 @@ Your only validated signal so far. Uses VIX − RV21 spread.
 
 ### 🔵 VRP Sleeve #2 — VRP-Alt (VRP-Richness, ALT-VRP) ✅ COMPLETE
 
-**Economic Idea:**
+**Description:** VIX vs RV5; short VX1 when VIX > RV5 (sensitive to spike decay). See [docs/SOTs/STRATEGY.md](docs/SOTs/STRATEGY.md) § "VRP-Alt" for signal and geometry.
 
-Front-month futures tend to be overpriced relative to short-term realized vol, not just 21-day RV.
+**Stage:** Production (Core v7+ at 15% weight)
 
-Instead of using RV21, long/short on:
-- RV5
-- RV10
-- Realized volatility of ES options
-- Or blended RVs
-
-**Phase-0 Rule:**
-
-$$VIX - RV5 > 0 \rightarrow short\ VX1$$
-
-This is extremely well-supported in the literature.
-
-VRP-Core uses RV21. VRP-Alt (RV5) behaves differently — it's more sensitive to spike decay.
-
-**Status:** ✅ **PROMOTED** (Dec 2025) — Core v7 at 15% weight
-
-**Lifecycle**: Phase-0 borderline → Phase-1 strong → Phase-2 inconclusive → scaling verification → PROMOTED
-
-See `SOTs/STRATEGY.md` § "VRP-Alt (VRP-Richness) Atomic Sleeve" for full details.
+**Next step:** Maintain; no active changes.
 
 ---
 
 ### 🔵 VRP Sleeve #3 — VRP-Convexity Premium (VVIX Relative Value)
 
-**Status: PARKED — Phase-0 FAIL (threshold short VX1)**
+**Description:** VVIX threshold short VX1. See [docs/SOTs/STRATEGY.md](docs/SOTs/STRATEGY.md) § "VRP-Convexity".
 
-**Priority: N/A (parked)**
+**Stage:** Parked (Phase-0 fail)
 
-**Economic Idea:**
-
-Vol-of-vol (VVIX) is structurally overpriced relative to implied volatility.
-Elevated VVIX indicates expensive convexity insurance → favorable short-vol carry once shocks stabilize.
-
-**Phase-0 Rule:**
-
-$$VVIX > 100 \Rightarrow short\ VX1$$
-
-**Decision:**
-VVIX data now available; expression failed; revisit only as conditioning feature or spread-style trade.
-
-**Results:** See DIAGNOSTICS.md and `reports/phase_index/vrp/convexity_vvix_threshold/` for Phase-0 metrics and details.
-
-**Note:** VVIX should be treated as a conditioning feature for Phase-B / Crisis, not an engine in this expression.
-
-This sleeve is widely used by institutional VRP desks, but the simple threshold-based directional expression tested in Phase-0 does not work.
+**Next step:** Revisit only as conditioning feature or spread-style trade.
 
 ---
 
-### 🔵 VRP Sleeve #3 — VRP-FrontSpread (Directional) ❌ **PARKED**
+### 🔵 VRP Sleeve #3 — VRP-FrontSpread (Directional) ❌ PARKED
 
-Not the slope (VX2–VX1), but the richness spread:
+**Description:** VX1 − VX2 richness spread; short VX1 when VX1 > VX2. See [docs/SOTs/STRATEGY.md](docs/SOTs/STRATEGY.md) § "VRP-FrontSpread".
 
-$$VX1 - VX2$$
+**Stage:** Parked (Phase-0 fail)
 
-The sign carries much more predictive power than slope alone.
-
-**Phase-0 Rule:**
-
-Short VX1 when VX1 > VX2.
-
-**Decision:**
-Calendar-richness does not map to profitable outright VX1 short. VX term structure is usually in backwardation (VX1 < VX2), so contango signal only triggers in small subset of regimes. Even when contango exists, simple directional short is not the right expression of "calendar carry."
-
-**Results:** See DIAGNOSTICS.md and `reports/phase_index/vrp/front_spread_directional/` for Phase-0 metrics and details.
-
-**Status:** ❌ **PARKED** — Phase-0 FAIL. Revisit only as calendar-spread trade or feature/regime input, not directional VX1 exposure.
+**Next step:** Revisit only as calendar-spread trade or regime input.
 
 ---
 
-### 🔵 VRP Sleeve #4 — VRP-Structural (RV252) ❌ **PARKED**
+### 🔵 VRP Sleeve #4 — VRP-Structural (RV252) ❌ PARKED
 
-**Status: PARKED — Phase-0 FAIL (VX1/VX2/VX3)**
+**Description:** VIX vs RV252; short VX when VIX > RV252. See [docs/SOTs/STRATEGY.md](docs/SOTs/STRATEGY.md) § "VRP-Structural".
 
-**Priority: N/A (parked)**
+**Stage:** Parked (Phase-0 fail)
 
-**Economic Idea:**
-
-Long-horizon implied vs realized volatility premium: VIX (1-month implied volatility) vs RV252 (252-day realized volatility) should contain a tradable volatility risk premium.
-
-**Phase-0 Rule:**
-
-$$VIX > RV252 \Rightarrow short\ VX$$
-
-Tested three variants: VX1, VX2, VX3 (all with identical signal logic).
-
-**Decision:**
-
-All three variants failed Phase-0 criteria (Sharpe < 0.10). The simple directional expression of long-horizon implied vs realized volatility (VIX - RV252) does not contain a tradable edge. VIX > RV252 occurs ~75% of the time, but shorting VX in these regimes is not profitable and exposes the strategy to crisis convexity risk.
-
-**Results:** See DIAGNOSTICS.md and `reports/phase_index/vrp/structural_rv252/` for Phase-0 metrics and details.
-
-**Status:** ❌ **PARKED** — Phase-0 FAIL. Not an engine in simple form; revisit only as conditioning feature or different instrument/expression.
+**Next step:** Revisit only as conditioning feature or different instrument.
 
 ---
 
-### 🔵 VRP Sleeve #4 — VRP-Mid (RV126) ❌ **PARKED**
+### 🔵 VRP Sleeve #4 — VRP-Mid (RV126) ❌ PARKED
 
-**Status: PARKED — Phase-0 FAIL (VX2/VX3)**
+**Description:** VIX vs RV126; short VX when VIX > RV126. See [docs/SOTs/STRATEGY.md](docs/SOTs/STRATEGY.md) § "VRP-Mid".
 
-**Priority: N/A (parked)**
+**Stage:** Parked (Phase-0 fail)
 
-**Economic Idea:**
-
-Mid-horizon implied vs realized volatility premium: VIX (1-month implied volatility) vs RV126 (126-day realized volatility) should contain a tradable volatility risk premium.
-
-**Phase-0 Rule:**
-
-$$VIX > RV126 \Rightarrow short\ VX$$
-
-Tested two variants: VX2, VX3 (back-month futures only).
-
-**Decision:**
-
-Both variants failed Phase-0 criteria (Sharpe < 0.10). The simple directional expression of mid-horizon implied vs realized volatility (VIX - RV126) does not contain a tradable edge. VIX > RV126 occurs ~82% of the time, but shorting VX in these regimes is not profitable and exposes the strategy to crisis convexity risk.
-
-**Results:** See DIAGNOSTICS.md and `reports/phase_index/vrp/mid_rv126/` for Phase-0 metrics and details.
-
-**Status:** ❌ **PARKED** — Phase-0 FAIL. Not an engine in simple form; revisit only as conditioning feature or different instrument/expression.
+**Next step:** Revisit only as conditioning feature or different instrument.
 
 ---
 
@@ -469,7 +395,7 @@ Carry Meta-Sleeve is chosen because:
   - **Phase-1**: PASS (Implementation complete, execution rules frozen)
   - **Phase-2**: PASS (Portfolio integration: MaxDD improvement +0.80%, correlation 0.04, Sharpe preserved)
   - **Role**: Risk stabilizer / diversifier (5% research weight)
-  - **See**: `SOTs/DIAGNOSTICS.md` § "SR3 Calendar Carry" for full development history and promotion decision
+  - **See**: `docs/SOTs/DIAGNOSTICS.md` § "SR3 Calendar Carry" for full development history and promotion decision
 
 **Phase-0 Status (Dec 2025):**
 
@@ -482,7 +408,7 @@ Carry Meta-Sleeve is chosen because:
   - **Status**: PROMOTED — Canonical atomic sleeve integrated into Core v8 baseline (5% research weight)
   - **Promotion Rationale**: VX2–VX1_short shows slightly stronger Phase-2 improvements and liquidity advantages. VX3–VX2_short retained as validated secondary option with excellent diversification.
   - **Note**: Secondary variant retained as fallback for future trading reality considerations
-  - **See**: `SOTs/DIAGNOSTICS.md` § "VX Calendar Carry" for full development history and promotion decision
+  - **See**: `docs/SOTs/DIAGNOSTICS.md` § "VX Calendar Carry" for full development history and promotion decision
 
 - ❌ **FX/Commodity Carry**: Parked for redesign
   - **Phase-0 Sanity Check Result**: Negative Sharpe (-0.69) across all assets (2020-2025)
@@ -506,60 +432,13 @@ We will likely build 3–4 sleeves for v1.
 
 ### 4.3 Build Curve Relative Value (Curve RV) Meta-Sleeve
 
-**Status:** ✅ v1 COMPLETE (Core v9), v2 PLANNED (Post-v1)
+**Status:** v1 COMPLETE (Core v9); v2 PLANNED (Post-v1)
 
-**Definition:**
+**Description:** SR3 curve momentum (Rank Fly 5%, Pack Slope 3%); market-neutral spreads and flies. See [docs/SOTs/STRATEGY.md](docs/SOTs/STRATEGY.md) for signal definitions.
 
-Curve RV captures persistent regimes in curve shape (slope, curvature) using relative-value structures, expressed via market-neutral spreads and flies.
+**Stage:** Production (Core v9)
 
-#### v1 (COMPLETE) — SR3 (SOFR) Curve Momentum
-
-**Rationale:**
-
-Curve RV captures macro state detection on the yield curve through momentum-driven regime signals, distinct from:
-- Trend (price continuation)
-- CSMOM (cross-sectional momentum)
-- Carry (time decay / roll)
-- VRP (insurance selling)
-
-**Key Discovery (Phase-0):**
-- Mean-reversion on curves is conditional by nature
-- Momentum on curve shape is unconditional
-- This distinction matters enormously for system design
-
-**v1 Atomic Sleeves:**
-
-1. **Rank Fly (2-6-10)** — ✅ PROMOTED
-   - Expression: `sign(2*r6 - r2 - r10)` — momentum on rank fly shape
-   - Phase-1 Sharpe: 1.19
-   - Core v9 weight: 5%
-
-2. **Pack Slope (front vs back)** — ✅ PROMOTED
-   - Expression: `sign(pack_back - pack_front)` — momentum on steepening/flattening
-   - Phase-1 Sharpe: 0.28
-   - Core v9 weight: 3%
-
-**Phase-0 Results (2020-01-01 to 2025-10-31):**
-- Mean-reversion variants: All failed (Sharpe -0.42 to -0.81)
-- Momentum variants: All passed (Sharpe 0.42 to 0.81)
-
-**Redundancy Analysis:**
-- Pack Curvature vs Rank Fly: 0.91 signal correlation (high redundancy)
-- Pack Slope vs others: 0.18 signal correlation (orthogonal)
-- **Decision**: Pack Curvature parked (redundant with Rank Fly)
-
-**Phase-2 Results (Dec 2025):**
-- ✅ **PROMOTED**: Rank Fly Momentum (5% weight) — Phase-2 PASS
-- ✅ **PROMOTED**: Pack Slope Momentum (3% weight) — Phase-2 PASS
-- Both atomics integrated into Core v9 at 8% total Curve RV Meta-Sleeve weight
-- Core v9 improvement vs Core v8: Sharpe +0.0785, CAGR +2.54%, MaxDD +1.81%, Vol -0.69%
-- **Role**: Policy-driven short-rate regime detection
-
-**Implementation Constraints:**
-- Spread / fly constructions only (no outright directional exposure)
-- Rate space for signals: `r_k = 100 - P_k`
-- Price returns for P&L: `pct_change(P_k)` (leg-return construction)
-- Execution lag: `signal.shift(1)` (frozen)
+**Next step:** v2 Treasury Curve RV (deferred).
 
 #### v2 (PLANNED) — Treasury Curve RV
 
@@ -747,87 +626,9 @@ Allocator development follows the structured lifecycle defined in `PROCEDURES.md
 
 #### 5.1.1 Allocator v1 Status (December 2024)
 
-**Status:** ✅ Phase-D COMPLETE (Production-Ready)
+**Status:** Phase-D COMPLETE (production-ready)
 
-Allocator v1 has completed Stages 4A-5.5 (December 2024) and is production-ready for deployment.
-
-**Implementation Completion:**
-- ✅ **Stage 4A**: State layer (10 features) implemented and validated
-- ✅ **Stage 4B**: Regime classifier (4 regimes, rule-based, sticky) implemented
-- ✅ **Stage 4C**: Risk transformer (risk scalars with EWMA smoothing) implemented
-- ✅ **Stage 4D**: Exposure application layer (weight scaling with 1-rebalance lag) implemented
-- ✅ **Stage 5**: Risk scalar application (lagged, no circularity) implemented
-- ✅ **Stage 5.5**: Two-pass audit workflow (baseline vs scaled) implemented
-
-**Allocator v1 Architecture:**
-
-**A. State Estimation (`AllocatorStateV1`):**
-- 10 canonical features: volatility/acceleration (3), drawdown/path (2), correlation (3), engine health (2)
-- 8 required features + 2 optional features
-- Artifact: `allocator_state_v1.csv`
-
-**B. Regime Interpretation (`RegimeClassifierV1`):**
-- 4 risk regimes: NORMAL, ELEVATED, STRESS, CRISIS
-- Rule-based classification with hysteresis and anti-thrash
-- Artifact: `allocator_regime_v1.csv`
-
-**C. Risk Transformation (`RiskTransformerV1`):**
-- Regime → risk scalar mapping: NORMAL (1.0), ELEVATED (0.85), STRESS (0.55), CRISIS (0.30)
-- EWMA smoothing (5d half-life)
-- Bounded [0.25, 1.0]
-- Artifact: `allocator_risk_v1.csv`, `allocator_risk_v1_applied.csv`
-
-**D. Exposure Application:**
-- 3 modes: `off` (artifacts only), `precomputed` (two-pass audit), `compute` (on-the-fly, has warmup issues)
-- 1-rebalance lag: apply `risk_scalar[t-1]` to `weights[t]`
-- Artifacts: `weights_raw.csv`, `weights_scaled.csv`
-
-**Validation Status:**
-- ✅ All 10 state features computed correctly
-- ✅ Regime classifier is sticky (no thrashing)
-- ✅ Risk scalars are bounded and deterministic
-- ✅ Two-pass audit framework operational
-- ✅ Comparison reports generated automatically
-- ✅ Complete artifact trail and metadata
-
-**Configuration:**
-```yaml
-allocator_v1:
-  enabled: false              # Default: artifacts only
-  mode: "off"                 # DEFAULT: "off" (artifacts only). "precomputed" for production (requires precomputed_run_id)
-  precomputed_run_id: null    # Required if mode="precomputed"
-  state_version: "v1.0"
-  regime_version: "v1.0"
-  risk_version: "v1.0"
-```
-
-**Deployment Readiness:**
-- **Two-pass audit**: Canonical workflow for validating allocator impact
-- **Diagnostic scripts**: State/regime/risk computation, two-pass orchestration, comparison reports
-- **Documentation**: Complete SOT updates in SYSTEM_CONSTRUCTION.md, DIAGNOSTICS.md, PROCEDURES.md
-
-**Production Readiness (Complete):**
-- ✅ **Stage 6**: Production mode locked (`off` as default, `precomputed` for production when explicitly configured)
-- ✅ **Stage 6.5**: Stability & sanity review framework (qualitative validation before deployment)
-
-**Future Enhancements (Post-v1):**
-- **Stage 7**: Threshold tuning against historical stress events (post-deployment)
-- **Stage 8**: Convexity overlays (VIX calls) gated by regime (post-deployment)
-- **Stage 9**: True incremental state computation (resolve warmup period, enables `compute` mode)
-
-**See Also:**
-- `docs/ALLOCATOR_V1_STAGE_4_COMPLETE.md` - Full implementation documentation
-- `docs/ALLOCATOR_V1_QUICK_START.md` - Quick start guide
-- `SOTs/SYSTEM_CONSTRUCTION.md` § "Allocator v1 Implementation"
-- `SOTs/DIAGNOSTICS.md` § "Allocator v1 Diagnostics"
-- `SOTs/PROCEDURES.md` § "Allocator v1 Production Procedures"
-
-**Allocator Logic Components:**
-- ERC or Ridge-RP portfolio construction
-- Risk parity across meta-sleeves
-- Dynamic position sizing
-- Regime conditioning (macro regime filters, volatility regime adjustments)
-- Crisis detection and defensive scaling
+See [docs/SOTs/SYSTEM_CONSTRUCTION.md](docs/SOTs/SYSTEM_CONSTRUCTION.md) for allocator architecture, layers, and implementation. See [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md) for allocator promotion and two-pass audit workflow.
 
 ### 5.2 Phase-B Optimization (Post-Production)
 

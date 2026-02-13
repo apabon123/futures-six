@@ -4,9 +4,10 @@ This document describes the **exact step-by-step process** of how the futures-si
 
 ## Related Documents
 
-- **PROCEDURES.md**: Development process, checklists, and lifecycle procedures
-- **DIAGNOSTICS.md**: Validation results, metrics, and diagnostic tools (single source of truth for Phase-0/1/2 results)
-- **ROADMAP.md**: Sleeve status, priorities, and future development plans (single source of truth for status)
+- [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md): Sleeve status, priorities, and sequencing
+- [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md): Development process, checklists, and promotion workflow
+- [docs/SOTs/DIAGNOSTICS.md](docs/SOTs/DIAGNOSTICS.md): Validation outputs, required artifacts, and pass/fail criteria
+- [docs/SOTs/SYSTEM_CONSTRUCTION.md](docs/SOTs/SYSTEM_CONSTRUCTION.md): Architecture and layering
 
 ## Architecture: Two-Layer Sleeve Model
 
@@ -29,16 +30,18 @@ The strategy implements a **two-layer sleeve architecture** that separates econo
 **Atomic Sleeves** are specific implementations within each Meta-Sleeve:
 - **Trend Meta-Sleeve** includes:
   - Long-term momentum (252d) — Canonical (1/3, 1/3, 1/3)
-  - Medium-term momentum (84/126d) — Legacy (production)
-  - Medium-term momentum (84d) — Canonical (research, Phase-1)
-  - Short-term momentum (21d) — Legacy (production: 0.5/0.3/0.2)
-  - Short-term momentum (21d) — Canonical (research, Phase-0/1: 1/3, 1/3, 1/3)
-  - Residual Trend (252d long - 21d short; validated Phase-1)
-  - Breakout Mid (50-100d; production)
+  - Medium-term momentum (84/126d) — Legacy
+  - Medium-term momentum (84d) — Canonical
+  - Short-term momentum (21d) — Legacy (0.5/0.3/0.2)
+  - Short-term momentum (21d) — Canonical (1/3, 1/3, 1/3)
+  - Residual Trend (252d long - 21d short)
+  - Breakout Mid (50-100d)
 - **Volatility Risk Premium Meta-Sleeve** includes atomic sleeves for systematic volatility strategies:
-  - **VRP-Core** (Phase-1): Directional VX1 trading based on z-scored VRP spread (VIX - realized ES vol)
-  - Future atomic sleeves: VX curve trading, vol spreads, variance risk premium
+  - **VRP-Core**: Directional VX1 trading based on z-scored VRP spread (VIX - realized ES vol)
+  - VX curve trading, vol spreads, variance risk premium
 - Each atomic sleeve can have different feature sets, horizons, or signal processing methods
+
+Operational and promotion status of meta-sleeves is defined in [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md) and [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md).
 
 ### Signal Flow
 
@@ -47,6 +50,8 @@ Atomic Sleeves → Meta-Sleeve (vol-normalized, combined) → Risk Overlays → 
 ```
 
 **Key Principle**: Risk overlays (macro filters, vol targeting, portfolio allocator) operate **only at the Meta-Sleeve layer**, not on individual atomic sleeves. Atomic sleeves feed into meta-sleeves, and meta-sleeves feed into the portfolio.
+
+A meta-sleeve may define a **restricted tradable instrument universe**. Instruments outside this scope must be stripped before portfolio combination (e.g. VRP meta-sleeve trades only VX1/VX2/VX3; other sleeves must not emit VX signals).
 
 ## Data Consistency and Run Alignment ⚠️
 
@@ -122,7 +127,7 @@ Rows dropped: 0
 - Rows dropped > 5% of sample
 - Row count mismatch between runs being compared
 
-See `SOTs/PROCEDURES.md` § 2 "Run Consistency Contract" for full details.
+See `docs/SOTs/PROCEDURES.md` § 2 "Run Consistency Contract" for full details.
 
 ## Sleeve Development Lifecycle
 
@@ -155,66 +160,24 @@ All new sleeves must follow a structured development lifecycle:
 
 **Any sleeve that fails Phase-0 remains disabled until the underlying economic idea is validated or redesigned.**
 
-## Roadmap
+### Run Types and Governance
 
-### Next Meta-Sleeves to Test
+Futures-Six distinguishes between two canonical run types:
 
-1. **Cross-Sectional Momentum Meta-Sleeve** → ✅ Phase-2 Complete
-   - **Status**: Active Meta-Sleeve in production configuration
-   - See "Cross-Sectional Momentum (CSMOM) Meta-Sleeve — Status" section below for full details
+**Engine-Quality Runs**
+- **Purpose**: Evaluate the unconditional economic behavior of a new atomic or meta-sleeve.
+- **Composition**: Control engine(s) (typically Trend) plus the candidate sleeve(s).
+- These runs are not production portfolio candidates.
 
-2. **Volatility Risk Premium Meta-Sleeve** → In Progress
-   - Multiple atomic sleeves for volatility strategies
-   - **VRP-Core**: ✅ Phase-1 / Phase-2 complete (promoted to baseline in core_v5)
-   - **VRP-Convergence**: Phase-1 / Phase-2 in progress
-   - Various implementation approaches (e.g., VIX futures, volatility spreads, vol-of-vol)
-   - Different feature sets and signal processing methods
-   - Systematic capture of volatility risk premium across asset classes
+**Integration Runs**
+- **Purpose**: Evaluate interaction with the production stack.
+- **Composition**: Current promoted production baseline plus candidate sleeve(s).
 
-3. **Value Meta-Sleeve** → Planned
-   - Mean reversion signals
-   - Relative value opportunities
-   - Term structure value (futures vs spot)
+Promotion decisions must be based on engine-quality runs before any integration runs are evaluated.
 
-4. **Curve RV Meta-Sleeve** → ✅ Phase-2 Complete, PROMOTED to Core v9
-   - Momentum-driven regime sleeve (not mean-reversion)
-   - SR3 curve shape momentum (pack slope, pack curvature, rank fly)
-   - Phase-1 decision: Rank Fly promoted (primary), Pack Slope optional (secondary), Pack Curvature parked (redundant)
-   - Phase-2 promotion: Both Rank Fly (5%) and Pack Slope (3%) integrated into Core v9 at 8% total weight
+## Development Roadmap
 
-5. **Carry Meta-Sleeve** → Redesign
-   - Sector-based roll yield (commodities vs FX vs rates)
-   - DV01-neutral carry for rates
-   - Regime-dependent filters (USD strength, commodity cycles)
-
-6. **Seasonality/Flows Meta-Sleeve** → Future
-   - Calendar effects (month-of-year, day-of-week)
-   - Flow-driven patterns (quarter-end, rebalancing flows)
-   - Event-driven signals
-
-7. **Crisis Meta-Sleeve (v1)** → v1 COMPLETE — NO PROMOTION
-   - Always-on crisis hedges for tail risk mitigation
-   - Unlike alpha-generating sleeves (Trend, VRP, Carry, Curve RV), Crisis sleeves are not expected to produce positive unconditional Sharpe
-   - Their role is to improve conditional performance during market stress, including equity crashes, volatility shocks, and macro dislocations
-   - **Design Principles:**
-     - Always-on exposure (no timing or regime logic in v1)
-     - No allocator interaction
-     - Evaluated on tail behavior, not average returns
-   - **Research Arc (v1):**
-     - **Phase-0**: VX2 and VX spread passed; UB conditional (parked)
-     - **Phase-1**: VX3 chosen as cheapest usable convexity
-     - **Phase-2**: VX3 failed due to 2020 Q1 deterioration
-   - **Final Decision (2025-12-17)**: NO PROMOTION
-     - Long VX3 fails Phase-2 due to deterioration in 2020 Q1 fast-crash behavior
-     - Overall tail metrics improved (MaxDD, worst-month, worst-quarter, 2022 drawdown)
-     - But 2020 Q1 fast-crash window showed portfolio-level drawdown deterioration
-     - Instrument-level VX behavior is correct, but portfolio-level integration fails Phase-2 criteria
-   - **Disposition:**
-     - **VX2**: Retained as benchmark only (not promoted)
-     - **VX3**: Parked as "tail smoother candidate" for allocator-era research
-     - **UB**: Remains parked (conditional hedge, post-v1 reconsideration)
-     - **VX Spreads**: Parked (Phase-1 FAIL)
-   - **Takeaway**: v1 sleeves remain always-on economic return sources; crisis convexity requires conditional activation and therefore belongs in allocator logic (post-v1)
+See [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md) for sleeve status, priorities, and sequencing.
 
 ## Core Baseline Configurations
 
@@ -224,7 +187,7 @@ All new sleeves must follow a structured development lifecycle:
 
 - Used as the canonical reference profile for Trend research and A/B tests
 
-- Configuration: `tsmom_multihorizon` with 4 active atomic sleeves (long, med, short, breakout)
+- Configuration: `tsmom_multihorizon` with 4 atomic sleeves (long, med, short, breakout)
 
 - See "Trend Meta-Sleeve Architecture" section for full details.
 
@@ -232,41 +195,43 @@ All new sleeves must follow a structured development lifecycle:
 
 **Previous Baseline:** Core v8 (superseded by Core v9, Dec 2025)
 
+For historical reasons, earlier configuration identifiers use `*_meta` suffixes for VRP atomic sleeves. Conceptually, VRP is a single meta-sleeve and the entries vrp_core, vrp_convergence and vrp_alt are atomic sleeves under that meta-sleeve.
+
 **Strategy Profile Mapping:**
 
 | Label   | Strategy ID (config)                                      | Description                                    |
 |---------|-----------------------------------------------------------|------------------------------------------------|
-| Core v5 | core_v5_trend_csmom_vrp_core_no_macro                     | Trend + CSMOM + VRP-Core; no macro overlays   |
-| Core v6 | core_v6_trend_csmom_vrp_core_convergence_no_macro         | Trend + CSMOM + VRP-Core + VRP-Convergence; no macro overlays |
-| Core v7 | core_v7_trend_csmom_vrp_core_convergence_vrp_alt_no_macro | Trend + CSMOM + VRP-Core + VRP-Convergence + VRP-Alt; no macro overlays |
-| Core v8 | core_v8_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_no_macro | Core v7 + VX Carry (5%); no macro overlays (superseded by Core v9, Dec 2025) |
+| Core v5 | core_v5_trend_csmom_vrp_core_no_macro                     | Trend + CSMOM + VRP (atomic: vrp_core); no macro overlays |
+| Core v6 | core_v6_trend_csmom_vrp_core_convergence_no_macro         | Trend + CSMOM + VRP (atomic: vrp_core, vrp_convergence); no macro overlays |
+| Core v7 | core_v7_trend_csmom_vrp_core_convergence_vrp_alt_no_macro | Trend + CSMOM + VRP (atomic: vrp_core, vrp_convergence, vrp_alt); no macro overlays |
+| Core v8 | core_v8_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_no_macro | Core v7 + VX Carry (5%); no macro overlays |
 | Core v9 | core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro | Core v8 + Curve RV (8%: Rank Fly 5% + Pack Slope 3%); no macro overlays |
 
 *Note: After this mapping table, all references use the short labels (Core v5, Core v6, Core v7, Core v8) instead of the long internal IDs.*
 
 **Core v8 Configuration:**
-- Trend Meta-Sleeve (57%) + Cross-Sectional Momentum Meta-Sleeve (23.75%) + VRP-Core Meta-Sleeve (7.125%) + VRP-Convergence Meta-Sleeve (2.375%) + VRP-Alt Meta-Sleeve (14.25%) + VX Calendar Carry (5%)
+- Trend (57%) + CSMOM (23.75%) + VRP (21.75%; atomic: vrp_core, vrp_convergence, vrp_alt) + VX Calendar Carry (5%)
 - No macro overlay, no vol overlay, no allocator yet
 - Used as the default "full strategy" profile for future Meta-Sleeve integration and Phase-2 tests
 - VX Carry uses canonical atomic sleeve: VX2–VX1_short
 - Configuration:  
   - `tsmom_multihorizon` weight: 0.57 (Trend, scaled from 0.60)  
   - `csmom_meta` weight: 0.2375 (CSMOM, scaled from 0.25)
-  - `vrp_core_meta` weight: 0.07125 (VRP-Core, scaled from 0.075)
-  - `vrp_convergence_meta` weight: 0.02375 (VRP-Convergence, scaled from 0.025)
-  - `vrp_alt_meta` weight: 0.1425 (VRP-Alt, scaled from 0.15)
+  - `vrp_core_meta` weight: 0.07125 (vrp_core atomic, scaled from 0.075)
+  - `vrp_convergence_meta` weight: 0.02375 (vrp_convergence atomic, scaled from 0.025)
+  - `vrp_alt_meta` weight: 0.1425 (vrp_alt atomic, scaled from 0.15)
   - `vx_calendar_carry` weight: 0.05 (VX Carry, canonical: vx2_vx1_short)
 
 **Core v7 Configuration (Superseded by Core v8, Dec 2025):**
-- Trend Meta-Sleeve (60%) + Cross-Sectional Momentum Meta-Sleeve (25%) + VRP-Core Meta-Sleeve (7.5%) + VRP-Convergence Meta-Sleeve (2.5%) + VRP-Alt Meta-Sleeve (15%)
+- Trend (60%) + CSMOM (25%) + VRP (25%; atomic: vrp_core, vrp_convergence, vrp_alt)
 - No macro overlay, no vol overlay, no allocator yet
 - Superseded by Core v8 (Dec 2025)
 - Configuration:  
   - `tsmom_multihorizon` weight: 0.60 (Trend)  
   - `csmom_meta` weight: 0.25 (CSMOM)  
-  - `vrp_core_meta` weight: 0.075 (VRP-Core)
-  - `vrp_convergence_meta` weight: 0.025 (VRP-Convergence, de-emphasized)
-  - `vrp_alt_meta` weight: 0.15 (VRP-Alt, NEW)
+  - `vrp_core_meta` weight: 0.075 (vrp_core atomic)
+  - `vrp_convergence_meta` weight: 0.025 (vrp_convergence atomic, de-emphasized)
+  - `vrp_alt_meta` weight: 0.15 (vrp_alt atomic, NEW)
   - CSMOM uses 63/126/252-day cross-sectional momentum with horizon weights [0.4, 0.35, 0.25]
   - VRP-Core uses z-scored VRP spread (VIX - 21d realized ES vol) with 252-day z-score window
   - VRP-Convergence uses short-only z-scored convergence spread (VIX - VX1) with 252-day z-score window
@@ -282,11 +247,11 @@ All new sleeves must follow a structured development lifecycle:
 |--------------|-------------|------|--------|-----|-------|--------|
 | Core v3 | Trend only | -0.48% | 0.0294 | 12.20% | -29.85% | Trend diagnostic baseline |
 | Core v4 | Trend 75% / CSMOM 25% | 8.34% | 0.6461 | 13.83% | -15.57% | First multi-sleeve baseline |
-| Core v5 | Trend 65% / CSMOM 25% / VRP-Core 10% | 8.46% | 0.6532 | 13.85% | -15.49% | VRP-Core promotion |
-| Core v6 | Trend 62.5% / CSMOM 25% / VRP-Core 7.5% / VRP-Conv 5% | 8.49% | 0.6553 | 13.85% | -15.46% | VRP-Conv promotion |
-| Core v7 | Trend 60% / CSMOM 25% / VRP-Core 7.5% / VRP-Conv 2.5% / VRP-Alt 15% | 8.53% | 0.6577 | 13.86% | -15.43% | Superseded by Core v8 (Dec 2025) |
-| Core v8 | Trend 57% / CSMOM 23.75% / VRP-Core 7.125% / VRP-Conv 2.375% / VRP-Alt 14.25% / VX Carry 5% | 6.81% | 0.5820 | 12.70% | -17.13% | Superseded by Core v9 (Dec 2025) |
-| Core v9 | Trend 52.4% / CSMOM 21.85% / VRP-Core 6.555% / VRP-Conv 2.185% / VRP-Alt 13.11% / VX Carry 4.6% / Curve RV 8% | 9.35% | 0.6605 | 12.01% | -15.32% | ✅ Current canonical baseline |
+| Core v5 | Trend 65% / CSMOM 25% / VRP 10% (vrp_core) | 8.46% | 0.6532 | 13.85% | -15.49% | VRP (vrp_core) promotion |
+| Core v6 | Trend 62.5% / CSMOM 25% / VRP 12.5% (vrp_core, vrp_convergence) | 8.49% | 0.6553 | 13.85% | -15.46% | VRP (vrp_convergence) promotion |
+| Core v7 | Trend 60% / CSMOM 25% / VRP 25% (vrp_core, vrp_convergence, vrp_alt) | 8.53% | 0.6577 | 13.86% | -15.43% | Superseded by Core v8 (Dec 2025) |
+| Core v8 | Trend 57% / CSMOM 23.75% / VRP 21.75% (vrp_core, vrp_convergence, vrp_alt) / VX Carry 5% | 6.81% | 0.5820 | 12.70% | -17.13% | Superseded by Core v9 (Dec 2025) |
+| Core v9 | Trend 52.4% / CSMOM 21.85% / VRP 21.85% (vrp_core, vrp_convergence, vrp_alt) / VX Carry 4.6% / Curve RV 8% | 9.35% | 0.6605 | 12.01% | -15.32% | Current baseline (see [ROADMAP](docs/SOTs/ROADMAP.md)) |
 
 **Key Takeaways:**
 - The major performance jump occurs between Core v3 → Core v4 (introduction of CSMOM) and Core v4 → Core v5 (introduction of VRP-Core)
@@ -322,7 +287,7 @@ All new sleeves must follow a structured development lifecycle:
 
 **Core v5** (Historical Reference Baseline)
 
-- **Composition**: Trend (65%), CSMOM (25%), VRP-Core (10%)
+- **Composition**: Trend (65%), CSMOM (25%), VRP (10%; atomic: vrp_core)
 - **Role**: Historical reference baseline with VRP-Core integration (superseded by Core v6, Dec 2025)
 - **Promotion Reason**: VRP-Core passed Phase-0 (toy econ test), Phase-1 (engineered sleeve), and Phase-2 (portfolio integration)
 - **Phase-2 Results** (Aligned dates: 2020-01-06 to 2025-10-31) vs Core v4:
@@ -330,12 +295,12 @@ All new sleeves must follow a structured development lifecycle:
   - CAGR: +0.12% (8.46% vs 8.34%)
   - MaxDD: slight improvement (-15.49% vs -15.57%)
   - Crisis behavior: neutral or modestly better across 2020 Q1/Q2 and 2022
-  - **Full analysis**: See `SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-2 Diagnostics"
+  - **Full analysis**: See `docs/SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-2 Diagnostics"
 - **Decision**: Promoted to canonical baseline (Dec 2025), then superseded by Core v6 (Dec 2025)
 
 **Core v7** (Superseded by Core v8, Dec 2025)
 
-- **Composition**: Trend (60%), CSMOM (25%), VRP-Core (7.5%), VRP-Convergence (2.5%), VRP-Alt (15%)
+- **Composition**: Trend (60%), CSMOM (25%), VRP (25%; atomic: vrp_core, vrp_convergence, vrp_alt)
 - **Role**: Historical reference baseline (superseded by Core v8, Dec 2025)
 - **Status**: Superseded by Core v8 (Dec 2025)
 - **Configuration**: `core_v7_trend_csmom_vrp_core_convergence_vrp_alt_no_macro`
@@ -344,7 +309,7 @@ All new sleeves must follow a structured development lifecycle:
 
 **Core v8** (Superseded by Core v9, Dec 2025)
 
-- **Composition**: Trend (57%), CSMOM (23.75%), VRP-Core (7.125%), VRP-Convergence (2.375%), VRP-Alt (14.25%), VX Calendar Carry (5%)
+- **Composition**: Trend (57%), CSMOM (23.75%), VRP (21.75%; atomic: vrp_core, vrp_convergence, vrp_alt), VX Calendar Carry (5%)
 - **Role**: Historical reference baseline (superseded by Core v9, Dec 2025)
 - **Status**: Superseded by Core v9 (Dec 2025)
 - **Configuration**: `core_v8_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_no_macro`
@@ -353,9 +318,9 @@ All new sleeves must follow a structured development lifecycle:
 
 **Core v9** ✅ (Current Canonical Baseline)
 
-- **Composition**: Trend (52.4%), CSMOM (21.85%), VRP-Core (6.555%), VRP-Convergence (2.185%), VRP-Alt (13.11%), VX Calendar Carry (4.6%), Curve RV (8%: Rank Fly 5% + Pack Slope 3%)
+- **Composition**: Trend (52.4%), CSMOM (21.85%), VRP (21.85%; atomic: vrp_core, vrp_convergence, vrp_alt), VX Calendar Carry (4.6%), Curve RV (8%: Rank Fly 5% + Pack Slope 3%)
 - **Role**: Current canonical production baseline for all new Meta-Sleeve integration and Phase-2 tests
-- **Status**: Active canonical baseline (Dec 2025)
+- Current production baseline; see [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md) for status.
 - **Configuration**: `core_v9_trend_csmom_vrp_core_convergence_vrp_alt_vx_carry_sr3_curverv_no_macro`
 - **Promotion Reason**: Curve RV Meta-Sleeve passed Phase-0 (momentum variants), Phase-1 (redundancy analysis), and Phase-2 (portfolio integration) for both Rank Fly and Pack Slope atomics
 - **Performance** (canonical window, 2020-01-06 to 2025-10-31): CAGR 9.35%, Sharpe 0.6605, MaxDD -15.32%, Vol 12.01%
@@ -363,14 +328,14 @@ All new sleeves must follow a structured development lifecycle:
 
 **Core v6** (Superseded)
 
-- **Composition**: Trend (62.5%), CSMOM (25%), VRP-Core (7.5%), VRP-Convergence (5%)
+- **Composition**: Trend (62.5%), CSMOM (25%), VRP (12.5%; atomic: vrp_core, vrp_convergence)
 - **Role**: Historical reference baseline (superseded by Core v7, Dec 2025)
 - **Promotion Reason**: VRP-Convergence passed Phase-0 (short-only signal test), Phase-1 (engineered sleeve), and Phase-2 (portfolio integration)
 - **Phase-2 Results** (Aligned dates: 2020-01-06 to 2025-10-31) vs Core v5:
   - Sharpe: +0.0021 (0.6553 vs 0.6532)
   - CAGR: +0.03% (8.49% vs 8.46%)
   - MaxDD: slight improvement (-15.46% vs -15.49%)
-  - **Full analysis**: See `SOTs/DIAGNOSTICS.md` § "VRP-Convergence Phase-2 Diagnostics"
+  - **Full analysis**: See `docs/SOTs/DIAGNOSTICS.md` § "VRP-Convergence Phase-2 Diagnostics"
   - **Decision**: Promoted to canonical baseline (Dec 2025) after confirming:
   - No metric degradation
   - Consistent behavior across regimes
@@ -397,7 +362,7 @@ All new sleeves must follow a structured development lifecycle:
 ### Enabled Meta-Sleeves
 
 - ✅ **Trend Meta-Sleeve**: Multi-horizon time-series momentum
-  - **Active Atomic Sleeves** (5 production):
+  - **Atomic Sleeves** (5):
     - **Long-term momentum (252d) — Canonical**: Equal-weight (1/3, 1/3, 1/3) of 252d return, 252d breakout, slow trend slope
     - **Medium-term momentum (84/126d) — Legacy**: 84-day return, 126-day breakout, medium trend slope (EMA_20 - EMA_84), persistence
     - **Short-term momentum (21d)**: 21-day return, 21-day breakout, fast trend slope (EMA_10 - EMA_40), reversal filter (optional)
@@ -410,7 +375,7 @@ All new sleeves must follow a structured development lifecycle:
     - Cross-sectional z-scoring across assets
     - EWMA volatility normalization (63-day half-life, 5% floor)
   - **Internal Weights (FROZEN)**: 48.5% long, 29.1% medium, 19.4% short, 3% breakout_mid
-    - **⚠️ Weight Freeze Policy**: These weights are frozen during architecture build-out. Optimization belongs in Phase-B with proper OOS controls (see `SOTs/PROCEDURES.md`).
+    - **⚠️ Weight Freeze Policy**: These weights are frozen during architecture build-out. Optimization belongs in Phase-B with proper OOS controls (see `docs/SOTs/PROCEDURES.md`).
     - **Note**: Breakout (50-100d) atomic sleeve passed Phase-0/1B/2/3 validation (70/30 config, 3% weight). Integrated into production `core_v3_no_macro` profile.
   - **Implementation**: TSMOMMultiHorizon strategy (v2)
 
@@ -480,7 +445,7 @@ Future work (Phase-B enhancement) may introduce additional atomic sleeves for CS
     - **Phase-1**: PASS (Implementation with z-scoring, vol targeting, execution rules frozen)
     - **Phase-2**: PASS (Portfolio integration: MaxDD improvement +0.80%, correlation 0.04, Sharpe preserved)
     - **Research Weight**: 5% (scaffolding, not production)
-    - **See**: `SOTs/DIAGNOSTICS.md` § "SR3 Calendar Carry" for full development history and promotion decision
+    - **See**: `docs/SOTs/DIAGNOSTICS.md` § "SR3 Calendar Carry" for full development history and promotion decision
   - **VX Calendar Carry**: ✅ **PROMOTED** (Dec 2025)
     - **Canonical Atomic Sleeve**: VX2–VX1_short (liquidity-favored, default)
     - **Secondary Atomic Sleeve**: VX3–VX2_short (Phase-2 PASS, non-default, validated backup)
@@ -494,7 +459,7 @@ Future work (Phase-B enhancement) may introduce additional atomic sleeves for CS
     - **Research Weight**: 5% (scaffolding, not production)
     - **Promotion Decision**: VX2–VX1_short promoted as canonical due to slightly stronger Phase-2 improvements and liquidity advantages. VX3–VX2_short retained as validated secondary option.
     - **Rationale**: Both represent the same economic idea with different curve locations. No synthetic execution modeling applied. Liquidity considerations deferred to production reality. Matches institutional CTA practice: spreads are worked differently than outrights.
-    - **See**: `SOTs/DIAGNOSTICS.md` § "VX Calendar Carry" for full development history and promotion decision
+    - **See**: `docs/SOTs/DIAGNOSTICS.md` § "VX Calendar Carry" for full development history and promotion decision
 
 - ✅ **Curve RV Meta-Sleeve**: **Phase-1 Complete, Phase-2 Pending**
   - **Role**: Momentum-driven regime sleeve for macro state detection on the yield curve
@@ -507,7 +472,7 @@ Future work (Phase-B enhancement) may introduce additional atomic sleeves for CS
     - `sr3_curve_rv_rank_fly_2_6_10_momentum` (Phase-2 candidate)
     - `sr3_curve_rv_pack_slope_momentum` (optional secondary)
     - `sr3_curve_rv_pack_curvature_momentum` (parked - redundant)
-  - **See**: `SOTs/DIAGNOSTICS.md` § "SR3 Curve RV Momentum" for full Phase-0/1 results
+  - **See**: `docs/SOTs/DIAGNOSTICS.md` § "SR3 Curve RV Momentum" for full Phase-0/1 results
 
 - ❌ **Volatility Risk Premium Meta-Sleeve**: **Planned** (not yet implemented)
   - Will include multiple atomic sleeves for various volatility selling strategies
@@ -592,7 +557,7 @@ The `core_v3_no_macro` profile uses **TSMOMMultiHorizon (v2)** with **4 active a
 - Residual (252d-21d): **0.15** (FIXED)
 
 **⚠️ Weight Freeze Policy:**
-These internal weights (45/28/20/15) are **frozen during the architecture build-out phase**. Do not sweep or optimize these weights until Phase-B (Optimization & Pruning), where they must be optimized jointly across all sleeves with proper out-of-sample controls. See `SOTs/PROCEDURES.md` for details.
+These internal weights (45/28/20/15) are **frozen during the architecture build-out phase**. Do not sweep or optimize these weights until Phase-B (Optimization & Pruning), where they must be optimized jointly across all sleeves with proper out-of-sample controls. See `docs/SOTs/PROCEDURES.md` for details.
 
 **Feature Weights (Within Each Horizon):**
 - **Long**: ret_252=0.5, breakout_252=0.3, slope_slow=0.2
@@ -730,20 +695,6 @@ It is a **risk governor** responsible for:
 
 This is where institutions place timing, convexity activation, and leverage control. The Allocator operates on Meta-Sleeve outputs, not on raw market data, and implements conditional logic that Meta-Sleeves explicitly do not contain.
 
-### Current Production Architecture
-
-**Active Meta-Sleeves:**
-- **Trend Meta-Sleeve**: Multi-horizon time-series momentum (3 atomic sleeves: long-term, medium-term, short-term)
-- **Cross-Sectional Momentum (CSMOM) Meta-Sleeve**: Relative momentum across assets (Phase-2 integrated)
-
-**Disabled/Parked Meta-Sleeves:**
-- **Carry Meta-Sleeve**: Parked (Phase-0 failed; negative Sharpe in recent years)
-- **Curve RV Meta-Sleeve**: Phase-1 Complete, Phase-2 Pending (momentum-driven, not mean-reversion)
-- **Persistence Atomic Sleeve (Trend Meta-Sleeve)**: Parked (Phase-1 failed; did not improve Trend Meta-Sleeve performance)
-- **Volatility Risk Premium Meta-Sleeve**: VRP-Core atomic sleeve (Phase-1 implemented; additional atomic sleeves planned)
-- **Value Meta-Sleeve**: Planned (not yet implemented)
-- **Seasonality/Flows Meta-Sleeve**: Future (not yet implemented)
-
 ### System Components
 
 - **13 futures contracts** across equities, rates, commodities, and FX
@@ -850,337 +801,57 @@ See `docs/SOTs/PROCEDURES.md` § VRP Prerequisites for full data pipeline requir
 
 ### VRP-Core Atomic Sleeve
 
-**Status**: Phase-2 integrated
+**Economic idea**: VIX (30d implied vol) vs realized ES volatility. When VIX > realized vol → implied vol is expensive → fade (short VX1). When VIX < realized vol → implied vol is cheap → stay flat or long.
 
-**Economic Idea**: VIX (30d implied vol) vs realized ES volatility
-- When VIX > realized vol → implied vol is expensive → fade (short VX1)
-- When VIX < realized vol → implied vol is cheap → stay flat or long
+**Units**: VIX in vol points; realized ES vol as `std(returns)*sqrt(252)` in decimals — multiply RV by 100 for vol points: `vrp_spread = VIX - (RV_21 * 100.0)`.
 
-**Units Fix (Critical)**:
-- **VIX**: In vol points (e.g., 20 = 20%)
-- **Realized ES vol**: Computed as `std(returns) * sqrt(252)` → gives decimals (e.g., 0.18 = 18%)
-- **Fix**: Multiply realized vol by 100 to convert to vol points before computing spread:
-  ```python
-  vrp_spread = VIX - (RV_21 * 100.0)  # Both in vol points
-  ```
-- **Without fix**: Spread ≈ 21 vol points (nonsense: 20 - 0.18 = 19.82)
-- **With fix**: Spread ≈ 2-6 vol points (realistic: 20 - 18 = 2)
-- All documented results refer to post-fix implementation.
+**Signal**: Z-scored VRP spread (252-day rolling); mean-reversion (fade expensive vol); vol-targeted (e.g., 10%).
 
-**Phase-0 (Signal Sanity Test)**:
-- **Rule**: Short VX1 when (VIX - RV_21 × 100) > 1.5 vol points, else flat
-  - Threshold of 1.5 is fixed for Phase-0 documentation only; NOT used in Phase-1 or production
-- **No z-scores, no vol targeting** - raw economic signal test
-- **Pass criteria**: Sharpe ≥ 0.1 (marginal edge), ideally ≥ 0.2
-- **Script**: `scripts/diagnostics/run_vrp_phase0.py`
-- **Results**: See `SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-0 Signal Test" for full metrics and analysis
-- **Note**: Any pre-fix Phase-0 runs (spread ≈ 21 vol points) were invalid due to units mismatch.
+**Instruments**: VX1 (front-month VIX futures).
 
-**Phase-1 (Engineered VRP-Core Sleeve)**:
-- **Signal**: Z-scored VRP spread
-  - Compute 21-day rolling realized vol of ES returns: `rv_es_21 = std(ES_returns_21d) * sqrt(252)` (decimals)
-  - Convert to vol points: `rv_es_21_volpoints = rv_es_21 * 100.0`
-  - VRP spread: `vrp_spread = VIX - rv_es_21_volpoints` (both in vol points)
-  - Z-score the spread over a rolling window (e.g., 252 days): `vrp_z = (vrp_spread - mean) / std`
-  - Signal: `-vrp_z` (inverted for mean-reversion: fade expensive vol)
-  - Optional: squash with `tanh` for bounded signals in [-1, 1]
+**Data**: VIX from FRED; ES returns for RV21; VX1 from CBOE. Warmup: 273 days.
 
-- **Instrument**: VX1 (front-month VIX futures)
-
-- **Logic**: Mean-reversion on VRP spread
-  - When VRP is high (vol is expensive) → short VX1 (fade premium)
-  - When VRP is low (vol is cheap) → long VX1 (fade mean reversion)
-
-- **Position Sizing**: Volatility-targeted
-  - Compute rolling vol of VX1 returns
-  - Scale position to achieve target annualized vol (e.g., 10%)
-  - Position = `signal * (vol_target / realized_vol)`
-
-- **Script**: `scripts/diagnostics/run_vrp_core_phase1.py`
-
-- **Results**: See `SOTs/DIAGNOSTICS.md` § "VRP-Core Phase-1 Diagnostics" for full metrics and analysis
-
-- **Features**:
-  - `vrp_spread`: VIX - 21d realized ES volatility (in vol points, after ×100 conversion)
-  - `vrp_z`: Z-scored VRP spread (252-day rolling window, clipped ±3σ)
-
-- **Implementation**:
-  - Module: `src/agents/feature_vrp_core.py` (features)
-  - Strategy: `src/agents/strat_vrp_core.py` (VRPCorePhase1, VRPCoreMeta)
-  - Diagnostics: `scripts/diagnostics/run_vrp_core_phase1.py`
-
-- **Note**: Pre-fix Phase-1 results should be considered obsolete.
-
-**Phase-2 (Portfolio Integration)**:
-- **Baseline**: `core_v4_trend_csmom_no_macro` (Trend 75% + CSMOM 25%) - now superseded
-- **Core v5 Profile**: Core v5 (Trend 65% + CSMOM 25% + VRP-Core 10%) - ✅ **Historical reference baseline**
-  - VRP-Core receives modest 10% risk budget for Phase-2 testing
-  - Same canonical backtest window (2020-01-01 to 2025-10-31)
-  - Same universe / data sources
-- **Promotion Status**: ✅ **Promoted to production baseline** (Dec 2025)
-  - VRP-Core is included in Core v5 as 10% of risk budget
-
-- **Phase-2 Diagnostic**:
-  - Script: `scripts/diagnostics/run_core_v5_trend_csmom_vrp_core_phase2.py`
-  - Compares baseline vs VRP-enhanced portfolio:
-    - Sharpe, CAGR, Vol, MaxDD, HitRate
-    - Crisis-period performance (2020 Q1/Q2, 2022)
-    - Correlation between portfolios
-  - Outputs: `data/diagnostics/phase2/core_v5_trend_csmom_vrp_core/`
-  - Phase index: `reports/phase_index/vrp/phase2_core_v5_trend_csmom_vrp_core.txt`
-
-- **Promotion Criteria**:
-  - Portfolio Sharpe improves or remains similar with lower drawdown
-  - Crisis behavior is acceptable
-  - VRP contribution is additive and not redundant
-- **Promotion Outcome**: ✅ **PASSED** - Core v5 promoted to baseline (Dec 2025), then superseded by Core v6 (Dec 2025)
-
-**Rationale**:
-- VRP typically positive (implied vol > realized vol) due to volatility risk premium
-- Extremes in VRP tend to mean-revert
-- Trading VX1 captures direct exposure to front-month implied volatility
-- Z-scoring provides regime-independent signal strength
-
-**Data Dependencies**:
-- VIX (1M implied vol) from FRED
-- ES returns for realized vol calculation (21-day rolling std)
-- VX1 prices from CBOE (market_data table, symbol @VX=101XN)
-
-**Warmup Period**: 273 trading days (252d z-score window + 21d realized vol lookback)
-
-**Phase-1 Diagnostics**:
-```bash
-python scripts/diagnostics/run_vrp_core_phase1.py --start 2020-01-01 --end 2025-10-31
-```
-
-**Next Steps (Phase-2)**:
-- Integrate VRP-Core into VRP Meta-Sleeve
-- Test with vol-targeting and macro overlays
-- Compare vs baseline (Trend + CSMOM)
+Governance and evaluation status is defined in [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md) and [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md).
 
 ### VRP-Convergence Atomic Sleeve
 
-**Economic Idea**: Use the spread between spot VIX and front-month VX1 futures as a "convergence / dislocation" signal:
-- When VX1 is too high vs VIX, expect convergence lower in VX1 → short VX1
-- When VX1 is too low vs VIX, expect convergence higher in VX1 → long VX1
+**Economic idea**: Spread between spot VIX and front-month VX1 as convergence/dislocation signal. When VX1 too high vs VIX → short VX1 (expect convergence down). Positive spreads (VIX > VX1) often indicate momentum regimes; only negative spreads (VX1 > VIX) produce stable convergence — short-only logic.
 
-This sleeve is a VX1 directional strategy using the same VRP data pipeline as VRP-Core (VIX from FRED, VX1 from canonical DB via vrp_loaders).
+**Signal**: Z-scored convergence spread `spread_conv = VIX - VX1` (vol points); short-only `conv_z_neg = min(conv_z, 0)`; 252-day z-score; vol-targeted (10%).
 
-**Phase-0 (Signal Sanity Test)**:
-- **Rule**: SHORT-ONLY convergence rule
-  - Short VX1 when (VIX - VX1) < -T (VX1 too rich vs VIX, expect convergence down)
-  - Flat otherwise
-  - Threshold T = 1.0 vol points (fixed for Phase-0 documentation only; NOT used in Phase-1 or production)
-- **No z-scores, no vol targeting** - raw economic signal test
-- **Pass criteria**: Sharpe ≥ 0.1, non-degenerate signal distribution (short signals used)
-- **Script**: `scripts/diagnostics/run_vrp_convergence_phase0.py`
-- **Test window**: Canonical 2020-01-01 to 2025-10-31
-- **Results**: See `SOTs/DIAGNOSTICS.md` § "VRP-Convergence Phase-0 Diagnostics" for full metrics and analysis
+**Instruments**: VX1 (front-month VIX futures).
 
-**Asymmetry in VIX–VX1 Convergence**:
-- **Positive spreads (VIX > VX1) do NOT imply mean reversion**
-  - Positive spreads often indicate momentum/expansion regimes
-  - These are not mean-reverting and should not be traded
-  - This aligns with academic VIX term structure literature
-- **Only negative spreads (VX1 > VIX) produce stable convergence**
-  - VX1 typically trades above VIX (contango)
-  - The decay from VX1 → VIX produces reliable downward convergence
-  - This is the same phenomenon that powers short VX1 carry trades
-- **Phase-0 and Phase-1 both use short-only logic**
-  - Phase-0: Short-only binary signal with fixed threshold (1.0 vol points)
-  - Phase-1: Short-only continuous z-scored signal (replaces threshold with rolling z-score)
+**Data**: VIX from FRED; VX1 from CBOE. Warmup: 252 days.
 
-**Phase-1 (Engineered VRP-Convergence Sleeve)**:
-- **Signal**: Z-scored convergence spread (replaces Phase-0 threshold with continuous signal)
-  - Convergence spread: `spread_conv = VIX - VX1` (both in vol points)
-  - Z-score the spread over a rolling window (252 days): `conv_z = (spread_conv - rolling_mean_252) / rolling_std_252`
-  - **Short-only logic**: `conv_z_neg = min(conv_z, 0.0)` (only use negative z-scores, ignore positive)
-  - Signal transformation: `signal = np.tanh(conv_z_neg / 2.0)` (bounded in [-1, 0] - short-only)
-  - Alternative: `signal = clip(conv_z_neg / clip, -1.0, 0.0)` (zscore mode)
-  - **Phase-1 is short-only in VX1**: Positive spread_conv (VIX ≥ VX1) is ignored (no long signal)
-  - Signal is a z-scored, smoothed version of the Phase-0 short-only rule
-- **Position Sizing**: Volatility-targeted at 10% sleeve vol
-- **Results**: See `SOTs/DIAGNOSTICS.md` § "VRP-Convergence Phase-1 Diagnostics" for full metrics and analysis
-
-- **Instrument**: VX1 (front-month VIX futures)
-
-- **Logic**: Mean-reversion on convergence spread
-  - When spread is low (VX1 too rich vs VIX, negative spread) → short VX1 (expect convergence down) - **Primary driver**
-  - When spread is high (VX1 too cheap vs VIX, positive spread) → long VX1 (expect convergence up) - **Secondary, naturally down-weighted**
-  - **Note**: Phase-1 uses symmetric z-scoring, but positive spreads are naturally down-weighted because:
-    - Most spreads are negative (VX1 typically > VIX due to contango)
-    - Positive spreads occur less frequently and with lower magnitude
-    - The z-score distribution naturally emphasizes the negative spread regime
-
-- **Position Sizing**: Volatility-targeted
-  - Compute rolling vol of VX1 returns (63-day lookback)
-  - Scale position to achieve target annualized vol (e.g., 10%)
-  - Position = `signal * (vol_target / realized_vol)`
-
-- **Script**: `scripts/diagnostics/run_vrp_convergence_phase1.py`
-
-- **Features**:
-  - `spread_conv`: VIX - VX1 (convergence spread in vol points)
-  - `conv_z`: Z-scored convergence spread (252-day rolling window, clipped ±3σ)
-  - Optional: `curve_slope_vx = VX2 - VX1` (for diagnostics/plots only)
-
-- **Implementation**:
-  - Module: `src/agents/feature_vrp_convergence.py` (features)
-  - Strategy: `src/agents/strat_vrp_convergence.py` (VRPConvergencePhase1, VRPConvergenceMeta)
-  - Diagnostics: `scripts/diagnostics/run_vrp_convergence_phase1.py`
-
-**Phase-2 (Portfolio Integration)**:
-- **Baseline**: Core v5 (Trend 65% + CSMOM 25% + VRP-Core 10%) - historical reference baseline
-- **New Profile**: Core v6 (Trend 62.5% + CSMOM 25% + VRP-Core 7.5% + VRP-Convergence 5%) - ✅ **Current canonical baseline**
-  - VRP-Convergence receives modest 5% risk budget for Phase-2 testing
-  - VRP-Core reduced from 10% to 7.5% to make room for VRP-Convergence
-  - Same canonical backtest window (2020-01-01 to 2025-10-31)
-  - Same universe / data sources
-- **Status**: Phase-2 testing (not yet promoted to baseline)
-
-- **Phase-2 Diagnostic**:
-  - Script: `scripts/diagnostics/run_core_v6_trend_csmom_vrp_core_convergence_phase2.py`
-  - Compares baseline vs VRP-Convergence-enhanced portfolio:
-    - Sharpe, CAGR, Vol, MaxDD, HitRate
-    - Crisis-period performance (2020 Q1/Q2, 2022)
-    - Correlation between portfolios
-    - Sleeve-level correlations (VRP-Convergence vs Trend, CSMOM, VRP-Core)
-  - Outputs: `data/diagnostics/phase2/core_v6_trend_csmom_vrp_core_convergence/`
-  - Phase index: `reports/phase_index/vrp/phase2_core_v6_trend_csmom_vrp_core_convergence.txt`
-
-- **Pass Criteria**:
-  - Portfolio Sharpe improves or stays similar with no worse MaxDD
-  - Crisis behavior is neutral or improved
-  - Sleeve-level correlations show VRP-Convergence is not redundant:
-    - e.g., corr(VRP-Convergence, VRP-Core) < 0.95
-  - No obvious pathologies (e.g., massive drawdown concentrated in specific crisis windows)
-
-**Rationale**:
-- VIX (spot) and VX1 (front-month futures) should converge over time
-- Dislocations between spot and futures create mean-reversion opportunities
-- Trading VX1 captures direct exposure to front-month implied volatility
-- Z-scoring provides regime-independent signal strength
-
-**Data Dependencies**:
-- VIX (1M implied vol) from FRED
-- VX1 prices from CBOE (market_data table, symbol @VX=101XN)
-- Optional: VX2 prices for curve slope diagnostics
-
-**Warmup Period**: 252 trading days (z-score window)
-
-**Phase-1 Diagnostics**:
-```bash
-python scripts/diagnostics/run_vrp_convergence_phase1.py --start 2020-01-01 --end 2025-10-31
-```
+Governance and evaluation status is defined in [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md) and [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md).
 
 ### VRP-TermStructure Atomic Sleeve
 
-**Status**: PARKED — Phase-0 Failure
+**Economic idea**: The slope of the near-term volatility futures curve (VX2 – VX1) may contain a tradable short-volatility risk premium.
 
-The TermStructure sleeve was designed to test whether the slope of the near-term volatility futures curve (VX2 – VX1) contains a tradable short-volatility risk premium. A sign-only Phase-0 specification was implemented:
+**Signal**: `slope = VX2 - VX1`; short-only rule `signal = -1 if slope > 0.5 else 0`.
 
-**Phase-0 Specification**:
-- Compute slope: `slope = VX2 - VX1`
-- Short-only rule: `signal = -1 if slope > 0.5 else 0`
+**Instruments**: VX1 (outright directional exposure).
 
-**Phase-0 Results**: See `SOTs/DIAGNOSTICS.md` § "VRP-TermStructure Phase-0 Diagnostics" for full metrics and analysis.
-
-Signal alignment and PnL attribution confirmed that the data and calculations were correct.
-
-**Interpretation**:
-Although slope correctly identified contango vs backwardation regimes, the mapping from steep contango to outright short VX1 exposure did not produce a positive economic edge. The strategy suffered large losses during volatility spikes in periods where the VX curve remained in contango, demonstrating that curve slope is not a robust directional VRP signal in this form.
-
-**Status**:
-This sleeve is PARKED following a Phase-0 economic failure. At present there is no plan to progress to Phase-1 engineering. Term structure information may be revisited later as a regime filter or crisis-indicator input, rather than as a standalone VRP return sleeve.
-
-**Script**: `scripts/vrp/run_vrp_termstructure_phase0.py`
+Governance and evaluation status is defined in [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md) and [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md).
 
 ### VRP-RollYield Atomic Sleeve
 
-**Status**: PARKED — Borderline Phase-0 Result
+**Economic idea**: Front-month VIX futures (VX1) tend to decay toward spot VIX as expiry approaches (roll-down carry).
 
-The VRP-RollYield sleeve was designed to capture the tendency of front-month VIX futures (VX1) to decay toward the spot VIX as expiry approaches (roll-down carry). A Phase-0 sign-only specification was implemented:
+**Signal**: `roll = VX1 - VIX`; `roll_yield = roll / days_to_expiry`; short-only rule `signal = -1 if roll_yield > 0 else 0`.
 
-**Phase-0 Specification**:
-- Roll: `roll = VX1 - VIX`
-- Roll yield estimate: `roll_yield = roll / days_to_expiry`
-- Short-only rule: `signal = -1 if roll_yield > 0 else 0`
+**Instruments**: VX1 (outright directional exposure).
 
-**Phase-0 Results** (2020-01-01 to 2025-10-31):
-- Sharpe: +0.02 (below the ≥ 0.10 Phase-0 threshold)
-- CAGR: –17.4%
-- MaxDD: –85.65% (slightly beyond the –85% catastrophic line)
-- Hit Rate: 30.2%
-- Short exposure: ~74.5% of days (signal is non-degenerate)
-
-Data and PnL diagnostics confirm that the implementation and inputs are correct. The weak, near-zero Sharpe indicates that this particular sign-only mapping from roll yield to outright short VX1 exposure does not deliver a sufficiently robust economic edge by itself.
-
-**Status**:
-This sleeve is currently PARKED at Phase-0. The underlying concept of roll-down carry remains economically meaningful, but a more sophisticated formulation (e.g., tenor-weighted baskets, additional regime filters, or integration with other VRP components) is required. There is no active Phase-1 engineering for the current simple rule.
-
-**Script**: `scripts/vrp/run_vrp_rollyield_phase0.py`
+Governance and evaluation status is defined in [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md) and [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md).
 
 ### VRP-Alt (VRP-Richness) Atomic Sleeve
 
-**Status**: ✅ **CANONICAL VRP SLEEVE** — Core v7 (15% weight)
+**Economic idea**: VRP-Alt captures the volatility risk premium by comparing VIX (implied volatility) to short-term realized volatility (RV5). When VIX is significantly higher than RV5, it indicates a volatility risk premium that can be captured by shorting VX1 futures.
 
-**Classification**: VRP-Alt is a **canonical VRP atomic sleeve**, not an experimental variant. It is the second permanent VRP sleeve alongside VRP-Core, with strong diversification properties.
+**Signal**: `alt_vrp_spread = VIX - RV5`; z-scored (252-day rolling, clipped ±3σ); short-only mean-reversion; 10% target vol.
 
-**Economic Idea**:
-VRP-Alt captures the volatility risk premium by comparing VIX (implied volatility) to short-term realized volatility (RV5). When VIX is significantly higher than RV5, it indicates a volatility risk premium that can be captured by shorting VX1 futures.
-
-**Phase-0 (Signal Test)**:
-- **Economic spec**: VIX vs 5-day realized ES volatility (RV5)
-- **Toy rule**: Short VX1 when `VIX - RV5 > 0`, otherwise flat
-- **Pass criteria**: Sharpe ≥ 0.10 (marginal edge)
-- **Results** (2020-01-01 to 2025-10-31):
-  - Sharpe: +0.10 (borderline pass)
-  - MaxDD: –94.25% (catastrophic, expected for raw short-vol signals)
-  - Hit Rate: 48.2%
-- **Interpretation**: Borderline economic edge with catastrophic drawdown, similar to VRP-Core Phase-0. This is expected for raw, unscaled short-vol signals and is addressed in Phase-1 engineering.
-
-**Phase-1 (Engineered Sleeve)**:
-- **Features**: `alt_vrp_spread = VIX - RV5`, `alt_vrp_z` (252-day rolling z-score, clipped ±3σ)
-- **Signal**: Short-only mean-reversion on z-scored Alt-VRP spread
-- **Vol targeting**: 10% target annualized volatility
-- **Results** (2020-01-01 to 2025-10-31):
-  - Sharpe: 0.91 (strong pass)
-  - MaxDD: –2.01% (excellent risk control)
-  - Volatility: ~2% (very low volatility sleeve)
-  - Hit Rate: 52.5%
-- **Interpretation**: Phase-1 engineering (z-scoring, vol targeting, short-only constraint) transformed VRP-Alt into a very stable, low-volatility sleeve with excellent risk-adjusted returns.
-
-**Phase-2 (Portfolio Integration)**:
-- **Baseline**: Core v6 (Trend 62.5% + CSMOM 25% + VRP-Core 7.5% + VRP-Convergence 5%)
-- **Initial test**: VRP-Alt at 5% weight
-- **Results** (2020-01-01 to 2025-10-31):
-  - Portfolio Sharpe: +0.0024 vs baseline (inconclusive)
-  - MaxDD: +0.05% vs baseline (acceptable)
-  - No degradation but limited impact due to low sleeve volatility
-- **Interpretation**: Inconclusive Phase-2 result due to low weight (5%) in a low-volatility sleeve (2%). Required scaling analysis to determine optimal weight.
-
-**Scaling Analysis (Mandatory Verification)**:
-To resolve the inconclusive Phase-2, VRP-Alt was evaluated at multiple weights (5%, 7.5%, 10%, 15%). Results demonstrated:
-- **Monotonic Sharpe improvement**: Sharpe increases linearly with weight (+0.0005 per 1% weight increase)
-- **Stable MaxDD**: MaxDD increases by only +0.15% at 15% weight (acceptable)
-- **No crisis vulnerabilities**: Crisis-period performance remains stable across all weights
-- **Stable marginal Sharpe**: ~+0.0005 per 1% weight increase (consistent across all weights)
-- **Optimal weight**: 15% (highest Sharpe: 0.5874, MaxDD increase: +0.15%)
-
-**Promotion Decision**:
-VRP-Alt is promoted to the VRP Meta-Sleeve at 15% weight, forming **Core v7**. This promotion required a non-standard lifecycle:
-1. Phase-0 borderline pass (Sharpe ≈ 0.10, catastrophic MaxDD expected)
-2. Phase-1 strong pass (Sharpe ≈ 0.91, MaxDD ≈ –2%)
-3. Phase-2 inconclusive at 5% (limited impact due to low volatility)
-4. **Mandatory scaling analysis** (5%, 7.5%, 10%, 15%) to verify safe scaling
-5. **Promotion** at optimal weight (15%)
-
-**Final Core v7 Composition**:
-- Trend Meta: 60%
-- CSMOM Meta: 25%
-- VRP-Core: 7.5%
-- VRP-Convergence: 2.5%
-- **VRP-Alt: 15%** (NEW)
+**Instruments**: VX1 (outright directional exposure).
 
 **Data Dependencies**:
 - VIX (1M implied vol) from FRED
@@ -1189,52 +860,41 @@ VRP-Alt is promoted to the VRP Meta-Sleeve at 15% weight, forming **Core v7**. T
 
 **Warmup Period**: 252 trading days (z-score window) + 5 days (RV5 calculation)
 
-**Phase-1 Diagnostics**:
-```bash
-python scripts/diagnostics/run_vrp_alt_phase1.py --start 2020-01-01 --end 2025-10-31
-```
-
-**Scaling Analysis**:
-```bash
-python scripts/diagnostics/run_vrp_alt_scaling_analysis.py --start 2020-01-01 --end 2025-10-31
-```
-
-**VRP Meta-Sleeve Status and Priorities**: See `SOTs/ROADMAP.md` § 4.1 "Complete VRP Meta-Sleeve" for current status, priorities, and development sequencing.
+Governance and evaluation status is defined in [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md) and [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md).
 
 ### VRP-Convexity (VVIX) — Atomic Sleeve
 
-**Status**: PARKED — Phase-0 FAIL
+**Economic idea**: Convexity insurance embedded in VVIX is persistently overpriced, creating a volatility risk premium distinct from level-based VRP.
 
-**Economic thesis:**
-Convexity insurance embedded in VVIX is persistently overpriced,
-creating a volatility risk premium distinct from level-based VRP.
+**Signal**: VVIX threshold-based (e.g., VVIX > 100 ⇒ short VX1).
 
-**Phase-0 outcome**: FAILED; see DIAGNOSTICS + phase_index
+**Instruments**: VX1.
 
-**Lifecycle:**
-Phase-0 → PARKED (hard fail; not proceeding to Phase-1)
+Governance and evaluation status is defined in [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md) and [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md).
 
 ### VRP-FrontSpread (Directional) — Atomic Sleeve
 
-**Status**: PARKED — Phase-0 FAIL
+**Economic idea**: Richness spread VX1 − VX2 (not slope) carries predictive power; short VX1 when VX1 > VX2.
 
-**Phase-0 outcome**: FAILED; see DIAGNOSTICS + phase_index
+**Instruments**: VX1 (outright directional exposure).
 
----
+Governance and evaluation status is defined in [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md) and [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md).
 
 ### VRP-Structural (RV252) — Atomic Sleeve
 
-**Status**: PARKED — Phase-0 FAIL
+**Economic idea**: Long-horizon implied vs realized volatility premium: VIX vs RV252; short VX when VIX > RV252.
 
-**Phase-0 outcome**: FAILED; see DIAGNOSTICS + phase_index
+**Instruments**: VX1/VX2/VX3.
 
----
+Governance and evaluation status is defined in [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md) and [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md).
 
 ### VRP-Mid (RV126) — Atomic Sleeve
 
-**Status**: PARKED — Phase-0 FAIL
+**Economic idea**: Mid-horizon implied vs realized volatility premium: VIX vs RV126; short VX when VIX > RV126.
 
-**Phase-0 outcome**: FAILED; see DIAGNOSTICS + phase_index
+**Instruments**: VX2/VX3.
+
+Governance and evaluation status is defined in [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md) and [docs/SOTs/ROADMAP.md](docs/SOTs/ROADMAP.md).
 
 ## Complete Execution Flow
 
@@ -2057,7 +1717,7 @@ After all rebalance dates complete:
     - `sr3_curve_rv_rank_fly_2_6_10_momentum` (Phase-2 candidate)
     - `sr3_curve_rv_pack_slope_momentum` (optional secondary)
     - `sr3_curve_rv_pack_curvature_momentum` (parked - redundant)
-  - **See**: `SOTs/DIAGNOSTICS.md` § "SR3 Curve RV Momentum" for full Phase-0/1 results
+  - **See**: `docs/SOTs/DIAGNOSTICS.md` § "SR3 Curve RV Momentum" for full Phase-0/1 results
 
 - ✅ **Multi-Sleeve Architecture**: CombinedStrategy wrapper
   - Combines TSMOM (long-term), Medium-Term Momentum, Short-Term Momentum, SR3 carry/curve, Rates curve, and FX/Commodity carry signals with configurable weights
