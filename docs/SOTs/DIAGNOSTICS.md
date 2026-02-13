@@ -141,6 +141,7 @@ Any run used for promotion, ablation, or roadmap decisions must include attribut
 - Residual consistency check (sleeve contributions sum to portfolio return within tolerance)
 - Sleeve contribution correlation matrix
 - No-signal diagnostics (per-sleeve active vs no-signal days)
+- When a sleeve shows materially negative contribution in Phase-4, a Phase-2 vs Phase-4 atomic return stream comparison must be performed before promotion decisions (used for SR3 curve RV and VRP).
 
 Artifacts are written under `reports/runs/<run_id>/analysis/attribution/` (e.g. `attribution_by_metasleeve.csv`, `attribution_summary.json`, `ATTRIBUTION_SUMMARY.md`).
 

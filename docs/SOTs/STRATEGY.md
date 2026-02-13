@@ -465,8 +465,15 @@ Future work (Phase-B enhancement) may introduce additional atomic sleeves for CS
     - **Rationale**: Both represent the same economic idea with different curve locations. No synthetic execution modeling applied. Liquidity considerations deferred to production reality. Matches institutional CTA practice: spreads are worked differently than outrights.
     - **See**: `docs/SOTs/DIAGNOSTICS.md` § "VX Calendar Carry" for full development history and promotion decision
 
+**Carry metasleeve – V1 composition**
+
+- V1 carry includes only **vx_calendar_carry**.
+- **sr3_calendar_spread_carry** is implemented (Phase-2 promoted object, R2−R1 spread) but explicitly excluded from V1 to minimize trading surface for the initial release.
+- **sr3_carry_curve** (directional curve strategy) is not considered a carry sleeve.
+
 - ✅ **Curve RV Meta-Sleeve**: **Phase-1 Complete, Phase-2 Pending**
   - **Role**: Momentum-driven regime sleeve for macro state detection on the yield curve
+  - **sr3_curve_rv_meta** represents SR3 curve relative-value (butterflies / shape) and is economically distinct from carry.
   - **Key Discovery**: Mean-reversion on curves is conditional; momentum on curve shape is unconditional
   - **Phase-0 Results**: All mean-reversion variants failed; all momentum variants passed (Sharpe 0.42-0.81)
   - **Phase-1 Results**: Rank Fly Momentum (Sharpe 1.19), Pack Slope Momentum (Sharpe 0.28), Pack Curvature Momentum (Sharpe 0.39)

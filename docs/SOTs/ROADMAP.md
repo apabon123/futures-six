@@ -115,6 +115,13 @@ Performance improvements beyond this point are evaluated only relative to pinned
 - Ablations until RT/Allocator behavior is frozen.
 - [ ] **Next: Phase 3A Attribution Ablations** (Policy / RT / Allocator / Sleeves)
 
+### Phase-4 / V1 hardening (Feb 2026)
+
+- **VX calendar carry** → accepted into V1 baseline.
+- **SR3 calendar spread carry** → implemented and validated in Phase-4 but deferred to post-V1 (minimize trading surface for initial release).
+- **VRP metasleeve** → deferred to V2 pending formal engine policy (policy-conditioned engine).
+- **SR3 curve RV** → remains part of V1 but flagged for Phase-4 diagnostic follow-up (Phase-2 vs Phase-4 atomic return stream comparison due to negative Phase-4 contribution).
+
 ### Core v7 Upgrade — VRP-Alt Integration (15%)
 
 **Completed**: Phase-0, Phase-1, Phase-2, and scaling analysis for VRP-Alt.
