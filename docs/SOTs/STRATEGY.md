@@ -53,6 +53,10 @@ Atomic Sleeves → Meta-Sleeve (vol-normalized, combined) → Risk Overlays → 
 
 A meta-sleeve may define a **restricted tradable instrument universe**. Instruments outside this scope must be stripped before portfolio combination (e.g. VRP meta-sleeve trades only VX1/VX2/VX3; other sleeves must not emit VX signals).
 
+### Atomic Sleeves are Not a Substitute for Policy
+
+Atomic sleeves are alternative constructions of the same economic hypothesis; they are used to improve robustness and implementation diversity of a validated meta-sleeve. Atomic sleeves must not be used as substitutes for missing engine policy. If a strategy requires conditional validity (regime awareness, stress filters, or contextual gating) to function, this must be implemented in the engine policy layer rather than by adding additional atomic sleeves. Atomic expansion and policy design serve different purposes and must not be conflated.
+
 ## Data Consistency and Run Alignment ⚠️
 
 **CRITICAL**: To ensure valid performance comparisons, all runs must follow strict data alignment rules.

@@ -151,6 +151,10 @@ The canonical execution stack is:
 
 **This ordering is authoritative. All future development must preserve these boundaries.**
 
+### Return-Optimizing Strategy Mixing (Out of Scope)
+
+The architecture explicitly does not include any return-optimizing engine or strategy mixing layer (e.g. rolling regressions, ridge, lasso, or elastic-net blending of engines or sleeves). Any mechanism whose output is a time-varying weight across engines or sleeves based on historical performance, predictive regressions, or cross-validated forecast error is classified as dynamic portfolio allocation and is intentionally excluded from the core execution stack. Rationale: it destroys separation between engine quality and portfolio construction; it materially degrades attribution and auditability; it introduces regime-chasing behaviour that is difficult to govern; it couples engine evaluation and portfolio construction in a way that prevents controlled promotion and ablation. Such techniques may be implemented only as independent sidecar programs (see **Sidecars** below) and must not modify engine, policy, or allocator behaviour.
+
 ### Stage Effectiveness Contract (Phase 3A Governance)
 
 A stage in the canonical stack is considered **Effective** if and only if:
@@ -240,6 +244,10 @@ Futures-Six consumes read-only continuous futures data produced by the external 
 - Used asymmetrically (to reduce or disable, not to add)
 
 **Engine Policy answers:** "Is this engine structurally valid in this environment?"
+
+#### Policy-Conditioned Engines
+
+Some economic strategies are structurally policy-conditioned. For such strategies, the economic hypothesis is defined as the joint behaviour of *(engine signal, engine policy)*, not by the signal alone. An unconditional implementation of a structurally policy-conditioned strategy is not considered a valid engine for promotion; these strategies must be evaluated and promoted only after a formal and auditable engine policy specification exists. Volatility risk premia strategies are the canonical example of a policy-conditioned engine.
 
 ---
 
@@ -352,6 +360,12 @@ Futures-Six consumes read-only continuous futures data produced by the external 
 - Feedback into allocator or policy
 
 **Key Principle:** Margin is a post-construction constraint, not a decision signal.
+
+---
+
+### Sidecars
+
+Sidecars are independent trading programs that do not conform to the engine → policy → portfolio construction → allocator execution stack. Examples include (non-exhaustive): strategy-mixing or meta-allocation models; regression-based or machine-learning timing models; intraday or microstructure strategies; standalone event-driven or relative-value programs. Sidecars are capital-capped, have independent diagnostics and kill criteria, and do not influence engine signals, engine policy, portfolio construction, risk targeting, or allocator decisions. They are intentionally separated from the core Futures-Six system to preserve architectural clarity and auditability.
 
 ---
 

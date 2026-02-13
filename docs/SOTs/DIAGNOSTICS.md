@@ -146,6 +146,8 @@ Artifacts are written under `reports/runs/<run_id>/analysis/attribution/` (e.g. 
 
 Promotion rules are defined in [docs/SOTs/PROCEDURES.md](docs/SOTs/PROCEDURES.md).
 
+**Promotion eligibility (engine policy):** Engines whose unconditional implementation exhibits negative or unstable expectation over the canonical evaluation window are ineligible for promotion until a formal engine policy specification exists. This rule applies irrespective of whether the strategy may be profitable under discretionary or informal regime filtering.
+
 ### Universe consistency check
 
 Runs must fail if a sleeve emits signals for instruments not present in the configured universe, unless explicitly allowed by sleeve scope (e.g. VRP meta-sleeve restricted to VX1/VX2/VX3). This is enforced by the `--strict_universe` gate in `run_strategy.py` for governed runs.
