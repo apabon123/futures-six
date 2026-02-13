@@ -91,7 +91,10 @@ ATTRIBUTION_DISPLAY_ALIASES = {
     "vrp_alt_meta": "vrp_alt",
 }
 # Engine names in attribution JSON that are fine as-is; unknown keys trigger a build-time WARN
-CANONICAL_ATTRIBUTION_NAMES = frozenset({"tsmom", "tsmom_multihorizon", "trend", "csmom", "vx_carry", "curve_rv"})
+CANONICAL_ATTRIBUTION_NAMES = frozenset({
+    "tsmom", "tsmom_multihorizon", "trend", "csmom", "vx_carry", "curve_rv",
+    "vx_calendar_carry", "sr3_calendar_spread_carry", "sr3_curve_rv_meta", "csmom_meta", "sr3_carry_curve",
+})
 
 VRP_ATOMIC_NAMES = frozenset({"vrp_core", "vrp_convergence", "vrp_alt"})
 WEIGHT_TOLERANCE = 1e-6
@@ -345,6 +348,8 @@ def _render_attribution(attribution: Optional[dict], run_id: str = "") -> str:
         consistency += f" (max residual: {max_residual:.2e})"
     consistency += "</p>"
     parts.append(consistency)
+    if not passed:
+        parts.append("<p class='muted'>Attribution is partial for this run (some sleeves missing from artifacts).</p>")
 
     # Metasleeve summary table (alias engine names -> display names for consistency)
     meta = attribution.get("metasleeve_summary", [])

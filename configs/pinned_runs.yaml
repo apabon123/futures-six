@@ -197,3 +197,43 @@ runs:
         - { name: vx_carry, weight: 0.08 }
     artifacts:
       summary_md: ""
+
+  - run_id: carry_eq_trend_plus_vx_and_sr3spread_20200106_20251031_20260213_152338
+    label: "Carry EQ Trend + VX + SR3 calendar spread"
+    display_name: "Phase-4 engine-quality: Trend + VX carry + SR3 calendar spread carry (R2−R1)"
+    category: engine_quality
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase4_trend_plus_carry_vx_plus_sr3spread.yaml
+    git_commit: ""
+    description: "SR3 calendar spread carry sleeve (Phase-2 promoted); sr3_carry_curve disabled."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.75 }
+        - { name: vx_carry, weight: 0.10 }
+        - { name: sr3_calendar_spread_carry, weight: 0.15 }
+    artifacts:
+      summary_md: ""
+
+  - run_id: carry_int_v1stack_no_vrp_plus_vx_and_sr3spread_20200106_20251031_20260213_152417
+    label: "Carry Int V1 stack + VX + SR3 calendar spread"
+    display_name: "Phase-4 integration: V1 stack (no VRP) + VX carry + SR3 calendar spread carry"
+    category: integration
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase4_v1_stack_no_vrp_plus_carry_vx_plus_sr3spread.yaml
+    git_commit: ""
+    description: "Trend + CSMOM + Curve RV + VX + SR3 calendar spread; sr3_carry_curve disabled."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.52 }
+        - { name: csmom, weight: 0.22 }
+        - { name: curve_rv, weight: 0.08 }
+        - { name: vx_carry, weight: 0.08 }
+        - { name: sr3_calendar_spread_carry, weight: 0.10 }
+    artifacts:
+      summary_md: ""

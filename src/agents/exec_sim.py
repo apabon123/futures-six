@@ -1314,6 +1314,18 @@ class ExecSim:
             except Exception as e:
                 logger.error(f"[ExecSim] Failed to compute VX calendar carry returns: {e}")
                 vx_calendar_carry_returns = None
+
+        sr3_calendar_spread_carry_returns = None
+        sr3_calendar_spread_carry_meta = components.get('sr3_calendar_spread_carry_meta')
+        if sr3_calendar_spread_carry_meta is not None:
+            logger.info("[ExecSim] Computing SR3 calendar spread carry returns...")
+            try:
+                sr3_calendar_spread_carry_returns = sr3_calendar_spread_carry_meta.compute_returns(market, start, end)
+                logger.info(f"[ExecSim] SR3 calendar spread carry returns: n={len(sr3_calendar_spread_carry_returns)}, "
+                           f"mean={sr3_calendar_spread_carry_returns.mean():.6f}, std={sr3_calendar_spread_carry_returns.std():.6f}")
+            except Exception as e:
+                logger.error(f"[ExecSim] Failed to compute SR3 calendar spread carry returns: {e}")
+                sr3_calendar_spread_carry_returns = None
         
         # Build results
         logger.info(f"[ExecSim] Completed {len(dates_history)} holding periods")
@@ -1360,20 +1372,26 @@ class ExecSim:
                 portfolio_returns_log = (weights_aligned * returns_aligned).sum(axis=1)
                 portfolio_returns_daily = np.exp(portfolio_returns_log) - 1.0
                 
-                # Add Curve RV returns if enabled
-                if curve_rv_returns is not None and curve_rv_weight > 0:
-                    # Align Curve RV returns to portfolio returns dates
-                    common_dates = portfolio_returns_daily.index.intersection(curve_rv_returns.index)
-                    if len(common_dates) > 0:
-                        # Scale Curve RV returns by weight and add to portfolio
-                        # Portfolio: (1 - w) * base + w * curve_rv
-                        base_weight = 1.0 - curve_rv_weight
-                        curve_rv_aligned = curve_rv_returns.loc[common_dates]
-                        portfolio_returns_daily.loc[common_dates] = (
-                            base_weight * portfolio_returns_daily.loc[common_dates] +
-                            curve_rv_weight * curve_rv_aligned
-                        )
+                # Add Curve RV / VX / SR3 calendar spread returns if enabled (blend by weight)
+                vx_weight = components.get('vx_calendar_carry_weight', 0.0)
+                sr3_spread_weight = components.get('sr3_calendar_spread_carry_weight', 0.0)
+                blend_weight = curve_rv_weight + vx_weight + sr3_spread_weight
+                if blend_weight > 0:
+                    base_weight = 1.0 - blend_weight
+                    blended = base_weight * portfolio_returns_daily
+                    if curve_rv_returns is not None and curve_rv_weight > 0:
+                        curve_rv_aligned = curve_rv_returns.reindex(portfolio_returns_daily.index).fillna(0.0)
+                        blended = blended + curve_rv_weight * curve_rv_aligned
                         logger.info(f"[ExecSim] Added Curve RV returns to portfolio (weight={curve_rv_weight:.1%})")
+                    if vx_calendar_carry_returns is not None and vx_weight > 0:
+                        vx_aligned = vx_calendar_carry_returns.reindex(portfolio_returns_daily.index).fillna(0.0)
+                        blended = blended + vx_weight * vx_aligned
+                        logger.info(f"[ExecSim] Added VX calendar carry returns to portfolio (weight={vx_weight:.1%})")
+                    if sr3_calendar_spread_carry_returns is not None and sr3_spread_weight > 0:
+                        sr3_aligned = sr3_calendar_spread_carry_returns.reindex(portfolio_returns_daily.index).fillna(0.0)
+                        blended = blended + sr3_spread_weight * sr3_aligned
+                        logger.info(f"[ExecSim] Added SR3 calendar spread carry returns to portfolio (weight={sr3_spread_weight:.1%})")
+                    portfolio_returns_daily = blended
                 
                 # Compute daily equity curve
                 equity_daily = (1 + portfolio_returns_daily).cumprod()
@@ -1435,6 +1453,7 @@ class ExecSim:
             sleeve_signals_history=sleeve_signals_history,  # Stage 4A
             curve_rv_returns=curve_rv_returns,
             vx_calendar_carry_returns=vx_calendar_carry_returns,
+            sr3_calendar_spread_carry_returns=sr3_calendar_spread_carry_returns,
             risk_scalar_applied_history=risk_scalar_applied_history,  # Stage 5
             risk_scalar_computed_history=risk_scalar_computed_history,  # Stage 5
             weights_raw_history=weights_raw_history,  # Stage 5
@@ -1649,7 +1668,8 @@ class ExecSim:
         returns_history: Optional[list] = None,
         turnover_history: Optional[list] = None,
         curve_rv_returns: Optional[pd.Series] = None,
-        vx_calendar_carry_returns: Optional[pd.Series] = None
+        vx_calendar_carry_returns: Optional[pd.Series] = None,
+        sr3_calendar_spread_carry_returns: Optional[pd.Series] = None
     ):
         """
         Save run artifacts to disk for diagnostics.
@@ -1869,7 +1889,8 @@ class ExecSim:
         # 4B. Stage 4A: Sleeve Returns (optional, for allocator state and attribution)
         sleeve_returns_df = None
         if (sleeve_signals_history and 'strategy' in components and hasattr(components['strategy'], 'strategies')
-                or curve_rv_returns is not None or vx_calendar_carry_returns is not None):
+                or curve_rv_returns is not None or vx_calendar_carry_returns is not None
+                or sr3_calendar_spread_carry_returns is not None):
             try:
                 logger.info("[ExecSim] Computing sleeve returns...")
                 sleeve_returns_data = {}
@@ -1910,6 +1931,10 @@ class ExecSim:
                     idx = returns_df.index if not returns_df.empty else vx_calendar_carry_returns.index
                     aligned = vx_calendar_carry_returns.reindex(idx).fillna(0.0)
                     sleeve_returns_data["vx_calendar_carry"] = aligned
+                if sr3_calendar_spread_carry_returns is not None and len(sr3_calendar_spread_carry_returns) > 0:
+                    idx = returns_df.index if not returns_df.empty else sr3_calendar_spread_carry_returns.index
+                    aligned = sr3_calendar_spread_carry_returns.reindex(idx).fillna(0.0)
+                    sleeve_returns_data["sr3_calendar_spread_carry"] = aligned
 
                 if sleeve_returns_data:
                     sleeve_returns_df = pd.DataFrame(sleeve_returns_data)

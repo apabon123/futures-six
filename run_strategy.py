@@ -588,6 +588,29 @@ def main():
                 logger.info(f"    Config: variant={vx_params.get('variant')}, weight={vx_calendar_carry_cfg.get('weight', 0.0)}")
             else:
                 logger.warning("  VX Calendar Carry enabled but db path not found in configs/data.yaml; sleeve returns will be omitted")
+
+        # SR3 Calendar Spread Carry (Phase-2 promoted: R2-R1 spread; sleeve returns for attribution)
+        sr3_calendar_spread_carry_cfg = strategies_cfg.get("sr3_calendar_spread_carry", {})
+        sr3_calendar_spread_carry_meta = None
+        sr3_calendar_spread_carry_weight = 0.0
+        if sr3_calendar_spread_carry_cfg.get("enabled", False):
+            logger.info("  Initializing SR3 Calendar Spread Carry (Phase-2 R2-R1 sleeve returns)...")
+            from src.strategies.carry.sr3_calendar_spread_carry import SR3CalendarSpreadCarryReturnsAdapter
+            sr3_params = sr3_calendar_spread_carry_cfg.get("params", {})
+            sr3_calendar_spread_carry_meta = SR3CalendarSpreadCarryReturnsAdapter(
+                mode=sr3_params.get("mode", "phase1"),
+                zscore_window=sr3_params.get("zscore_window", 90),
+                clip=sr3_params.get("clip", 2.0),
+                target_vol=sr3_params.get("target_vol", 0.10),
+                vol_lookback=sr3_params.get("vol_lookback", 60),
+                use_dv01=sr3_params.get("use_dv01", False),
+                dv01_long=sr3_params.get("dv01_long"),
+                dv01_short=sr3_params.get("dv01_short"),
+                flip_sign=sr3_params.get("flip_sign", False),
+                lag=sr3_params.get("lag", 1),
+            )
+            sr3_calendar_spread_carry_weight = sr3_calendar_spread_carry_cfg.get("weight", 0.0)
+            logger.info(f"    Config: mode={sr3_params.get('mode')}, weight={sr3_calendar_spread_carry_weight}")
         
         # Residual Trend strategy
         residual_trend_cfg = strategies_cfg.get("residual_trend", {})
@@ -779,6 +802,9 @@ def main():
             'curve_rv_meta': curve_rv_meta,  # Add Curve RV meta-sleeve if enabled
             'curve_rv_weight': curve_rv_weight,  # Add Curve RV weight
             'vx_calendar_carry_meta': vx_calendar_carry_meta,  # For sleeve_returns attribution when enabled
+            'vx_calendar_carry_weight': vx_calendar_carry_cfg.get("weight", 0.0) if vx_calendar_carry_meta else 0.0,
+            'sr3_calendar_spread_carry_meta': sr3_calendar_spread_carry_meta,
+            'sr3_calendar_spread_carry_weight': sr3_calendar_spread_carry_weight,
             'allocator_v1_config': allocator_v1_config,  # Stage 4D: Allocator v1 config
             'engine_policy_v1_config': engine_policy_v1_config  # Phase 2: Engine Policy v1 config
         }
