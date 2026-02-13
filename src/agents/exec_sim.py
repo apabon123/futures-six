@@ -25,7 +25,8 @@ import shutil
 import yaml
 import pandas as pd
 import numpy as np
-import numpy as np
+
+from src.config.trading_calendar import is_us_trading_day, previous_us_trading_day
 
 logger = logging.getLogger(__name__)
 
@@ -229,17 +230,16 @@ class ExecSim:
         # Generate rebalance schedule
         if self.rebalance == "W-FRI":
             schedule = pd.date_range(start=start, end=end, freq='W-FRI')
-            # Handle holidays: if Friday is not a trading day, use previous business day
+            # Use US exchange calendar: rebalance on Friday only if it's a trading day,
+            # else on previous US trading day (avoids Good Friday etc. causing "No signal")
             actual_schedule = []
-            date_range_list = list(date_range)  # Convert to list for easier indexing
             for friday in schedule:
-                if friday in date_range_list:
-                    actual_schedule.append(friday)
+                d = friday.date() if hasattr(friday, 'date') else friday
+                if is_us_trading_day(d):
+                    actual_schedule.append(pd.Timestamp(d))
                 else:
-                    # Find previous business day
-                    prev_days = [d for d in date_range_list if d <= friday]
-                    if len(prev_days) > 0:
-                        actual_schedule.append(prev_days[-1])
+                    prev = previous_us_trading_day(d)
+                    actual_schedule.append(pd.Timestamp(prev))
             schedule = pd.DatetimeIndex(actual_schedule)
         elif self.rebalance == "M":
             # Month-end - use 'M' for backward compatibility, but snap to nearest business day
@@ -1391,6 +1391,23 @@ class ExecSim:
             f"Sharpe={report.get('sharpe', 0):.2f}, "
             f"MaxDD={report.get('max_drawdown', 0):.2%}"
         )
+        
+        # VX tradability diagnostic: log non-zero weight counts per VX symbol
+        vx_symbols = ["VX1", "VX2", "VX3"]
+        vx_counts = {}
+        for sym in vx_symbols:
+            if sym in weights_panel.columns:
+                non_zero = (weights_panel[sym].abs() > 1e-9).sum()
+                total = len(weights_panel)
+                pct = 100.0 * non_zero / total if total > 0 else 0
+                vx_counts[sym] = non_zero
+                logger.info(
+                    f"[ExecSim] VX tradability: {sym} non-zero weights: "
+                    f"{non_zero}/{total} rebalances ({pct:.1f}%)"
+                )
+        if vx_counts:
+            n1, n2, n3 = vx_counts.get('VX1', 0), vx_counts.get('VX2', 0), vx_counts.get('VX3', 0)
+            logger.info(f"[ExecSim] VX leg summary: VX1 non-zero={n1}, VX2 non-zero={n2}, VX3 non-zero={n3}")
         
         # Save artifacts (run_id already generated above if needed)
         self._save_run_artifacts(
@@ -2594,6 +2611,58 @@ class ExecSim:
             json.dump(meta, f, indent=2, cls=NumpyEncoder)
         
         logger.info(f"[ExecSim] Saved artifacts to {run_dir}")
+        
+        # Attribution: compute portfolio-consistent sleeve-level return attribution
+        try:
+            from src.attribution.core import compute_attribution
+            from src.attribution.artifacts import generate_attribution_artifacts
+            
+            if (sleeve_signals_history and portfolio_returns_daily is not None
+                    and not weights_panel.empty and not returns_df.empty):
+                logger.info("[ExecSim] Computing portfolio-consistent attribution...")
+                
+                # Convert log returns to simple returns for attribution input
+                asset_returns_simple_for_attr = np.exp(returns_df) - 1.0
+                
+                # Default metasleeve mapping: each sleeve is its own metasleeve
+                # Group VRP sleeves under a "vrp" metasleeve
+                metasleeve_map = {}
+                vrp_sleeves = {'vrp_core_meta', 'vrp_convergence_meta', 'vrp_alt_meta'}
+                for sname in sleeve_signals_history.keys():
+                    if sname in vrp_sleeves:
+                        metasleeve_map[sname] = 'vrp_combined'
+                    else:
+                        metasleeve_map[sname] = sname
+                
+                attr_result = compute_attribution(
+                    weights_panel=weights_panel,
+                    asset_returns_simple=asset_returns_simple_for_attr,
+                    portfolio_returns_simple=portfolio_returns_daily,
+                    sleeve_signals_history=sleeve_signals_history,
+                    universe=universe,
+                    metasleeve_mapping=metasleeve_map,
+                )
+                
+                attr_dir = generate_attribution_artifacts(
+                    attribution_result=attr_result,
+                    portfolio_returns_simple=portfolio_returns_daily,
+                    run_dir=run_dir,
+                    run_id=run_id,
+                    metasleeve_mapping=metasleeve_map,
+                )
+                logger.info(f"[ExecSim] Attribution artifacts saved to {attr_dir}")
+                
+                # Also save sleeve weight decomposition for post-hoc recomputation
+                decomp = attr_result.get("sleeve_weight_decomposition")
+                if decomp is not None and not decomp.empty:
+                    decomp.to_csv(run_dir / "sleeve_weight_decomposition.csv")
+                    logger.info("[ExecSim] Saved sleeve_weight_decomposition.csv")
+            else:
+                logger.info("[ExecSim] Skipping attribution (missing sleeve signals or portfolio data)")
+        except Exception as e:
+            logger.warning(f"[ExecSim] Attribution computation failed (non-fatal): {e}")
+            import traceback
+            traceback.print_exc()
         
         # Red flag if allocator state failed
         if not allocator_state_success:

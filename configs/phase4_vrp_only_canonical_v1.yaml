@@ -1,0 +1,130 @@
+# ============================================================================
+# Phase 4 VRP-Only Canonical v1 — Apples-to-Apples VRP Comparison
+# ============================================================================
+#
+# Purpose: VRP Meta-Sleeve only (explicit canonical name for comparison).
+# Same content as phase4_vrp_baseline_v1.yaml; all sleeves explicitly on/off.
+#
+# Config keys: strategies.<name>.enabled (bool), strategies.<name>.weight (float)
+#
+# Run: python3 run_strategy.py --start 2020-01-01 --end 2024-10-31 \
+#      --run_id vrp_only_canonical_2020_2024 \
+#      --config_path configs/phase4_vrp_only_canonical_v1.yaml --strict_universe
+
+# ENGINE POLICY V1 — Compute mode for VRP stress gate
+engine_policy_v1:
+  enabled: true
+  mode: "compute"
+  precomputed_run_id: null
+  lag_rebalances: 1
+  apply_missing_multiplier_as: 1.0
+  engines:
+    trend:
+      enabled: false
+    vrp:
+      enabled: true
+      rule: "vrp_extreme_stress_gate_v1"
+      feature: "vrp_stress_proxy"
+      threshold: 1
+      invert: false
+    csmom:
+      enabled: false
+    csmom_meta:
+      enabled: false
+    vrp_core_meta:
+      enabled: false
+    vrp_convergence_meta:
+      enabled: false
+    vrp_alt_meta:
+      enabled: false
+    vx_calendar_carry:
+      enabled: false
+    sr3_curve_rv_meta:
+      enabled: false
+
+risk_targeting:
+  enabled: true
+  target_vol: 0.42
+  leverage_cap: 7.0
+  leverage_floor: 1.0
+  vol_floor: 0.05
+  vol_lookback: 63
+  update_frequency: "static"
+
+allocator_v1:
+  enabled: true
+  mode: "off"
+  profile: "H"
+  precomputed_run_id: null
+  precomputed_scalar_filename: "allocator_risk_v1_applied.csv"
+  apply_missing_scalar_as: 1.0
+  state_version: "v1.0"
+  regime_version: "v1.0"
+  risk_version: "v1.0"
+
+exec:
+  rebalance: "W-FRI"
+  slippage_bps: 0.5
+  commission_per_contract: 0.0
+  position_notional_scale: 1.0
+
+risk_vol:
+  cov_lookback: 252
+  nan_policy: "mask-asset"
+  shrinkage: "lw"
+  vol_lookback: 63
+
+# STRATEGIES — VRP only (normalized weights 30% / 10% / 60%)
+strategies:
+  tsmom_multihorizon:
+    enabled: false
+    weight: 0.0
+  csmom_meta:
+    enabled: false
+    weight: 0.0
+  vrp_core_meta:
+    enabled: true
+    weight: 0.30
+    params:
+      rv_lookback: 21
+      zscore_window: 252
+      clip: 3.0
+      signal_mode: "zscore"
+  vrp_convergence_meta:
+    enabled: true
+    weight: 0.10
+    params:
+      zscore_window: 252
+      clip: 3.0
+      signal_mode: "zscore"
+      target_vol: 0.10
+      vol_lookback: 63
+      vol_floor: 0.05
+  vrp_alt_meta:
+    enabled: true
+    weight: 0.60
+    params:
+      zscore_window: 252
+      clip: 3.0
+      signal_mode: "zscore"
+      target_vol: 0.10
+      vol_lookback: 63
+      vol_floor: 0.05
+  vx_calendar_carry:
+    enabled: false
+    weight: 0.0
+  sr3_curve_rv_meta:
+    enabled: false
+    weight: 0.0
+  long_only:
+    enabled: false
+    weight: 0.0
+  long_momentum:
+    enabled: false
+    weight: 0.0
+  residual_trend:
+    enabled: false
+    weight: 0.0
+
+macro_regime:
+  enabled: false

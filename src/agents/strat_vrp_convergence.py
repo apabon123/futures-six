@@ -3,9 +3,8 @@ VRP Convergence Strategy: VIX vs VX1 convergence directional strategy.
 
 Strategy:
 - Signal: Z-scored convergence spread (VIX - VX1)
-- Instrument: VX1 front month futures (directional)
-- Position: Long VX1 when VX1 is too low vs VIX (expect convergence up)
-         Short VX1 when VX1 is too high vs VIX (expect convergence down)
+- Instrument: VX2-VX1 spread (curve slope)
+- Position: Spread long VX2 / short VX1 when VX1 is too high vs VIX; flat when VX1 cheap
 
 Rationale:
 - When VX1 > VIX (VX1 too rich): expect convergence lower → short VX1
@@ -15,7 +14,7 @@ Rationale:
 Phase-1 Implementation:
 - Uses VRPConvergenceFeatures for feature engineering
 - Directional signals in [-1, 1] based on z-scored convergence spread
-- Trades VX1 front month futures only
+- Trades VX2-VX1 spread (VX1 and VX2 legs)
 - Volatility-targeted position sizing
 """
 
@@ -271,8 +270,8 @@ class VRPConvergenceMeta:
         """
         Get VRP Convergence signals for a specific date (compatible with CombinedStrategy).
         
-        **Note**: VRP Convergence trades VX1 only, not the main futures universe.
-        The returned signal is for VX1 front month futures.
+        Convergence is implemented as VX2 − VX1 spread by construction.
+        The returned signal is a spread: w[VX1]=s, w[VX2]=-s (short VX1, long VX2 when s<0).
         
         Args:
             market: MarketData instance
@@ -280,7 +279,7 @@ class VRPConvergenceMeta:
             universe: Ignored (VRP Convergence trades VX1, not universe assets)
             
         Returns:
-            Series with single entry: VX1 signal at specified date
+            Series with VX1 and VX2 entries (spread: VX1=s, VX2=-s) at specified date
         """
         # Lazy-load signals cache
         if self._signals_cache is None:
@@ -300,12 +299,13 @@ class VRPConvergenceMeta:
             logger.warning(f"[VRPConvergenceMeta] No signal available for {date}")
             return pd.Series(dtype=float)
         
-        signal_value = self._signals_cache.loc[date_ts]
+        signal_value = float(self._signals_cache.loc[date_ts])
         
-        # Return as Series with VX1 symbol
-        # NOTE: VX1 symbol in canonical DB is '@VX=101XN'
-        # For integration with portfolio, we use a standard naming convention
-        return pd.Series({'VX1': signal_value})
+        # Instrument projection: VX2-VX1 spread (curve slope).
+        # Convergence trades spot vs front (VIX-VX1); we express as spread: short VX1, long VX2.
+        # So w[VX1] = signal_value, w[VX2] = -signal_value (signal short-only in [-1,0] → short VX1, long VX2).
+        # This restores full VX leg geometry: both VX1 and VX2 receive non-zero weights.
+        return pd.Series({'VX1': signal_value, 'VX2': -signal_value})
     
     def warmup_periods(self) -> int:
         """
