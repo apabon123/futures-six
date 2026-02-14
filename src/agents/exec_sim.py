@@ -2652,6 +2652,19 @@ class ExecSim:
         with open(run_dir / 'meta.json', 'w') as f:
             json.dump(meta, f, indent=2, cls=NumpyEncoder)
         
+        # Sleeve weights artifact (source of truth for attribution when using return-based path)
+        strategies = full_config.get('strategies', {})
+        sleeve_weights = {
+            name: float(cfg.get('weight', 0))
+            for name, cfg in strategies.items()
+            if isinstance(cfg, dict) and cfg.get('enabled') and (cfg.get('weight') or 0) > 0
+        }
+        if sleeve_weights:
+            (run_dir / 'analysis').mkdir(parents=True, exist_ok=True)
+            with open(run_dir / 'analysis' / 'sleeve_weights.json', 'w') as f:
+                json.dump({'sleeve_weights': sleeve_weights, 'source': 'ExecSim'}, f, indent=2)
+            logger.info(f"[ExecSim] Saved analysis/sleeve_weights.json ({len(sleeve_weights)} sleeves)")
+        
         logger.info(f"[ExecSim] Saved artifacts to {run_dir}")
         
         # Attribution: compute portfolio-consistent sleeve-level return attribution

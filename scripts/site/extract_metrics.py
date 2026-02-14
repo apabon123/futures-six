@@ -100,6 +100,9 @@ def extract_attribution_for_run(run_id: str) -> Optional[dict]:
     out = {
         "run_id": run_id,
         "consistency_check": raw.get("consistency_check", {}),
+        "residual_value": raw.get("residual_value"),
+        "status": raw.get("status"),
+        "tolerance_thresholds": raw.get("tolerance_thresholds"),
         "atomic_summary": raw.get("per_sleeve", {}),
         "metasleeve_summary": [],
         "correlation_matrix_path": None,

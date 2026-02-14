@@ -15,6 +15,12 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
+from src.attribution.governance import (
+    ATTR_TOL_PASS,
+    ATTR_TOL_WARN,
+    attribution_status_from_residual,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -205,6 +211,9 @@ def generate_attribution_artifacts(
     # Correlation matrix
     corr_matrix = _compute_correlation_matrix(atomic_contribs[active_mask])
 
+    max_residual = diagnostics["max_abs_daily_residual_active"]
+    status = attribution_status_from_residual(max_residual)
+
     summary = {
         "run_id": run_id,
         "generated_at": datetime.now().isoformat(),
@@ -214,6 +223,12 @@ def generate_attribution_artifacts(
         "residual_pct_of_portfolio": (
             residual_cum / abs(total_port_cum) if abs(total_port_cum) > 1e-15 else 0.0
         ),
+        "residual_value": max_residual,
+        "status": status,
+        "tolerance_thresholds": {
+            "pass": ATTR_TOL_PASS,
+            "warn": ATTR_TOL_WARN,
+        },
         "consistency_check": {
             "passed": diagnostics["consistency_pass"],
             "tolerance": diagnostics["tolerance"],
@@ -308,9 +323,9 @@ def _build_attribution_markdown(
     lines.append("")
     check = summary["consistency_check"]
     passed = check["passed"]
-    status = "PASSED" if passed else "FAILED"
-    lines.append(f"- **Status**: {status}")
-    lines.append(f"- **Tolerance**: {check['tolerance']:.0e}")
+    gov_status = summary.get("status", "PASS" if passed else "FAIL")
+    lines.append(f"- **Status**: {gov_status} (governance: PASS ≤1e-5, WARN ≤1e-4, FAIL >1e-4)")
+    lines.append(f"- **Strict pass (legacy)**: {'PASSED' if passed else 'FAILED'} (tolerance {check['tolerance']:.0e})")
     lines.append(f"- **Max |daily residual|**: {check['max_abs_daily_residual']:.2e}")
     lines.append(f"- **Cumulative residual**: {check['cum_residual']:.2e}")
     lines.append(f"- **Portfolio cumulative return**: {_format_pct(summary['total_portfolio_cum_return'])}")

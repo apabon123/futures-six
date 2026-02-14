@@ -339,17 +339,19 @@ def _render_attribution(attribution: Optional[dict], run_id: str = "") -> str:
     _warn_unknown_attribution_keys(attribution, run_id)
 
     parts = []
-    # Consistency check
+    # Consistency check (governance: PASS/WARN/FAIL)
     cc = attribution.get("consistency_check", {})
-    passed = cc.get("passed", False)
-    max_residual = cc.get("max_abs_daily_residual", cc.get("max_abs_daily_residual_active"))
-    consistency = f"<p><strong>Consistency check:</strong> {'Pass' if passed else 'Fail'}"
+    status = attribution.get("status")
+    if status is None:
+        status = "PASS" if cc.get("passed", False) else "FAIL"
+    max_residual = attribution.get("residual_value") or cc.get("max_abs_daily_residual", cc.get("max_abs_daily_residual_active"))
+    consistency = f"<p><strong>Consistency:</strong> {status}"
     if max_residual is not None:
         consistency += f" (max residual: {max_residual:.2e})"
     consistency += "</p>"
     parts.append(consistency)
-    if not passed:
-        parts.append("<p class='muted'>Attribution is partial for this run (some sleeves missing from artifacts).</p>")
+    if status == "FAIL":
+        parts.append("<p class='muted'>Attribution residual exceeds FAIL threshold; check partial sleeves or artifacts.</p>")
 
     # Metasleeve summary table (alias engine names -> display names for consistency)
     meta = attribution.get("metasleeve_summary", [])

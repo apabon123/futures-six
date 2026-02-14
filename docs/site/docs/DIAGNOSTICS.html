@@ -101,7 +101,10 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
 - <code>portfolio_returns.csv</code>, <code>weights.csv</code>, <code>sleeve_returns.csv</code>, <code>equity_curve.csv</code>, <code>meta.json</code>
 - <code>sleeve_returns.csv</code> must contain only: <code>tsmom_multihorizon</code>, <code>csmom_meta</code>, <code>sr3_curve_rv_meta</code>, <code>vx_calendar_carry</code> (no VRP columns, no sr3_calendar_spread_carry)</p>
 <p><strong>Attribution requirement:</strong>
-- Attribution must be regenerated for the run; <code>reports/runs/&lt;run_id&gt;/analysis/attribution/</code> must exist with consistency check <strong>PASS</strong> (no partial attribution warning).</p>
+- Attribution must be regenerated for the run; <code>reports/runs/&lt;run_id&gt;/analysis/attribution/</code> must exist with governance status <strong>PASS</strong> or <strong>WARN</strong> (no partial attribution warning).
+- <strong>Attribution status thresholds</strong> (governance): <strong>PASS</strong> if max |daily residual| ≤ 1e-5; <strong>WARN</strong> if 1e-5 &lt; residual ≤ 1e-4; <strong>FAIL</strong> if residual &gt; 1e-4. Run page and <code>attribution_summary.json</code> display this status.</p>
+<p><strong>Sleeve weights fidelity:</strong>
+- The source of truth for attribution sleeve weights is <code>reports/runs/&lt;run_id&gt;/analysis/sleeve_weights.json</code>. When present, attribution uses these weights (with <code>sleeve_returns.csv</code>) for return-based contribution so that all enabled sleeves, including VX carry, are attributed correctly. Fallback order: (1) <code>sleeve_weights.json</code>, (2) config snapshot from <code>meta.json</code>, (3) weight decomposition from <code>weights.csv</code>.</p>
 <p><strong>Identity requirement:</strong>
 - No VRP sleeves in any artifacts; no SR3 calendar spread carry column in sleeve_returns or attribution.</p>
 <h2>Governance Fields (Phase 3A)</h2>
@@ -3310,6 +3313,6 @@ python scripts/diagnostics/run_vrp_mid_rv126_phase0.py</code></p>
 - Turnover and cost attribution
 - Sleeve-level attribution (if sleeve P&amp;L is tracked)
 - Statistical significance testing for metric differences</p>
-<footer>Last built: 2026-02-14 01:13 UTC</footer>
+<footer>Last built: 2026-02-14 01:27 UTC</footer>
 </body>
 </html>

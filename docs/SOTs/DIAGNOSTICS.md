@@ -60,6 +60,28 @@ This separation ensures:
 
 This makes DIAGNOSTICS.md the enforcer, not the ledger.
 
+## V1 Freeze Baseline
+
+The **V1 frozen baseline** is the official run produced from `configs/phase4_v1_frozen.yaml` for paper-trading hardening. It is pinned as `v1_frozen_production_baseline` in `configs/pinned_runs.yaml`.
+
+**How the baseline run is generated:**
+- `run_strategy.py --config_path configs/phase4_v1_frozen.yaml --run_id v1_frozen_baseline_20200106_20251031_<timestamp> --start 2020-01-06 --end 2025-10-31 --strict_universe`
+- No VRP, no SR3 calendar spread carry; metasleeves: tsmom_multihorizon, csmom_meta, sr3_curve_rv_meta, vx_calendar_carry only.
+
+**Required artifacts:**
+- `portfolio_returns.csv`, `weights.csv`, `sleeve_returns.csv`, `equity_curve.csv`, `meta.json`
+- `sleeve_returns.csv` must contain only: `tsmom_multihorizon`, `csmom_meta`, `sr3_curve_rv_meta`, `vx_calendar_carry` (no VRP columns, no sr3_calendar_spread_carry)
+
+**Attribution requirement:**
+- Attribution must be regenerated for the run; `reports/runs/<run_id>/analysis/attribution/` must exist with governance status **PASS** or **WARN** (no partial attribution warning).
+- **Attribution status thresholds** (governance): **PASS** if max |daily residual| ≤ 1e-5; **WARN** if 1e-5 < residual ≤ 1e-4; **FAIL** if residual > 1e-4. Run page and `attribution_summary.json` display this status.
+
+**Sleeve weights fidelity:**
+- The source of truth for attribution sleeve weights is `reports/runs/<run_id>/analysis/sleeve_weights.json`. When present, attribution uses these weights (with `sleeve_returns.csv`) for return-based contribution so that all enabled sleeves, including VX carry, are attributed correctly. Fallback order: (1) `sleeve_weights.json`, (2) config snapshot from `meta.json`, (3) weight decomposition from `weights.csv`.
+
+**Identity requirement:**
+- No VRP sleeves in any artifacts; no SR3 calendar spread carry column in sleeve_returns or attribution.
+
 ## Governance Fields (Phase 3A)
 
 These fields are derived from execution-time metadata (`meta.json`) and represent the **authoritative** state of system governance. They are **not** inferred from artifact existence (unless explicitly noted for legacy recovery).

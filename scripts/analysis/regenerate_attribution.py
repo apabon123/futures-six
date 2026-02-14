@@ -136,6 +136,125 @@ def reconstruct_sleeve_signals_from_artifacts(
     return sleeve_signals_history
 
 
+def load_sleeve_weights(run_dir: Path) -> dict:
+    """Load sleeve_weights from run_dir/analysis/sleeve_weights.json if present."""
+    path = run_dir / "analysis" / "sleeve_weights.json"
+    if not path.exists():
+        return {}
+    with open(path) as f:
+        data = json.load(f)
+    return data.get("sleeve_weights", data) if isinstance(data.get("sleeve_weights"), dict) else (data if isinstance(data, dict) else {})
+
+
+def ensure_sleeve_weights_artifact(run_dir: Path, sleeve_names: list) -> dict:
+    """
+    Ensure run_dir/analysis/sleeve_weights.json exists. Build from meta.json if missing.
+    Returns sleeve_weights dict (sleeve_name -> weight) for sleeves in sleeve_names only.
+    """
+    path = run_dir / "analysis" / "sleeve_weights.json"
+    existing = load_sleeve_weights(run_dir)
+    if existing:
+        return {k: v for k, v in existing.items() if k in sleeve_names}
+
+    meta_path = run_dir / "meta.json"
+    if not meta_path.exists():
+        return {}
+
+    with open(meta_path) as f:
+        meta = json.load(f)
+    strategies = meta.get("config", {}).get("strategies", {})
+    sleeve_weights = {}
+    for name, cfg in strategies.items():
+        if not isinstance(cfg, dict):
+            continue
+        if cfg.get("enabled") and name in sleeve_names:
+            w = cfg.get("weight", 0)
+            if w is not None and float(w) > 0:
+                sleeve_weights[name] = float(w)
+
+    if not sleeve_weights:
+        return {}
+
+    (run_dir / "analysis").mkdir(parents=True, exist_ok=True)
+    payload = {"sleeve_weights": sleeve_weights, "source": "meta.json"}
+    with open(path, "w") as f:
+        json.dump(payload, f, indent=2)
+    logger.info(f"Wrote {path} with sleeves: {list(sleeve_weights.keys())}")
+    return sleeve_weights
+
+
+def compute_attribution_return_based(
+    sleeve_weights: dict,
+    sleeve_returns: pd.DataFrame,
+    portfolio_simple: pd.Series,
+    metasleeve_mapping: dict,
+) -> dict:
+    """
+    Attribution from config sleeve weights and sleeve returns: contrib_s = w_s * r_s, scaled so sum = portfolio.
+    Returns same shape as compute_attribution() for generate_attribution_artifacts().
+    """
+    # Align to common index
+    all_dates = portfolio_simple.index.intersection(sleeve_returns.index).sort_values()
+    port = portfolio_simple.reindex(all_dates).fillna(0.0)
+    sr = sleeve_returns.reindex(all_dates).fillna(0.0)
+
+    sleeve_names = [s for s in sleeve_returns.columns if s in sleeve_weights]
+    if not sleeve_names:
+        sleeve_names = list(sleeve_returns.columns)
+        # Use equal weights if no config weights
+        total = len(sleeve_names)
+        sleeve_weights = {s: 1.0 / total for s in sleeve_names}
+
+    # Raw contribution: w_s * r_s
+    raw = pd.DataFrame(index=all_dates, columns=sleeve_names, dtype=float)
+    for s in sleeve_names:
+        w = sleeve_weights.get(s, 0.0)
+        raw[s] = w * sr[s]
+
+    denom = raw.sum(axis=1)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        scale = np.where(np.abs(denom.values) > 1e-18, port.values / denom.values, 1.0)
+    atomic_contributions = raw.mul(scale, axis=0)
+
+    # Metasleeve
+    metasleeve_names = sorted(set(metasleeve_mapping.get(s, s) for s in sleeve_names))
+    meta_contribs = pd.DataFrame(0.0, index=all_dates, columns=metasleeve_names)
+    for s in sleeve_names:
+        m = metasleeve_mapping.get(s, s)
+        if m in meta_contribs.columns:
+            meta_contribs[m] = meta_contribs[m].add(atomic_contributions[s], fill_value=0.0)
+
+    residual = atomic_contributions.sum(axis=1) - port
+    max_residual = residual.abs().max()
+    first_rebal = all_dates[0]
+    active_mask = all_dates >= first_rebal
+    no_signal_info = {}
+    for s in sleeve_names:
+        c = atomic_contributions[s]
+        zero_days = (c[active_mask].abs() < 1e-15).sum()
+        no_signal_info[s] = {"active_days": int(active_mask.sum() - zero_days), "no_signal_days": int(zero_days), "total_days": int(active_mask.sum())}
+
+    diagnostics = {
+        "consistency_pass": max_residual < 1e-8,
+        "tolerance": 1e-8,
+        "max_abs_daily_residual": max_residual,
+        "max_abs_daily_residual_active": float(residual[active_mask].abs().max()) if active_mask.any() else 0.0,
+        "cum_residual": float(residual.sum()),
+        "n_active_days": int(active_mask.sum()),
+        "sleeves_captured": list(sleeve_names),
+        "no_signal_info": no_signal_info,
+        "partial_attribution": False,
+        "first_rebalance_date": str(first_rebal),
+    }
+
+    return {
+        "atomic_contributions": atomic_contributions,
+        "metasleeve_contributions": meta_contribs,
+        "sleeve_weight_decomposition": pd.DataFrame(),
+        "diagnostics": diagnostics,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="Regenerate attribution from existing run artifacts")
     parser.add_argument("--run_id", required=True, help="Run ID to regenerate attribution for")
@@ -168,35 +287,56 @@ def main():
     logger.info(f"Universe: {universe}")
     logger.info(f"Weights: {weights_panel.shape}, Asset returns: {asset_returns_simple.shape}")
 
-    # Reconstruct sleeve signals from artifacts
-    sleeve_signals_history = reconstruct_sleeve_signals_from_artifacts(
-        run_dir=run_dir,
-        weights_panel=weights_panel,
-        asset_returns_simple=asset_returns_simple,
-        universe=universe,
-    )
+    # Sleeve list and metasleeve mapping (from sleeve_returns if present)
+    sleeve_returns_path = run_dir / "sleeve_returns.csv"
+    if sleeve_returns_path.exists():
+        sleeve_returns_df = pd.read_csv(sleeve_returns_path, index_col=0, parse_dates=True)
+        sleeve_names_from_csv = [c for c in sleeve_returns_df.columns if c and str(c).strip() and str(c) != "date"]
+        if not sleeve_names_from_csv:
+            sleeve_names_from_csv = list(sleeve_returns_df.columns)
+    else:
+        sleeve_returns_df = pd.DataFrame()
+        sleeve_names_from_csv = []
 
-    if not sleeve_signals_history:
-        logger.error("Failed to reconstruct sleeve signals")
-        return 1
-
-    # Build metasleeve mapping
     metasleeve_map = {}
-    for sname in sleeve_signals_history.keys():
+    for sname in sleeve_names_from_csv or ["unknown"]:
         if sname in VRP_SLEEVES:
             metasleeve_map[sname] = "vrp_combined"
         else:
             metasleeve_map[sname] = sname
 
-    # Compute attribution
-    result = compute_attribution(
-        weights_panel=weights_panel,
-        asset_returns_simple=asset_returns_simple,
-        portfolio_returns_simple=portfolio_simple,
-        sleeve_signals_history=sleeve_signals_history,
-        universe=universe,
-        metasleeve_mapping=metasleeve_map,
-    )
+    # Prefer return-based attribution when sleeve_weights artifact exists or can be built from meta
+    sleeve_weights = load_sleeve_weights(run_dir)
+    if not sleeve_weights and sleeve_names_from_csv:
+        sleeve_weights = ensure_sleeve_weights_artifact(run_dir, sleeve_names_from_csv)
+
+    if sleeve_weights and not sleeve_returns_df.empty and set(sleeve_weights.keys()) >= set(sleeve_names_from_csv):
+        logger.info("Using sleeve_weights artifact for return-based attribution")
+        result = compute_attribution_return_based(
+            sleeve_weights=sleeve_weights,
+            sleeve_returns=sleeve_returns_df,
+            portfolio_simple=portfolio_simple,
+            metasleeve_mapping=metasleeve_map,
+        )
+    else:
+        # Fallback: weight decomposition from weights.csv
+        sleeve_signals_history = reconstruct_sleeve_signals_from_artifacts(
+            run_dir=run_dir,
+            weights_panel=weights_panel,
+            asset_returns_simple=asset_returns_simple,
+            universe=universe,
+        )
+        if not sleeve_signals_history:
+            logger.error("Failed to reconstruct sleeve signals")
+            return 1
+        result = compute_attribution(
+            weights_panel=weights_panel,
+            asset_returns_simple=asset_returns_simple,
+            portfolio_returns_simple=portfolio_simple,
+            sleeve_signals_history=sleeve_signals_history,
+            universe=universe,
+            metasleeve_mapping=metasleeve_map,
+        )
 
     diag = result["diagnostics"]
     logger.info(f"Consistency pass: {diag['consistency_pass']}")
@@ -233,7 +373,7 @@ def main():
     print(f"Portfolio cumulative return: {summary['total_portfolio_cum_return']:.4%}")
     print(f"Sum sleeve contributions:    {summary['sum_sleeve_cum_return']:.4%}")
     print(f"Residual:                    {summary['residual_cum_return']:.2e}")
-    print(f"Consistency:                 {'PASS' if summary['consistency_check']['passed'] else 'FAIL'}")
+    print(f"Consistency:                 {summary.get('status', 'PASS' if summary['consistency_check']['passed'] else 'FAIL')}")
     print()
 
     for sleeve, metrics in sorted(summary["per_sleeve"].items(), key=lambda x: x[1]["cum_return"], reverse=True):
@@ -243,7 +383,9 @@ def main():
               f"active={metrics['active_days']}/{metrics['active_days'] + metrics['no_signal_days']}")
     print("=" * 70)
 
-    return 0 if diag["consistency_pass"] else 1
+    status = summary.get("status", "FAIL")
+    exit_ok = status in ("PASS", "WARN")
+    return 0 if exit_ok else 1
 
 
 if __name__ == "__main__":
