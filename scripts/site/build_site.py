@@ -181,6 +181,40 @@ def load_attribution(run_id: str) -> Optional[dict]:
         return None
 
 
+def load_leverage(run_id: str) -> Optional[dict]:
+    path = PROJECT_ROOT / "docs" / "pinned" / f"{run_id}.leverage.json"
+    if not path.exists():
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _render_leverage(leverage: Optional[dict], run_id: str = "") -> str:
+    """Render leverage/telemetry panel HTML from docs/pinned/<run_id>.leverage.json."""
+    if not leverage:
+        return "<p class='muted'>Leverage telemetry not available for this run.</p>"
+    parts = []
+    parts.append("<table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>")
+    for key in ["gross_exposure_avg", "gross_exposure_median", "gross_exposure_max", "gross_exposure_p95",
+                "scaling_factor_avg", "target_vol", "realized_vol", "leverage_cap"]:
+        v = leverage.get(key)
+        if v is None:
+            continue
+        if isinstance(v, float):
+            if key.startswith("gross_") or key == "scaling_factor_avg":
+                v = f"{v:.3f}"
+            elif key in ("target_vol", "realized_vol"):
+                v = f"{v*100:.2f}%"
+            else:
+                v = f"{v:.2f}" if key == "leverage_cap" else str(v)
+        parts.append(f"<tr><td>{key}</td><td>{v}</td></tr>")
+    parts.append("</tbody></table>")
+    return "\n".join(parts)
+
+
 def load_summary_md(rel_path: str) -> str:
     p = PROJECT_ROOT / rel_path
     if not p.exists():
@@ -431,6 +465,10 @@ def build_run_detail(site_dir: Path, run: dict) -> None:
     attribution = load_attribution(rid)
     attribution_block = _render_attribution(attribution, rid)
 
+    # Leverage telemetry
+    leverage = load_leverage(rid)
+    leverage_block = _render_leverage(leverage, rid)
+
     body = f"""
 <h1>{display}</h1>
 <p class="muted">Run ID: {rid} | Config: {run.get('config_path','')} | Window: {run.get('window',{}).get('start','')} → {run.get('window',{}).get('end','')}</p>
@@ -441,6 +479,9 @@ def build_run_detail(site_dir: Path, run: dict) -> None:
 {metrics_block}
 <h3>Sleeves</h3>
 {sleeves_table}
+
+<h3>Leverage / gross exposure</h3>
+{leverage_block}
 
 <h3>Attribution</h3>
 {attribution_block}

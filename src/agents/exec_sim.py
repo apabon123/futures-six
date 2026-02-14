@@ -2665,6 +2665,24 @@ class ExecSim:
                 json.dump({'sleeve_weights': sleeve_weights, 'source': 'ExecSim'}, f, indent=2)
             logger.info(f"[ExecSim] Saved analysis/sleeve_weights.json ({len(sleeve_weights)} sleeves)")
         
+        # Leverage telemetry: gross exposure from weights, RT scaling, target/realized vol
+        (run_dir / 'analysis').mkdir(parents=True, exist_ok=True)
+        gross_series = weights_panel.abs().sum(axis=1) if not weights_panel.empty else pd.Series(dtype=float)
+        leverage_summary = {
+            'run_id': run_id,
+            'gross_exposure_avg': float(gross_series.mean()) if len(gross_series) > 0 else None,
+            'gross_exposure_median': float(gross_series.median()) if len(gross_series) > 0 else None,
+            'gross_exposure_max': float(gross_series.max()) if len(gross_series) > 0 else None,
+            'gross_exposure_p95': float(gross_series.quantile(0.95)) if len(gross_series) > 0 else None,
+            'scaling_factor_avg': float(np.mean(rt_leverage_history)) if rt_leverage_history and len(rt_leverage_history) > 0 else None,
+            'target_vol': float(risk_targeting.target_vol) if risk_targeting is not None else None,
+            'realized_vol': float(metrics_eval.get('vol')) if metrics_eval and metrics_eval.get('vol') is not None else (float(metrics_full.get('vol')) if metrics_full and metrics_full.get('vol') is not None else None),
+            'leverage_cap': float(risk_targeting.leverage_cap) if risk_targeting is not None and getattr(risk_targeting, 'leverage_cap', None) is not None else None,
+        }
+        with open(run_dir / 'analysis' / 'leverage_summary.json', 'w') as f:
+            json.dump(leverage_summary, f, indent=2)
+        logger.info(f"[ExecSim] Saved analysis/leverage_summary.json")
+        
         logger.info(f"[ExecSim] Saved artifacts to {run_dir}")
         
         # Attribution: compute portfolio-consistent sleeve-level return attribution

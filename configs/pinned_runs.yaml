@@ -51,6 +51,43 @@ runs:
     artifacts:
       summary_md: docs/pinned/phase3b_baseline_artifacts_only_20260120_093953.md
 
+  - run_id: v1_frozen_baseline_20200106_20251031_20260213_190700
+    label: "V1 frozen production baseline"
+    display_name: "V1 Frozen – Production baseline (no VRP, no SR3 spread carry)"
+    category: production
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase4_v1_frozen.yaml
+    git_commit: ""
+    description: "Authoritative V1 stack for paper-trading hardening. Metasleeves: trend, csmom, sr3_curve_rv, vx_calendar_carry only."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.578 }
+        - { name: csmom, weight: 0.244 }
+        - { name: curve_rv, weight: 0.089 }
+        - { name: vx_carry, weight: 0.089 }
+    artifacts:
+      summary_md: docs/pinned/v1_frozen_baseline_20200106_20251031_20260213_190700.md
+
+  - run_id: trend_only_20200106_20251031_20260214_120000
+    label: "Trend-only canonical V1 (diagnosis)"
+    display_name: "Trend-only – tsmom_multihorizon only (weight 1.0)"
+    category: engine_quality
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase4_trend_only_canonical_v1.yaml
+    git_commit: ""
+    description: "Diagnosis run: trend sleeve in isolation. Same window as V1 frozen."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 1.0 }
+    artifacts:
+      summary_md: ""
+
   - run_id: phase3a_statistical_baseline_governed_20251031
     label: "Phase 3A statistical baseline (governed)"
     display_name: "Phase-3A engine-quality statistical baseline"
@@ -235,5 +272,44 @@ runs:
         - { name: curve_rv, weight: 0.08 }
         - { name: vx_carry, weight: 0.08 }
         - { name: sr3_calendar_spread_carry, weight: 0.10 }
+    artifacts:
+      summary_md: ""
+
+  - run_id: v1_ab_no_vrp_no_carry_20200106_20251031_20260213_152911
+    label: "V1 A/B no carry (baseline)"
+    display_name: "V1 stack (no VRP) no carry — A/B baseline"
+    category: integration
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase4_v1_stack_no_vrp_no_carry.yaml
+    git_commit: ""
+    description: "Trend + CSMOM + Curve RV only; VX and SR3 carry disabled."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.634 }
+        - { name: csmom, weight: 0.268 }
+        - { name: curve_rv, weight: 0.098 }
+    artifacts:
+      summary_md: ""
+
+  - run_id: v1_ab_no_vrp_plus_vx_carry_20200106_20251031_20260213_152950
+    label: "V1 A/B + VX carry only"
+    display_name: "V1 stack (no VRP) + VX carry only — A/B test"
+    category: integration
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase4_v1_stack_no_vrp_plus_vx_carry.yaml
+    git_commit: ""
+    description: "Trend + CSMOM + Curve RV + VX carry; SR3 carry disabled."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.578 }
+        - { name: csmom, weight: 0.244 }
+        - { name: curve_rv, weight: 0.089 }
+        - { name: vx_carry, weight: 0.089 }
     artifacts:
       summary_md: ""

@@ -1,0 +1,12 @@
+{
+  "run_id": "v1_frozen_baseline_20200106_20251031_20260213_190700",
+  "gross_exposure_avg": 2.4095061884805453,
+  "gross_exposure_median": 2.342233540916698,
+  "gross_exposure_max": 4.0,
+  "gross_exposure_p95": 3.5570468994302393,
+  "scaling_factor_avg": null,
+  "target_vol": 0.2,
+  "realized_vol": 0.07603160856756705,
+  "leverage_cap": 7.0,
+  "source": "backfill"
+}

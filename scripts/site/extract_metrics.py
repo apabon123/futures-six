@@ -131,6 +131,18 @@ def extract_attribution_for_run(run_id: str) -> Optional[dict]:
     return out
 
 
+def extract_leverage_for_run(run_id: str) -> Optional[dict]:
+    """
+    Copy leverage_summary from reports/runs/<run_id>/analysis/leverage_summary.json
+    to docs/pinned/<run_id>.leverage.json.
+    """
+    path = PROJECT_ROOT / "reports" / "runs" / run_id / "analysis" / "leverage_summary.json"
+    if not path.exists():
+        return None
+    raw = _load_json(path)
+    return raw
+
+
 def main():
     parser = argparse.ArgumentParser(description="Extract run metrics to docs/pinned/*.metrics.json")
     parser.add_argument("--run_id", type=str, help="Single run_id to extract")
@@ -174,6 +186,13 @@ def main():
             with open(attr_path, "w", encoding="utf-8") as f:
                 json.dump(attr, f, indent=2, default=str)
             print(f"Wrote {attr_path}")
+
+        lev = extract_leverage_for_run(rid)
+        if lev:
+            lev_path = pinned_dir / f"{rid}.leverage.json"
+            with open(lev_path, "w", encoding="utf-8") as f:
+                json.dump(lev, f, indent=2, default=str)
+            print(f"Wrote {lev_path}")
 
 
 if __name__ == "__main__":
