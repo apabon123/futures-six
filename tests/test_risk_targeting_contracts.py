@@ -154,8 +154,8 @@ class TestRiskTargetingTeeth:
         }, index=dates)
         
         weights = pd.Series({'ES': 0.5, 'NQ': 0.5})
-        test_date = dates[50]
-        
+        test_date = dates[80]  # Enough history (80 days) for vol_lookback=63
+
         # Low vol case: should have leverage > 1.0
         low_vol = rt.compute_portfolio_vol(weights, low_vol_returns, test_date)
         low_leverage = rt.compute_leverage(low_vol)

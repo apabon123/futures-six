@@ -80,7 +80,24 @@ runs:
       end: "2025-10-31"
     config_path: configs/phase4_trend_only_canonical_v1.yaml
     git_commit: ""
-    description: "Diagnosis run: trend sleeve in isolation. Same window as V1 frozen."
+    description: "Diagnosis run: trend sleeve in isolation. Same window as V1 frozen. RT sample covariance."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 1.0 }
+    artifacts:
+      summary_md: ""
+
+  - run_id: trend_only_ewma_20200106_20251031_20260213_212931
+    label: "Trend-only canonical V1 (EWMA cov)"
+    display_name: "Trend-only EWMA – tsmom_multihorizon, RT EWMA covariance"
+    category: engine_quality
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase4_trend_only_canonical_v1_ewma.yaml
+    git_commit: ""
+    description: "Same as trend-only with risk_targeting.cov_estimator=ewma, ewma_lambda=0.94."
     expected_universe: 16
     sleeves:
       metasleeves:

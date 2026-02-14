@@ -756,9 +756,14 @@ def main():
         
         if risk_targeting_enabled:
             # Use profile if specified, otherwise use config values
-            profile = risk_targeting_cfg.get('profile', 'default')
-            if profile:
+            profile = risk_targeting_cfg.get('profile')
+            if profile is not None and profile != "":
                 risk_targeting_layer = create_risk_targeting_layer(profile=profile)
+                # Allow config override of covariance estimator
+                if "cov_estimator" in risk_targeting_cfg:
+                    risk_targeting_layer.cov_estimator = risk_targeting_cfg["cov_estimator"].lower()
+                if "ewma_lambda" in risk_targeting_cfg:
+                    risk_targeting_layer.ewma_lambda = float(risk_targeting_cfg["ewma_lambda"])
             else:
                 # Create from config values
                 risk_targeting_layer = RiskTargetingLayer(
@@ -766,7 +771,10 @@ def main():
                     leverage_cap=risk_targeting_cfg.get('leverage_cap', 7.0),
                     leverage_floor=risk_targeting_cfg.get('leverage_floor', 1.0),
                     vol_lookback=risk_targeting_cfg.get('vol_lookback', 63),
+                    vol_floor=risk_targeting_cfg.get('vol_floor', 0.05),
                     update_frequency=risk_targeting_cfg.get('update_frequency', 'static'),
+                    cov_estimator=risk_targeting_cfg.get('cov_estimator', 'sample'),
+                    ewma_lambda=risk_targeting_cfg.get('ewma_lambda', 0.94),
                     config_path=None  # Don't load from config when explicitly set
                 )
             logger.info(f"  Config: {risk_targeting_layer.describe()}")

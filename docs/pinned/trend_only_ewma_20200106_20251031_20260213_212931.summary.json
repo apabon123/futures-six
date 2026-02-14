@@ -1,0 +1,21 @@
+{
+  "run_id": "trend_only_ewma_20200106_20251031_20260213_212931",
+  "enabled_sleeves": [
+    "tsmom_multihorizon"
+  ],
+  "weights": {
+    "tsmom_multihorizon": 1.0
+  },
+  "target_vol": 0.2,
+  "realized_vol": 0.08942035713470076,
+  "gross_exposure_avg": 2.3395135967307166,
+  "gross_exposure_p95": 3.4690078693811395,
+  "gross_exposure_max": 4.0,
+  "leverage_cap": 7.0,
+  "sharpe": 0.11948062045335528,
+  "cagr": 0.008324721411278047,
+  "maxdd": -0.1904379218279571,
+  "vol": 0.08942035713470076,
+  "attribution_status": "PASS",
+  "attribution_residual": 1.0408340855860843e-17
+}

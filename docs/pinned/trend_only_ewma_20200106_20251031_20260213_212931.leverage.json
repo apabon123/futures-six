@@ -1,0 +1,11 @@
+{
+  "run_id": "trend_only_ewma_20200106_20251031_20260213_212931",
+  "gross_exposure_avg": 2.3395135967307166,
+  "gross_exposure_median": 2.3038463955075956,
+  "gross_exposure_max": 4.0,
+  "gross_exposure_p95": 3.4690078693811395,
+  "scaling_factor_avg": 2.3395135967307166,
+  "target_vol": 0.2,
+  "realized_vol": 0.08942035713470076,
+  "leverage_cap": 7.0
+}

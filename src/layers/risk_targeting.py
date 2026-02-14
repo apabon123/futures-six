@@ -41,6 +41,11 @@ DEFAULT_VOL_LOOKBACK = 63  # Rolling vol lookback in days
 DEFAULT_LEVERAGE_CAP = 7.0  # Maximum leverage
 DEFAULT_LEVERAGE_FLOOR = 1.0  # Minimum leverage (no deleveraging below 1x)
 DEFAULT_VOL_FLOOR = 0.05  # Minimum vol estimate to avoid extreme scaling
+DEFAULT_COV_ESTIMATOR = "sample"  # "sample" | "ewma"
+DEFAULT_EWMA_LAMBDA = 0.94  # EWMA decay (0 < lambda < 1)
+COV_ESTIMATOR_CHOICES = ("sample", "ewma")
+EPS_PSD_JITTER = 1e-10  # Small diagonal jitter for PSD
+WARMUP_EWMA_MIN = 10  # Minimum rows for EWMA warmup sample cov
 
 
 class RiskTargetingLayer:
@@ -72,6 +77,8 @@ class RiskTargetingLayer:
         leverage_floor: float = DEFAULT_LEVERAGE_FLOOR,
         vol_floor: float = DEFAULT_VOL_FLOOR,
         update_frequency: str = "static",
+        cov_estimator: str = DEFAULT_COV_ESTIMATOR,
+        ewma_lambda: float = DEFAULT_EWMA_LAMBDA,
         config_path: Optional[str] = "configs/strategies.yaml",
         artifact_writer: Optional[Any] = None  # ArtifactWriter instance
     ):
@@ -99,6 +106,8 @@ class RiskTargetingLayer:
         self.leverage_floor = rt_config.get("leverage_floor", leverage_floor)
         self.vol_floor = rt_config.get("vol_floor", vol_floor)
         self.update_frequency = rt_config.get("update_frequency", update_frequency)
+        self.cov_estimator = rt_config.get("cov_estimator", cov_estimator).lower()
+        self.ewma_lambda = float(rt_config.get("ewma_lambda", ewma_lambda))
         
         # Artifact writer (optional)
         self.artifact_writer = artifact_writer
@@ -156,6 +165,15 @@ class RiskTargetingLayer:
             raise ValueError(
                 f"update_frequency must be 'static', 'quarterly', or 'monthly', "
                 f"got {self.update_frequency}"
+            )
+        
+        if self.cov_estimator not in COV_ESTIMATOR_CHOICES:
+            raise ValueError(
+                f"cov_estimator must be one of {COV_ESTIMATOR_CHOICES}, got {self.cov_estimator!r}"
+            )
+        if not (0 < self.ewma_lambda < 1):
+            raise ValueError(
+                f"ewma_lambda must be in (0, 1), got {self.ewma_lambda}"
             )
     
     def compute_portfolio_vol(
@@ -274,17 +292,60 @@ class RiskTargetingLayer:
         # Use last vol_lookback days
         window = historical.tail(self.vol_lookback)
         
-        # Handle single asset case
+        if self.cov_estimator == "ewma":
+            cov = self._ewma_cov(window, self.ewma_lambda)
+            return cov
+        
+        # Sample covariance (default)
         if len(window.columns) == 1:
-            # For single asset, return variance as DataFrame
             asset = window.columns[0]
             var = window[asset].var()
             cov = pd.DataFrame({asset: [var]}, index=[asset])
         else:
-            # Compute covariance (daily returns)
             cov = window.cov()
         
         return cov
+    
+    def _ewma_cov(
+        self,
+        returns: pd.DataFrame,
+        lam: float
+    ) -> Optional[pd.DataFrame]:
+        """
+        Compute EWMA covariance over the given returns window (recursive).
+        
+        S_0 = sample cov over warmup (first min(len, 60) rows).
+        S_t = lam * S_{t-1} + (1 - lam) * (x_t x_t'), x_t demeaned.
+        Result is symmetrized and made PSD with small diagonal jitter if needed.
+        
+        Args:
+            returns: DataFrame (T x assets), e.g. last vol_lookback days
+            lam: Decay factor (0 < lam < 1)
+        
+        Returns:
+            Covariance DataFrame (assets x assets) or None if insufficient data
+        """
+        clean = returns.dropna(how="any")
+        if len(clean) < WARMUP_EWMA_MIN:
+            return None
+        cols = clean.columns.tolist()
+        n = len(cols)
+        warmup_len = min(max(WARMUP_EWMA_MIN, n + 2), len(clean), 60)
+        warmup = clean.iloc[:warmup_len]
+        S = np.asarray(warmup.cov().values, dtype=float)
+        if S.shape != (n, n):
+            S = np.eye(n) * 1e-6
+        mean = clean.mean(axis=0).values
+        lam_f = float(lam)
+        one_minus_lam = 1.0 - lam_f
+        for i in range(warmup_len, len(clean)):
+            x = (clean.iloc[i].values - mean).reshape(-1, 1)
+            S = lam_f * S + one_minus_lam * (x @ x.T)
+        S = (S + S.T) / 2.0
+        min_eig = np.min(np.linalg.eigvalsh(S))
+        if min_eig < 1e-12:
+            S += (EPS_PSD_JITTER + max(0, -min_eig)) * np.eye(n)
+        return pd.DataFrame(S, index=cols, columns=cols)
     
     def compute_leverage(
         self,
@@ -450,6 +511,8 @@ class RiskTargetingLayer:
                 "leverage_floor": self.leverage_floor,
                 "vol_floor": self.vol_floor,
                 "update_frequency": self.update_frequency,
+                "cov_estimator": self.cov_estimator,
+                "ewma_lambda": self.ewma_lambda,
             },
             "allowed": [
                 "Target portfolio volatility",
@@ -477,6 +540,8 @@ class RiskTargetingLayer:
             "vol_floor": self.vol_floor,
             "vol_lookback": self.vol_lookback,
             "update_frequency": self.update_frequency,
+            "cov_estimator": self.cov_estimator,
+            "ewma_lambda": self.ewma_lambda,
             "version": self.VERSION,
         }, sort_keys=True)
         version_hash = hashlib.md5(params_str.encode()).hexdigest()[:8]
@@ -488,7 +553,8 @@ class RiskTargetingLayer:
             "vol_floor": self.vol_floor,
             "vol_lookback": self.vol_lookback,
             "update_frequency": self.update_frequency,
-            "estimator": "rolling_covariance",
+            "cov_estimator": self.cov_estimator,
+            "ewma_lambda": self.ewma_lambda,
             "version": self.VERSION,
             "version_hash": version_hash,
         }
@@ -525,7 +591,8 @@ class RiskTargetingLayer:
             'date': [date_str],
             'realized_vol': [current_vol],
             'vol_window': [self.vol_lookback],
-            'estimator': ['rolling_covariance'],
+            'cov_estimator': [self.cov_estimator],
+            'ewma_lambda': [self.ewma_lambda if self.cov_estimator == "ewma" else None],
         })
         self.artifact_writer.write_csv("risk_targeting/realized_vol.csv", vol_df, mode="append")
         
