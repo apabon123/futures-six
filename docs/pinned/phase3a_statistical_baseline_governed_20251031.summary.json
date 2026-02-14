@@ -1,0 +1,17 @@
+{
+  "run_id": "phase3a_statistical_baseline_governed_20251031",
+  "enabled_sleeves": [],
+  "weights": {},
+  "target_vol": null,
+  "realized_vol": null,
+  "gross_exposure_avg": null,
+  "gross_exposure_p95": null,
+  "gross_exposure_max": null,
+  "leverage_cap": null,
+  "sharpe": 0.6760034113042528,
+  "cagr": 0.07184981515054822,
+  "maxdd": -0.12004480246312978,
+  "vol": 0.08862355849196348,
+  "attribution_status": null,
+  "attribution_residual": null
+}

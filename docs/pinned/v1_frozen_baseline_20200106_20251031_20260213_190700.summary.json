@@ -1,0 +1,27 @@
+{
+  "run_id": "v1_frozen_baseline_20200106_20251031_20260213_190700",
+  "enabled_sleeves": [
+    "csmom_meta",
+    "sr3_curve_rv_meta",
+    "tsmom_multihorizon",
+    "vx_calendar_carry"
+  ],
+  "weights": {
+    "tsmom_multihorizon": 0.578,
+    "csmom_meta": 0.244,
+    "sr3_curve_rv_meta": 0.089,
+    "vx_calendar_carry": 0.089
+  },
+  "target_vol": 0.2,
+  "realized_vol": 0.07603160856756705,
+  "gross_exposure_avg": 2.4095061884805453,
+  "gross_exposure_p95": 3.5570468994302393,
+  "gross_exposure_max": 4.0,
+  "leverage_cap": 7.0,
+  "sharpe": 0.45964611217139034,
+  "cagr": 0.04053956180574225,
+  "maxdd": -0.10218553211846881,
+  "vol": 0.07603160856756705,
+  "attribution_status": "PASS",
+  "attribution_residual": 1.3877787807814457e-17
+}

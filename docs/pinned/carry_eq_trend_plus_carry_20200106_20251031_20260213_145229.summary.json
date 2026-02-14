@@ -1,0 +1,21 @@
+{
+  "run_id": "carry_eq_trend_plus_carry_20200106_20251031_20260213_145229",
+  "enabled_sleeves": [
+    "sr3_carry_curve",
+    "tsmom_multihorizon",
+    "vx_calendar_carry"
+  ],
+  "weights": {},
+  "target_vol": null,
+  "realized_vol": null,
+  "gross_exposure_avg": null,
+  "gross_exposure_p95": null,
+  "gross_exposure_max": null,
+  "leverage_cap": null,
+  "sharpe": 0.17998279605416914,
+  "cagr": 0.015314483899389497,
+  "maxdd": -0.17008874772250607,
+  "vol": 0.09122248417658378,
+  "attribution_status": null,
+  "attribution_residual": null
+}

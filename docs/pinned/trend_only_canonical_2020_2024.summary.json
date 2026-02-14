@@ -1,0 +1,19 @@
+{
+  "run_id": "trend_only_canonical_2020_2024",
+  "enabled_sleeves": [
+    "tsmom_multihorizon"
+  ],
+  "weights": {},
+  "target_vol": null,
+  "realized_vol": null,
+  "gross_exposure_avg": null,
+  "gross_exposure_p95": null,
+  "gross_exposure_max": null,
+  "leverage_cap": null,
+  "sharpe": 0.22507097864962727,
+  "cagr": 0.02025631456364696,
+  "maxdd": -0.13217815747556516,
+  "vol": 0.08980928038901266,
+  "attribution_status": null,
+  "attribution_residual": null
+}

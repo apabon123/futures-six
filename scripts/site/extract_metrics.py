@@ -143,6 +143,70 @@ def extract_leverage_for_run(run_id: str) -> Optional[dict]:
     return raw
 
 
+def extract_summary_for_run(run_id: str) -> dict:
+    """
+    Build a single summary.json per run for the hub scoreboard.
+    Merges: metrics, attribution (enabled_sleeves), leverage, sleeve_weights.
+    """
+    run_dir = PROJECT_ROOT / "reports" / "runs" / run_id
+    out = {
+        "run_id": run_id,
+        "enabled_sleeves": [],
+        "weights": {},
+        "target_vol": None,
+        "realized_vol": None,
+        "gross_exposure_avg": None,
+        "gross_exposure_p95": None,
+        "gross_exposure_max": None,
+        "leverage_cap": None,
+        "sharpe": None,
+        "cagr": None,
+        "maxdd": None,
+        "vol": None,
+        "attribution_status": None,
+        "attribution_residual": None,
+    }
+    # Metrics
+    metrics = extract_metrics_for_run(run_id)
+    out["sharpe"] = metrics.get("sharpe")
+    out["cagr"] = metrics.get("cagr")
+    out["maxdd"] = metrics.get("maxdd") or metrics.get("max_drawdown")
+    out["vol"] = metrics.get("vol")
+    # Attribution -> enabled_sleeves
+    attr = extract_attribution_for_run(run_id)
+    if attr:
+        atomic = attr.get("atomic_summary", attr.get("per_sleeve", {}))
+        if isinstance(atomic, dict):
+            out["enabled_sleeves"] = sorted(atomic.keys())
+        out["attribution_status"] = attr.get("status")
+        out["attribution_residual"] = attr.get("residual_value")
+    # Leverage
+    lev = extract_leverage_for_run(run_id)
+    if lev:
+        out["target_vol"] = lev.get("target_vol")
+        out["realized_vol"] = lev.get("realized_vol")
+        out["gross_exposure_avg"] = lev.get("gross_exposure_avg")
+        out["gross_exposure_p95"] = lev.get("gross_exposure_p95")
+        out["gross_exposure_max"] = lev.get("gross_exposure_max")
+        out["leverage_cap"] = lev.get("leverage_cap")
+    # Sleeve weights from run artifact (or keep {})
+    sw_path = run_dir / "analysis" / "sleeve_weights.json"
+    if sw_path.exists():
+        sw = _load_json(sw_path)
+        if sw:
+            out["weights"] = sw.get("sleeve_weights", sw) if isinstance(sw.get("sleeve_weights"), dict) else (sw if isinstance(sw, dict) else {})
+    # Fallback: enabled_sleeves from meta.json config.strategies if still empty
+    if not out["enabled_sleeves"] and run_dir.exists():
+        meta = _load_json(run_dir / "meta.json")
+        if meta:
+            strategies = meta.get("config", {}).get("strategies", {})
+            out["enabled_sleeves"] = sorted(
+                k for k, v in strategies.items()
+                if isinstance(v, dict) and v.get("enabled") and (v.get("weight") or 0) > 0
+            )
+    return out
+
+
 def main():
     parser = argparse.ArgumentParser(description="Extract run metrics to docs/pinned/*.metrics.json")
     parser.add_argument("--run_id", type=str, help="Single run_id to extract")
@@ -193,6 +257,12 @@ def main():
             with open(lev_path, "w", encoding="utf-8") as f:
                 json.dump(lev, f, indent=2, default=str)
             print(f"Wrote {lev_path}")
+
+        summary = extract_summary_for_run(rid)
+        summary_path = pinned_dir / f"{rid}.summary.json"
+        with open(summary_path, "w", encoding="utf-8") as f:
+            json.dump(summary, f, indent=2, default=str)
+        print(f"Wrote {summary_path}")
 
 
 if __name__ == "__main__":

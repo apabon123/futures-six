@@ -1,0 +1,20 @@
+{
+  "run_id": "phase3b_baseline_traded_20260120_093953",
+  "enabled_sleeves": [
+    "csmom_meta",
+    "tsmom_multihorizon"
+  ],
+  "weights": {},
+  "target_vol": null,
+  "realized_vol": null,
+  "gross_exposure_avg": null,
+  "gross_exposure_p95": null,
+  "gross_exposure_max": null,
+  "leverage_cap": null,
+  "sharpe": 0.8151040000873323,
+  "cagr": 0.1633784772797935,
+  "maxdd": -0.1783617713186681,
+  "vol": 0.16682373900541655,
+  "attribution_status": null,
+  "attribution_residual": null
+}

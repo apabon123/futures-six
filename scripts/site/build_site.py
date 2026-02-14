@@ -192,6 +192,78 @@ def load_leverage(run_id: str) -> Optional[dict]:
         return None
 
 
+def load_summary(run_id: str) -> Optional[dict]:
+    """Load docs/pinned/<run_id>.summary.json (one file per run for scoreboard)."""
+    path = PROJECT_ROOT / "docs" / "pinned" / f"{run_id}.summary.json"
+    if not path.exists():
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _scoreboard_row(run: dict, summary: Optional[dict], runs_index_url: str = "runs") -> str:
+    """Build one table row for scoreboard/history. Prefer summary; fall back to metrics/attribution/leverage."""
+    rid = run["run_id"]
+    display = run.get("display_name") or run.get("label") or rid
+    cat = run.get("category", "integration")
+    if not summary:
+        metrics = load_metrics(rid)
+        attr = load_attribution(rid)
+        lev = load_leverage(rid)
+        sharpe = _get_metric(metrics, rid, "sharpe") if metrics else None
+        cagr = _get_metric(metrics, rid, "cagr") if metrics else None
+        maxdd = _get_metric(metrics, rid, "maxdd") if metrics else None
+        vol = metrics.get("vol") if metrics else None
+        target_vol = lev.get("target_vol") if lev else None
+        realized_vol = lev.get("realized_vol") if lev else None
+        gross_avg = lev.get("gross_exposure_avg") if lev else None
+        gross_p95 = lev.get("gross_exposure_p95") if lev else None
+        gross_max = lev.get("gross_exposure_max") if lev else None
+        attr_status = attr.get("status") if attr else None
+        attr_residual = attr.get("residual_value") if attr else None
+        sleeves = sorted(attr.get("atomic_summary", attr.get("per_sleeve", {})).keys()) if attr and isinstance(attr.get("atomic_summary"), dict) else []
+    else:
+        sharpe = summary.get("sharpe")
+        cagr = summary.get("cagr")
+        maxdd = summary.get("maxdd")
+        vol = summary.get("vol")
+        target_vol = summary.get("target_vol")
+        realized_vol = summary.get("realized_vol")
+        gross_avg = summary.get("gross_exposure_avg")
+        gross_p95 = summary.get("gross_exposure_p95")
+        gross_max = summary.get("gross_exposure_max")
+        attr_status = summary.get("attribution_status")
+        attr_residual = summary.get("attribution_residual")
+        sleeves = summary.get("enabled_sleeves", [])
+
+    def _fmt(v, pct=False, residual=False):
+        if v is None:
+            return "—"
+        if residual and isinstance(v, (int, float)):
+            return f"{v:.2e}" if v != 0 and abs(v) < 0.001 else f"{v:.3f}"
+        if pct and isinstance(v, (int, float)):
+            return f"{v * 100:.2f}%" if abs(v) < 2 else f"{v:.2f}%"
+        if isinstance(v, float) and pct is False:
+            return f"{v:.3f}" if abs(v) < 10 else f"{v:.2f}"
+        return str(v)
+
+    link = f'<a href="{runs_index_url}/{rid}.html">{display}</a>'
+    sleeves_s = ", ".join(sleeves[:6]) if sleeves else "—"
+    if len(sleeves) > 6:
+        sleeves_s += f" (+{len(sleeves) - 6})"
+    return (
+        f"<tr><td>{link}</td><td><span class=\"badge badge-{cat}\">{cat}</span></td>"
+        f"<td>{_fmt(sharpe)}</td><td>{_fmt(cagr, True)}</td><td>{_fmt(maxdd, True)}</td><td>{_fmt(vol, True)}</td>"
+        f"<td>{_fmt(target_vol, True)}</td><td>{_fmt(realized_vol, True)}</td>"
+        f"<td>{_fmt(gross_avg)}</td><td>{_fmt(gross_p95)}</td><td>{_fmt(gross_max)}</td>"
+        f"<td>{attr_status or '—'}</td><td>{_fmt(attr_residual, residual=True) if attr_residual is not None else '—'}</td>"
+        f"<td class=\"muted\"><small>{sleeves_s}</small></td></tr>"
+    )
+
+
 def _render_leverage(leverage: Optional[dict], run_id: str = "") -> str:
     """Render leverage/telemetry panel HTML from docs/pinned/<run_id>.leverage.json."""
     if not leverage:
@@ -257,13 +329,48 @@ def render_page(title: str, body: str, nav_links: list) -> str:
 </html>"""
 
 
-def build_index(site_dir: Path) -> None:
+# Run IDs shown in "Current Baselines" (curated compare)
+CURRENT_BASELINE_RUN_IDS = frozenset({
+    "phase3b_baseline_traded_20260120_093953",   # Core v9 traded production baseline
+    "v1_frozen_baseline_20200106_20251031_20260213_190700",  # V1 frozen baseline
+})
+PINNED_HISTORY_N = 12
+
+
+def build_index(site_dir: Path, runs: list) -> None:
     nav = [
         ("Home", "index.html"),
         ("Runs", "runs/index.html"),
         ("Ops", "ops/index.html"),
         ("Docs", "docs/index.html"),
     ]
+    # Current Baselines (curated)
+    baseline_runs = [r for r in runs if r["run_id"] in CURRENT_BASELINE_RUN_IDS]
+    baseline_rows = "".join(
+        _scoreboard_row(r, load_summary(r["run_id"]), "runs")
+        for r in baseline_runs
+    )
+    baseline_table = (
+        "<table><thead><tr><th>Run</th><th>Category</th><th>Sharpe</th><th>CAGR</th><th>MaxDD</th><th>Vol</th>"
+        "<th>Target vol</th><th>Realized vol</th><th>Gross avg</th><th>Gross p95</th><th>Gross max</th>"
+        "<th>Attr status</th><th>Residual</th><th>Sleeves</th></tr></thead><tbody>"
+        + baseline_rows + "</tbody></table>"
+    ) if baseline_rows else "<p class=\"muted\">No baseline runs found. Run extract_metrics for pinned runs.</p>"
+
+    # Pinned History (last N by run_id order, so newest run_ids appear)
+    runs_sorted = sorted(runs, key=lambda r: r["run_id"])
+    history_runs = runs_sorted[-PINNED_HISTORY_N:]
+    history_rows = "".join(
+        _scoreboard_row(r, load_summary(r["run_id"]), "runs")
+        for r in history_runs
+    )
+    history_table = (
+        "<table><thead><tr><th>Run</th><th>Category</th><th>Sharpe</th><th>CAGR</th><th>MaxDD</th><th>Vol</th>"
+        "<th>Target vol</th><th>Realized vol</th><th>Gross avg</th><th>Gross p95</th><th>Gross max</th>"
+        "<th>Attr status</th><th>Residual</th><th>Sleeves</th></tr></thead><tbody>"
+        + history_rows + "</tbody></table>"
+    ) if history_rows else "<p class=\"muted\">No pinned runs. Add runs to configs/pinned_runs.yaml and run extract_metrics --all.</p>"
+
     body = """
 <h1>Futures-Six Project Hub</h1>
 <p>Static, local-first hub for pinned runs, ops commands, and SOT documentation.</p>
@@ -272,6 +379,15 @@ def build_index(site_dir: Path) -> None:
   <li><a href="ops/index.html">Ops Hub</a> — Gates, preflight, run scripts.</li>
   <li><a href="docs/index.html">Docs Hub</a> — SOTs and key docs rendered to HTML.</li>
 </ul>
+
+<h2>Scoreboard — Current Baselines</h2>
+<p class="muted">Quick compare: Core v9 traded vs V1 frozen. Leverage and target-vs-realized vol at a glance.</p>
+""" + baseline_table + """
+
+<h2>Pinned History (last """ + str(PINNED_HISTORY_N) + """)</h2>
+<p class="muted">Most recent pinned runs with key metrics, leverage telemetry, and sleeve composition.</p>
+""" + history_table + """
+
 <p class="muted">No server required. Open index.html directly (file://). Refresh by rerunning: python scripts/site/build_site.py</p>
 """
     html = render_page("Project Hub", body, nav)
@@ -576,7 +692,7 @@ def main():
         print("No pinned runs in configs/pinned_runs.yaml")
         sys.exit(1)
 
-    build_index(site_dir)
+    build_index(site_dir, runs)
     build_runs_dashboard(site_dir, runs)
     for r in runs:
         build_run_detail(site_dir, r)

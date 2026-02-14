@@ -1,0 +1,22 @@
+{
+  "run_id": "vrp_vxlegs_canonical",
+  "enabled_sleeves": [
+    "tsmom",
+    "vrp_alt_meta",
+    "vrp_convergence_meta",
+    "vrp_core_meta"
+  ],
+  "weights": {},
+  "target_vol": null,
+  "realized_vol": null,
+  "gross_exposure_avg": null,
+  "gross_exposure_p95": null,
+  "gross_exposure_max": null,
+  "leverage_cap": null,
+  "sharpe": 0.01419711132540036,
+  "cagr": -0.008066624935545996,
+  "maxdd": -0.22192930049383874,
+  "vol": 0.1297814831522906,
+  "attribution_status": null,
+  "attribution_residual": null
+}
