@@ -216,7 +216,15 @@ def compute_sleeve_returns(profile_name: str, start_date: str, end_date: str, ma
     if strategies_cfg.get("csmom_meta", {}).get("enabled", False):
         logger.info("  Computing CSMOM sleeve returns...")
         csmom_params = strategies_cfg.get("csmom_meta", {}).get("params", {})
-        csmom = CSMOMMeta(**csmom_params)
+        csmom = CSMOMMeta(
+            symbols=None,
+            lookbacks=csmom_params.get("lookbacks", [63, 126, 252]),
+            weights=csmom_params.get("horizon_weights", [0.4, 0.35, 0.25]),
+            vol_lookback=csmom_params.get("vol_lookback", 63),
+            rebalance_freq=csmom_params.get("rebalance", "D"),
+            neutralize_cross_section=csmom_params.get("neutralize_cross_section", True),
+            clip_score=csmom_params.get("clip", 3.0)
+        )
         
         # Run backtest for CSMOM sleeve only
         combined = CombinedStrategy(

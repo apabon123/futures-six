@@ -59,9 +59,31 @@ def series_metrics(s: pd.Series, label: str) -> dict:
     }
 
 
-def _parse_phase2_vrp_index() -> dict:
-    """Read Phase-2 VRP run id and dates from phase index. Returns dict with vrp_run_id, start_date, end_date or empty."""
-    path = PROJECT_ROOT / "reports" / "phase_index" / "vrp" / "phase2_core_v5_trend_csmom_vrp_core.txt"
+# Phase-2 VRP flavor → phase index file and run_id derivation
+VRP_PHASE2_FLAVOR_CONFIG = {
+    "core": {
+        "index_file": "phase2_core_v5_trend_csmom_vrp_core.txt",
+        "run_id_key": "vrp_run_id",  # line "vrp_run_id: ..."
+    },
+    "core_convergence": {
+        "index_file": "phase2_core_v6_trend_csmom_vrp_core_convergence.txt",
+        "path_to_run_id": "core_v6_trend_csmom_vrp_core_convergence",  # path .../this/20251211_094649 → core_v6_vrp_convergence_phase2_20251211_094649
+        "run_id_prefix": "core_v6_vrp_convergence_phase2_",
+    },
+    "core_convergence_alt": {
+        "index_file": "phase2_core_v6_trend_csmom_vrp_core_convergence_vrp_alt.txt",
+        "path_to_run_id": "core_v6_trend_csmom_vrp_core_convergence_vrp_alt",
+        "run_id_prefix": "core_v6_vrp_alt_phase2_",
+    },
+}
+
+
+def _parse_phase2_vrp_index(flavor: str = "core") -> dict:
+    """Read Phase-2 VRP run id and dates from phase index for given flavor. Returns dict with vrp_run_id, start_date, end_date or empty."""
+    cfg = VRP_PHASE2_FLAVOR_CONFIG.get(flavor)
+    if not cfg:
+        return {}
+    path = PROJECT_ROOT / "reports" / "phase_index" / "vrp" / cfg["index_file"]
     if not path.exists():
         return {}
     out = {}
@@ -70,10 +92,19 @@ def _parse_phase2_vrp_index() -> dict:
             line = line.strip()
             if line.startswith("vrp_run_id:"):
                 out["vrp_run_id"] = line.split(":", 1)[1].strip()
+            elif line.startswith("variant_run_id:"):
+                out["vrp_run_id"] = line.split(":", 1)[1].strip()
             elif line.startswith("start_date:"):
                 out["start_date"] = line.split(":", 1)[1].strip()
             elif line.startswith("end_date:"):
                 out["end_date"] = line.split(":", 1)[1].strip()
+            elif line.startswith("path:") and "run_id_prefix" in cfg:
+                path_val = line.split(":", 1)[1].strip().replace("\\", "/")
+                parts = path_val.rstrip("/").split("/")
+                if len(parts) >= 1:
+                    timestamp = parts[-1]
+                    if len(timestamp) >= 10 and timestamp.replace("_", "").isdigit():
+                        out["vrp_run_id"] = cfg["run_id_prefix"] + timestamp
     return out
 
 
@@ -83,6 +114,9 @@ def main():
                     help="Phase-4 run ID (integration with sr3_curve_rv_meta)")
     ap.add_argument("--vrp_phase4_run_id", type=str, default="vrp_int_trend_plus_vrp_20200106_20251031_20260213_132033",
                     help="Phase-4 VRP run ID for VRP sleeve comparison (default: vrp_int_trend_plus_vrp_...)")
+    ap.add_argument("--vrp_phase2_flavor", type=str, default="core",
+                    choices=["core", "core_convergence", "core_convergence_alt"],
+                    help="Phase-2 VRP run flavor: core (core_v5), core_convergence (core_v6), core_convergence_alt (core_v6+alt). Default: core.")
     ap.add_argument("--out_dir", type=str, default=None, help="Override output dir (default: reports/runs/<phase4_run_id>/analysis/phase2_vs_phase4_rv_vrp)")
     args = ap.parse_args()
 
@@ -156,15 +190,17 @@ def main():
     notes_lines.append("")
     # --- VRP: Phase-2 vs Phase-4 atomic sleeve comparison ---
     vrp_phase4_run_id = getattr(args, "vrp_phase4_run_id", None) or "vrp_int_trend_plus_vrp_20200106_20251031_20260213_132033"
-    phase2_index = _parse_phase2_vrp_index()
+    vrp_flavor = getattr(args, "vrp_phase2_flavor", "core")
+    phase2_index = _parse_phase2_vrp_index(vrp_flavor)
     vrp_out_dir = PROJECT_ROOT / "reports" / "runs" / vrp_phase4_run_id / "analysis" / "phase2_vs_phase4_rv_vrp"
     phase2_sleeve_path = None
-    if phase2_index:
+    if phase2_index and phase2_index.get("vrp_run_id"):
         phase2_sleeve_path = PROJECT_ROOT / "reports" / "runs" / phase2_index["vrp_run_id"] / "sleeve_returns.csv"
     phase4_vrp_sleeve_path = PROJECT_ROOT / "reports" / "runs" / vrp_phase4_run_id / "sleeve_returns.csv"
     vrp_summary_lines = []
     identity_consistent = True
-    if phase2_index and phase2_sleeve_path and phase2_sleeve_path.exists() and phase4_vrp_sleeve_path.exists():
+    vrp_flavor_suffix = vrp_flavor  # "core" | "core_convergence" | "core_convergence_alt"
+    if phase2_index and phase2_index.get("vrp_run_id") and phase2_sleeve_path and phase2_sleeve_path.exists() and phase4_vrp_sleeve_path.exists():
         vrp_out_dir.mkdir(parents=True, exist_ok=True)
         df_p2 = pd.read_csv(phase2_sleeve_path, parse_dates=["date"], index_col="date")
         df_p4 = pd.read_csv(phase4_vrp_sleeve_path, parse_dates=["date"], index_col="date")
@@ -231,12 +267,36 @@ def main():
             vrp_summary_lines.append(f"- Phase-2: mean_daily = {r['phase2_mean_daily']:.6f}, daily_vol = {v2}, ann_return = {r['phase2_ann_return']:.4f}, ann_vol = {a2}")
             vrp_summary_lines.append(f"- Phase-4: mean_daily = {r['phase4_mean_daily']:.6f}, daily_vol = {v4}, ann_return = {r['phase4_ann_return']:.4f}, ann_vol = {a4}")
             vrp_summary_lines.append("")
-        vrp_summary_lines.append("## Identity consistency")
+        vrp_summary_lines.append("## Identity check (threshold corr >= 0.95)")
         vrp_summary_lines.append("")
-        vrp_summary_lines.append("Identity looks **consistent**." if identity_consistent else "Identity looks **not fully consistent** (some sleeve correlations < 0.95).")
-        (vrp_out_dir / "vrp_summary.md").write_text("\n".join(vrp_summary_lines), encoding="utf-8")
+        below = [r["sleeve"] for r in results if np.isfinite(r["corr"]) and r["corr"] < 0.95]
+        if identity_consistent:
+            vrp_summary_lines.append("**PASS**: All finite sleeve correlations >= 0.95.")
+        else:
+            vrp_summary_lines.append("**FAIL**: The following sleeves have correlation < 0.95:")
+            for s in below:
+                r = next(x for x in results if x["sleeve"] == s)
+                vrp_summary_lines.append(f"- {s}: corr = {r['corr']:.4f}")
+        summary_path = vrp_out_dir / f"vrp_{vrp_flavor_suffix}_summary.md"
+        summary_path.write_text("\n".join(vrp_summary_lines), encoding="utf-8")
+        # Compare table (markdown) for this flavor
+        ct_lines = [
+            f"# Phase-2 vs Phase-4 VRP compare table ({vrp_flavor_suffix})",
+            "",
+            "| sleeve | phase2_mean_daily | phase4_mean_daily | phase2_daily_vol | phase4_daily_vol | phase2_ann_return | phase4_ann_return | corr |",
+            "|--------|-------------------|-------------------|------------------|------------------|-------------------|-------------------|------|",
+        ]
+        for r in results:
+            vol2 = f"{r['phase2_daily_vol']:.6f}" if np.isfinite(r['phase2_daily_vol']) else "nan"
+            vol4 = f"{r['phase4_daily_vol']:.6f}" if np.isfinite(r['phase4_daily_vol']) else "nan"
+            corr_s = f"{r['corr']:.4f}" if np.isfinite(r["corr"]) else "N/A"
+            ct_lines.append(
+                f"| {r['sleeve']} | {r['phase2_mean_daily']:.6f} | {r['phase4_mean_daily']:.6f} | {vol2} | {vol4} | "
+                f"{r['phase2_ann_return']:.4f} | {r['phase4_ann_return']:.4f} | {corr_s} |"
+            )
+        (vrp_out_dir / f"vrp_{vrp_flavor_suffix}_compare_table.md").write_text("\n".join(ct_lines), encoding="utf-8")
         notes_lines.append("- Phase-2 atomic sleeve_returns.csv present; VRP comparison performed.")
-        notes_lines.append(f"- Results in `reports/runs/{vrp_phase4_run_id}/analysis/phase2_vs_phase4_rv_vrp/vrp_summary.md`.")
+        notes_lines.append(f"- Results in `reports/runs/{vrp_phase4_run_id}/analysis/phase2_vs_phase4_rv_vrp/vrp_{vrp_flavor_suffix}_summary.md`.")
     else:
         if not phase2_index:
             notes_lines.append("- Phase-2 VRP phase index not found.")
@@ -276,8 +336,10 @@ def main():
 
     (out_dir / "notes.md").write_text("\n".join(notes_lines), encoding="utf-8")
     printed = [f"Wrote {out_dir}/compare_table.csv, compare_table.md, notes.md"]
-    if vrp_out_dir.exists() and (vrp_out_dir / "vrp_summary.md").exists():
-        printed.append(f"Wrote {vrp_out_dir}/vrp_summary.md")
+    if vrp_out_dir.exists():
+        for name in [f"vrp_{vrp_flavor_suffix}_summary.md", f"vrp_{vrp_flavor_suffix}_compare_table.md"]:
+            if (vrp_out_dir / name).exists():
+                printed.append(f"Wrote {vrp_out_dir}/{name}")
     print("; ".join(printed))
     return 0
 
