@@ -1,0 +1,21 @@
+{
+  "run_id": "phase1_reconfirm_sr3_curve_rv_meta_simplepnl_20200106_20251031_20260214_074625",
+  "enabled_sleeves": [],
+  "weights": {},
+  "target_vol": 0.2,
+  "realized_vol": 0.0,
+  "gross_exposure_avg": 0.0,
+  "gross_exposure_p95": 0.0,
+  "gross_exposure_max": 0.0,
+  "leverage_cap": 7.0,
+  "sharpe": 0.0,
+  "cagr": 0.0,
+  "maxdd": null,
+  "vol": 0.0,
+  "attribution_status": null,
+  "attribution_residual": null,
+  "return_definition": "simple",
+  "weight_timing": "lag1",
+  "annualization_basis": 252,
+  "legacy_pnl": false
+}

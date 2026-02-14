@@ -30,6 +30,27 @@ runs:
     artifacts:
       summary_md: docs/pinned/phase3b_baseline_traded_20260120_093953.md
 
+  - run_id: phase3b_baseline_traded_simplepnl_20260213
+    label: "Core V9 traded simple-PnL (production baseline)"
+    display_name: "Core v9 – traded simple-PnL (post-allocator, pnl_contract)"
+    category: production
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase3b_baseline_traded.yaml
+    git_commit: ""
+    description: "Core V9 traded with simple-PnL contract (lagged weights, simple returns). Same window and --strict_universe. Math-contract artifact-path fixes applied."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.5244 }
+        - { name: csmom, weight: 0.2185 }
+        - { name: vrp, atomic_sleeves: [{ name: vrp_core, weight: 0.06555 }, { name: vrp_convergence, weight: 0.02185 }, { name: vrp_alt, weight: 0.1311 }] }
+        - { name: vx_carry, weight: 0.046 }
+        - { name: curve_rv, weight: 0.08 }
+    artifacts:
+      summary_md: ""
+
   - run_id: phase3b_baseline_artifacts_only_20260120_093953
     label: "Phase 3B artifacts-only baseline"
     display_name: "Core v9 – artifacts-only baseline"
@@ -71,6 +92,26 @@ runs:
     artifacts:
       summary_md: docs/pinned/v1_frozen_baseline_20200106_20251031_20260213_190700.md
 
+  - run_id: v1_frozen_simplepnl_20260213_224214
+    label: "V1 frozen simple-PnL (production baseline)"
+    display_name: "V1 Frozen – Simple-PnL aggregation (lagged weights, simple returns)"
+    category: production
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase4_v1_frozen.yaml
+    git_commit: ""
+    description: "Same as V1 frozen baseline with ExecSim portfolio aggregation in simple-return space (w[t-1]*r[t])."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 0.578 }
+        - { name: csmom, weight: 0.244 }
+        - { name: curve_rv, weight: 0.089 }
+        - { name: vx_carry, weight: 0.089 }
+    artifacts:
+      summary_md: ""
+
   - run_id: trend_only_20200106_20251031_20260214_120000
     label: "Trend-only canonical V1 (diagnosis)"
     display_name: "Trend-only – tsmom_multihorizon only (weight 1.0)"
@@ -102,6 +143,110 @@ runs:
     sleeves:
       metasleeves:
         - { name: trend, weight: 1.0 }
+    artifacts:
+      summary_md: ""
+
+  - run_id: trend_only_simplepnl_20260213_224134
+    label: "Trend-only simple-PnL (engine-quality audit)"
+    display_name: "Trend-only – Simple-PnL aggregation (lagged weights, simple returns)"
+    category: engine_quality
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/phase4_trend_only_canonical_v1.yaml
+    git_commit: ""
+    description: "Trend sleeve only; ExecSim portfolio in simple-return space (w[t-1]*r[t]). Audit run for PnL convention fix."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 1.0 }
+    artifacts:
+      summary_md: ""
+
+  # Phase-1 Reconfirmation (simple/lag1 contract). Run scripts/diagnostics/run_phase1_reconfirm_sweep.py;
+  # then set each run_id to the generated run_id (format ..._YYYYMMDD_HHMMSS) and run extract_metrics --run_id.
+  - run_id: phase1_reconfirm_tsmom_multihorizon_simplepnl_20200106_20251031_20260214_074625
+    label: "Phase-1 reconfirm trend (simple-PnL)"
+    display_name: "Phase-1 reconfirm – tsmom_multihorizon (simple/lag1)"
+    category: engine_quality
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/strategies.yaml
+    git_commit: ""
+    description: "Phase-1 reconfirmation sweep: trend sleeve only, weight 1.0, simple/lag1 contract. Update run_id after sweep."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: trend, weight: 1.0 }
+    artifacts:
+      summary_md: ""
+
+  - run_id: phase1_reconfirm_csmom_meta_simplepnl_20200106_20251031_20260214_074625
+    label: "Phase-1 reconfirm csmom (simple-PnL)"
+    display_name: "Phase-1 reconfirm – csmom_meta (simple/lag1)"
+    category: engine_quality
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/strategies.yaml
+    git_commit: ""
+    description: "Phase-1 reconfirmation sweep: csmom only, weight 1.0, simple/lag1 contract. Update run_id after sweep."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: csmom, weight: 1.0 }
+    artifacts:
+      summary_md: ""
+
+  - run_id: phase1_reconfirm_vx_calendar_carry_simplepnl_20200106_20251031_20260214_074625
+    label: "Phase-1 reconfirm vx_carry (simple-PnL)"
+    display_name: "Phase-1 reconfirm – vx_calendar_carry (simple/lag1)"
+    category: engine_quality
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/strategies.yaml
+    git_commit: ""
+    description: "Phase-1 reconfirmation sweep: vx_calendar_carry only, weight 1.0, simple/lag1 contract. Update run_id after sweep."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: vx_carry, weight: 1.0 }
+    artifacts:
+      summary_md: ""
+
+  - run_id: phase1_reconfirm_sr3_curve_rv_meta_simplepnl_20200106_20251031_20260214_074625
+    label: "Phase-1 reconfirm curve_rv (simple-PnL)"
+    display_name: "Phase-1 reconfirm – sr3_curve_rv_meta (simple/lag1)"
+    category: engine_quality
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/strategies.yaml
+    git_commit: ""
+    description: "Phase-1 reconfirmation sweep: sr3_curve_rv only, weight 1.0, simple/lag1 contract. Update run_id after sweep."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: curve_rv, weight: 1.0 }
+    artifacts:
+      summary_md: ""
+
+  - run_id: phase1_reconfirm_vrp_core_meta_simplepnl_20200106_20251031_20260214_074625
+    label: "Phase-1 reconfirm vrp_core (simple-PnL)"
+    display_name: "Phase-1 reconfirm – vrp_core_meta (simple/lag1)"
+    category: engine_quality
+    window:
+      start: "2020-01-06"
+      end: "2025-10-31"
+    config_path: configs/strategies.yaml
+    git_commit: ""
+    description: "Phase-1 reconfirmation sweep: vrp_core only, weight 1.0, simple/lag1 contract. Update run_id after sweep."
+    expected_universe: 16
+    sleeves:
+      metasleeves:
+        - { name: vrp, atomic_sleeves: [{ name: vrp_core, weight: 1.0 }] }
     artifacts:
       summary_md: ""
 

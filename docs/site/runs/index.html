@@ -21,6 +21,7 @@ th { background: rgba(122,162,247,0.15); }
 .badge-engine_quality { background: #1f5a7a; color: #fff; }
 .badge-integration { background: #5a3a7a; color: #fff; }
 .badge-diagnostic { background: #7a5a1a; color: #fff; }
+.badge-legacy_pnl { background: #5a3a3a; color: #f0c0c0; }
 .card { background: rgba(48,52,70,0.6); border: 1px solid var(--muted); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
 .card h3 { margin-top: 0; }
 .card a { font-weight: 500; }
@@ -38,7 +39,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
 <h2>Table View</h2>
 <table><thead><tr><th>Run</th><th>Category</th><th>Window</th><th>CAGR</th><th>Sharpe</th><th>Vol</th><th>MaxDD</th><th>Config</th></tr></thead><tbody>
 <tr>
-  <td><a href="phase3b_baseline_traded_20260120_093953.html">Core v9 – traded production baseline (post-allocator)</a></td>
+  <td><a href="phase3b_baseline_traded_20260120_093953.html">Core v9 – traded production baseline (post-allocator)</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-production">production</span></td>
   <td>2020-01-06 → 2025-10-31</td>
   <td>16.34%</td>
@@ -48,7 +49,17 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase3b_baseline_traded.yaml</td>
 </tr>
 <tr>
-  <td><a href="phase3b_baseline_artifacts_only_20260120_093953.html">Core v9 – artifacts-only baseline</a></td>
+  <td><a href="phase3b_baseline_traded_simplepnl_20260213.html">Core v9 – traded simple-PnL (post-allocator, pnl_contract)</a></td>
+  <td><span class="badge badge-production">production</span></td>
+  <td>2020-01-06 → 2025-10-31</td>
+  <td>-0.39%</td>
+  <td>0.033</td>
+  <td>11.94%</td>
+  <td>-25.01%</td>
+  <td>configs/phase3b_baseline_traded.yaml</td>
+</tr>
+<tr>
+  <td><a href="phase3b_baseline_artifacts_only_20260120_093953.html">Core v9 – artifacts-only baseline</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-production">production</span></td>
   <td>2020-01-06 → 2025-10-31</td>
   <td>17.21%</td>
@@ -58,7 +69,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase3b_baseline_artifacts_only.yaml</td>
 </tr>
 <tr>
-  <td><a href="v1_frozen_baseline_20200106_20251031_20260213_190700.html">V1 Frozen – Production baseline (no VRP, no SR3 spread carry)</a></td>
+  <td><a href="v1_frozen_baseline_20200106_20251031_20260213_190700.html">V1 Frozen – Production baseline (no VRP, no SR3 spread carry)</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-production">production</span></td>
   <td>2020-01-06 → 2025-10-31</td>
   <td>4.05%</td>
@@ -68,7 +79,17 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase4_v1_frozen.yaml</td>
 </tr>
 <tr>
-  <td><a href="trend_only_20200106_20251031_20260214_120000.html">Trend-only – tsmom_multihorizon only (weight 1.0)</a></td>
+  <td><a href="v1_frozen_simplepnl_20260213_224214.html">V1 Frozen – Simple-PnL aggregation (lagged weights, simple returns)</a></td>
+  <td><span class="badge badge-production">production</span></td>
+  <td>2020-01-06 → 2025-10-31</td>
+  <td>1.15%</td>
+  <td>0.159</td>
+  <td>7.65%</td>
+  <td>-12.39%</td>
+  <td>configs/phase4_v1_frozen.yaml</td>
+</tr>
+<tr>
+  <td><a href="trend_only_20200106_20251031_20260214_120000.html">Trend-only – tsmom_multihorizon only (weight 1.0)</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-engine_quality">engine_quality</span></td>
   <td>2020-01-06 → 2025-10-31</td>
   <td>1.54%</td>
@@ -78,7 +99,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase4_trend_only_canonical_v1.yaml</td>
 </tr>
 <tr>
-  <td><a href="trend_only_ewma_20200106_20251031_20260213_212931.html">Trend-only EWMA – tsmom_multihorizon, RT EWMA covariance</a></td>
+  <td><a href="trend_only_ewma_20200106_20251031_20260213_212931.html">Trend-only EWMA – tsmom_multihorizon, RT EWMA covariance</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-engine_quality">engine_quality</span></td>
   <td>2020-01-06 → 2025-10-31</td>
   <td>0.83%</td>
@@ -88,7 +109,67 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase4_trend_only_canonical_v1_ewma.yaml</td>
 </tr>
 <tr>
-  <td><a href="phase3a_statistical_baseline_governed_20251031.html">Phase-3A engine-quality statistical baseline</a></td>
+  <td><a href="trend_only_simplepnl_20260213_224134.html">Trend-only – Simple-PnL aggregation (lagged weights, simple returns)</a></td>
+  <td><span class="badge badge-engine_quality">engine_quality</span></td>
+  <td>2020-01-06 → 2025-10-31</td>
+  <td>-1.76%</td>
+  <td>-0.110</td>
+  <td>9.18%</td>
+  <td>-24.03%</td>
+  <td>configs/phase4_trend_only_canonical_v1.yaml</td>
+</tr>
+<tr>
+  <td><a href="phase1_reconfirm_tsmom_multihorizon_simplepnl_20200106_20251031_20260214_074625.html">Phase-1 reconfirm – tsmom_multihorizon (simple/lag1)</a></td>
+  <td><span class="badge badge-engine_quality">engine_quality</span></td>
+  <td>2020-01-06 → 2025-10-31</td>
+  <td>-1.76%</td>
+  <td>-0.110</td>
+  <td>9.18%</td>
+  <td>-24.03%</td>
+  <td>configs/strategies.yaml</td>
+</tr>
+<tr>
+  <td><a href="phase1_reconfirm_csmom_meta_simplepnl_20200106_20251031_20260214_074625.html">Phase-1 reconfirm – csmom_meta (simple/lag1)</a></td>
+  <td><span class="badge badge-engine_quality">engine_quality</span></td>
+  <td>2020-01-06 → 2025-10-31</td>
+  <td>12.55%</td>
+  <td>0.826</td>
+  <td>12.48%</td>
+  <td>-20.71%</td>
+  <td>configs/strategies.yaml</td>
+</tr>
+<tr>
+  <td><a href="phase1_reconfirm_vx_calendar_carry_simplepnl_20200106_20251031_20260214_074625.html">Phase-1 reconfirm – vx_calendar_carry (simple/lag1)</a></td>
+  <td><span class="badge badge-engine_quality">engine_quality</span></td>
+  <td>2020-01-06 → 2025-10-31</td>
+  <td>0.00%</td>
+  <td>0.000</td>
+  <td>0.00%</td>
+  <td>0.00%</td>
+  <td>configs/strategies.yaml</td>
+</tr>
+<tr>
+  <td><a href="phase1_reconfirm_sr3_curve_rv_meta_simplepnl_20200106_20251031_20260214_074625.html">Phase-1 reconfirm – sr3_curve_rv_meta (simple/lag1)</a></td>
+  <td><span class="badge badge-engine_quality">engine_quality</span></td>
+  <td>2020-01-06 → 2025-10-31</td>
+  <td>0.00%</td>
+  <td>0.000</td>
+  <td>0.00%</td>
+  <td>0.00%</td>
+  <td>configs/strategies.yaml</td>
+</tr>
+<tr>
+  <td><a href="phase1_reconfirm_vrp_core_meta_simplepnl_20200106_20251031_20260214_074625.html">Phase-1 reconfirm – vrp_core_meta (simple/lag1)</a></td>
+  <td><span class="badge badge-engine_quality">engine_quality</span></td>
+  <td>2020-01-06 → 2025-10-31</td>
+  <td>0.00%</td>
+  <td>0.000</td>
+  <td>0.00%</td>
+  <td>0.00%</td>
+  <td>configs/strategies.yaml</td>
+</tr>
+<tr>
+  <td><a href="phase3a_statistical_baseline_governed_20251031.html">Phase-3A engine-quality statistical baseline</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-engine_quality">engine_quality</span></td>
   <td>2020-01-06 → 2025-10-31</td>
   <td>7.18%</td>
@@ -98,7 +179,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/canonical_frozen_stack_precomputed.yaml</td>
 </tr>
 <tr>
-  <td><a href="vrp_vxlegs_canonical.html">VRP VX legs canonical (VX2–VX1 spread)</a></td>
+  <td><a href="vrp_vxlegs_canonical.html">VRP VX legs canonical (VX2–VX1 spread)</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-diagnostic">diagnostic</span></td>
   <td>2020-01-01 → 2024-10-31</td>
   <td>-0.81%</td>
@@ -108,7 +189,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase4_vrp_baseline_v1.yaml</td>
 </tr>
 <tr>
-  <td><a href="trend_only_canonical_2020_2024.html">Trend-only canonical (2020–2024)</a></td>
+  <td><a href="trend_only_canonical_2020_2024.html">Trend-only canonical (2020–2024)</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-integration">integration</span></td>
   <td>2020-01-01 → 2024-10-31</td>
   <td>2.03%</td>
@@ -118,7 +199,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase4_trend_only_canonical_v1.yaml</td>
 </tr>
 <tr>
-  <td><a href="trend_plus_vrp_canonical_2020_2024.html">Trend + VRP canonical (2020–2024)</a></td>
+  <td><a href="trend_plus_vrp_canonical_2020_2024.html">Trend + VRP canonical (2020–2024)</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-integration">integration</span></td>
   <td>2020-01-01 → 2024-10-31</td>
   <td>0.86%</td>
@@ -128,7 +209,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase4_trend_plus_vrp_canonical_v1.yaml</td>
 </tr>
 <tr>
-  <td><a href="vrp_eq_trend_plus_vrp_20200106_20251031_20260213_131905.html">VRP engine-quality – Trend + VRP only (2020-01-06 to 2025-10-31)</a></td>
+  <td><a href="vrp_eq_trend_plus_vrp_20200106_20251031_20260213_131905.html">VRP engine-quality – Trend + VRP only (2020-01-06 to 2025-10-31)</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-engine_quality">engine_quality</span></td>
   <td>2020-01-06 → 2025-10-31</td>
   <td>0.90%</td>
@@ -138,7 +219,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase4_trend_plus_vrp_canonical_v1.yaml</td>
 </tr>
 <tr>
-  <td><a href="vrp_int_trend_plus_vrp_20200106_20251031_20260213_132033.html">VRP integration – Trend + VRP only (2020-01-06 to 2025-10-31)</a></td>
+  <td><a href="vrp_int_trend_plus_vrp_20200106_20251031_20260213_132033.html">VRP integration – Trend + VRP only (2020-01-06 to 2025-10-31)</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-integration">integration</span></td>
   <td>2020-01-06 → 2025-10-31</td>
   <td>0.90%</td>
@@ -148,7 +229,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase4_trend_plus_vrp_canonical_v1.yaml</td>
 </tr>
 <tr>
-  <td><a href="carry_eq_trend_plus_carry_20200106_20251031_20260213_145229.html">Carry V1 engine-quality – Trend + Carry (SR3 + VX) (2020-01-06 to 2025-10-31)</a></td>
+  <td><a href="carry_eq_trend_plus_carry_20200106_20251031_20260213_145229.html">Carry V1 engine-quality – Trend + Carry (SR3 + VX) (2020-01-06 to 2025-10-31)</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-engine_quality">engine_quality</span></td>
   <td>2020-01-06 → 2025-10-31</td>
   <td>1.53%</td>
@@ -158,7 +239,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase4_trend_plus_carry_canonical_v1.yaml</td>
 </tr>
 <tr>
-  <td><a href="carry_int_v1stack_no_vrp_plus_carry_20200106_20251031_20260213_150500.html">Carry V1 integration – Trend + CSMOM + Curve RV + Carry (2020-01-06 to 2025-10-31)</a></td>
+  <td><a href="carry_int_v1stack_no_vrp_plus_carry_20200106_20251031_20260213_150500.html">Carry V1 integration – Trend + CSMOM + Curve RV + Carry (2020-01-06 to 2025-10-31)</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-integration">integration</span></td>
   <td>2020-01-06 → 2025-10-31</td>
   <td>3.12%</td>
@@ -168,7 +249,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase4_v1_stack_no_vrp_plus_carry.yaml</td>
 </tr>
 <tr>
-  <td><a href="carry_eq_trend_plus_vx_and_sr3spread_20200106_20251031_20260213_152338.html">Phase-4 engine-quality: Trend + VX carry + SR3 calendar spread carry (R2−R1)</a></td>
+  <td><a href="carry_eq_trend_plus_vx_and_sr3spread_20200106_20251031_20260213_152338.html">Phase-4 engine-quality: Trend + VX carry + SR3 calendar spread carry (R2−R1)</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-engine_quality">engine_quality</span></td>
   <td>2020-01-06 → 2025-10-31</td>
   <td>2.29%</td>
@@ -178,7 +259,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase4_trend_plus_carry_vx_plus_sr3spread.yaml</td>
 </tr>
 <tr>
-  <td><a href="carry_int_v1stack_no_vrp_plus_vx_and_sr3spread_20200106_20251031_20260213_152417.html">Phase-4 integration: V1 stack (no VRP) + VX carry + SR3 calendar spread carry</a></td>
+  <td><a href="carry_int_v1stack_no_vrp_plus_vx_and_sr3spread_20200106_20251031_20260213_152417.html">Phase-4 integration: V1 stack (no VRP) + VX carry + SR3 calendar spread carry</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-integration">integration</span></td>
   <td>2020-01-06 → 2025-10-31</td>
   <td>3.58%</td>
@@ -188,7 +269,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase4_v1_stack_no_vrp_plus_carry_vx_plus_sr3spread.yaml</td>
 </tr>
 <tr>
-  <td><a href="v1_ab_no_vrp_no_carry_20200106_20251031_20260213_152911.html">V1 stack (no VRP) no carry — A/B baseline</a></td>
+  <td><a href="v1_ab_no_vrp_no_carry_20200106_20251031_20260213_152911.html">V1 stack (no VRP) no carry — A/B baseline</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-integration">integration</span></td>
   <td>2020-01-06 → 2025-10-31</td>
   <td>3.26%</td>
@@ -198,7 +279,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <td>configs/phase4_v1_stack_no_vrp_no_carry.yaml</td>
 </tr>
 <tr>
-  <td><a href="v1_ab_no_vrp_plus_vx_carry_20200106_20251031_20260213_152950.html">V1 stack (no VRP) + VX carry only — A/B test</a></td>
+  <td><a href="v1_ab_no_vrp_plus_vx_carry_20200106_20251031_20260213_152950.html">V1 stack (no VRP) + VX carry only — A/B test</a> <span class="badge badge-legacy_pnl">LEGACY_PNL</span></td>
   <td><span class="badge badge-integration">integration</span></td>
   <td>2020-01-06 → 2025-10-31</td>
   <td>4.05%</td>
@@ -216,6 +297,12 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
 </div>
 
 <div class="card">
+  <h3><a href="phase3b_baseline_traded_simplepnl_20260213.html">Core v9 – traded simple-PnL (post-allocator, pnl_contract)</a></h3>
+  <p class="muted">Core V9 traded with simple-PnL contract (lagged weights, simple returns). Same window and --strict_universe. Math-contract artifact-path fixes applied.</p>
+  <p><strong>Sleeves:</strong> trend (0.5244), csmom (0.2185), vrp (0.2185), vx_carry (0.046), curve_rv (0.08)</p>
+</div>
+
+<div class="card">
   <h3><a href="phase3b_baseline_artifacts_only_20260120_093953.html">Core v9 – artifacts-only baseline</a></h3>
   <p class="muted">Pre-allocator reference; construction curve without allocator scaling.</p>
   <p><strong>Sleeves:</strong> trend (0.5244), csmom (0.2185), vrp (0.2185), vx_carry (0.046), curve_rv (0.08)</p>
@@ -224,6 +311,12 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
 <div class="card">
   <h3><a href="v1_frozen_baseline_20200106_20251031_20260213_190700.html">V1 Frozen – Production baseline (no VRP, no SR3 spread carry)</a></h3>
   <p class="muted">Authoritative V1 stack for paper-trading hardening. Metasleeves: trend, csmom, sr3_curve_rv, vx_calendar_carry only.</p>
+  <p><strong>Sleeves:</strong> trend (0.578), csmom (0.244), curve_rv (0.089), vx_carry (0.089)</p>
+</div>
+
+<div class="card">
+  <h3><a href="v1_frozen_simplepnl_20260213_224214.html">V1 Frozen – Simple-PnL aggregation (lagged weights, simple returns)</a></h3>
+  <p class="muted">Same as V1 frozen baseline with ExecSim portfolio aggregation in simple-return space (w[t-1]*r[t]).</p>
   <p><strong>Sleeves:</strong> trend (0.578), csmom (0.244), curve_rv (0.089), vx_carry (0.089)</p>
 </div>
 
@@ -237,6 +330,42 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <h3><a href="trend_only_ewma_20200106_20251031_20260213_212931.html">Trend-only EWMA – tsmom_multihorizon, RT EWMA covariance</a></h3>
   <p class="muted">Same as trend-only with risk_targeting.cov_estimator=ewma, ewma_lambda=0.94.</p>
   <p><strong>Sleeves:</strong> trend (1.0)</p>
+</div>
+
+<div class="card">
+  <h3><a href="trend_only_simplepnl_20260213_224134.html">Trend-only – Simple-PnL aggregation (lagged weights, simple returns)</a></h3>
+  <p class="muted">Trend sleeve only; ExecSim portfolio in simple-return space (w[t-1]*r[t]). Audit run for PnL convention fix.</p>
+  <p><strong>Sleeves:</strong> trend (1.0)</p>
+</div>
+
+<div class="card">
+  <h3><a href="phase1_reconfirm_tsmom_multihorizon_simplepnl_20200106_20251031_20260214_074625.html">Phase-1 reconfirm – tsmom_multihorizon (simple/lag1)</a></h3>
+  <p class="muted">Phase-1 reconfirmation sweep: trend sleeve only, weight 1.0, simple/lag1 contract. Update run_id after sweep.</p>
+  <p><strong>Sleeves:</strong> trend (1.0)</p>
+</div>
+
+<div class="card">
+  <h3><a href="phase1_reconfirm_csmom_meta_simplepnl_20200106_20251031_20260214_074625.html">Phase-1 reconfirm – csmom_meta (simple/lag1)</a></h3>
+  <p class="muted">Phase-1 reconfirmation sweep: csmom only, weight 1.0, simple/lag1 contract. Update run_id after sweep.</p>
+  <p><strong>Sleeves:</strong> csmom (1.0)</p>
+</div>
+
+<div class="card">
+  <h3><a href="phase1_reconfirm_vx_calendar_carry_simplepnl_20200106_20251031_20260214_074625.html">Phase-1 reconfirm – vx_calendar_carry (simple/lag1)</a></h3>
+  <p class="muted">Phase-1 reconfirmation sweep: vx_calendar_carry only, weight 1.0, simple/lag1 contract. Update run_id after sweep.</p>
+  <p><strong>Sleeves:</strong> vx_carry (1.0)</p>
+</div>
+
+<div class="card">
+  <h3><a href="phase1_reconfirm_sr3_curve_rv_meta_simplepnl_20200106_20251031_20260214_074625.html">Phase-1 reconfirm – sr3_curve_rv_meta (simple/lag1)</a></h3>
+  <p class="muted">Phase-1 reconfirmation sweep: sr3_curve_rv only, weight 1.0, simple/lag1 contract. Update run_id after sweep.</p>
+  <p><strong>Sleeves:</strong> curve_rv (1.0)</p>
+</div>
+
+<div class="card">
+  <h3><a href="phase1_reconfirm_vrp_core_meta_simplepnl_20200106_20251031_20260214_074625.html">Phase-1 reconfirm – vrp_core_meta (simple/lag1)</a></h3>
+  <p class="muted">Phase-1 reconfirmation sweep: vrp_core only, weight 1.0, simple/lag1 contract. Update run_id after sweep.</p>
+  <p><strong>Sleeves:</strong> vrp (1.0)</p>
 </div>
 
 <div class="card">
@@ -310,6 +439,6 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
   <p class="muted">Trend + CSMOM + Curve RV + VX carry; SR3 carry disabled.</p>
   <p><strong>Sleeves:</strong> trend (0.578), csmom (0.244), curve_rv (0.089), vx_carry (0.089)</p>
 </div>
-<footer>Last built: 2026-02-14 03:40 UTC</footer>
+<footer>Last built: 2026-02-14 13:49 UTC</footer>
 </body>
 </html>

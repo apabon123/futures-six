@@ -1,0 +1,25 @@
+{
+  "run_id": "phase1_reconfirm_tsmom_multihorizon_simplepnl_20200106_20251031_20260214_074625",
+  "enabled_sleeves": [
+    "tsmom_multihorizon"
+  ],
+  "weights": {
+    "tsmom_multihorizon": 1.0
+  },
+  "target_vol": 0.2,
+  "realized_vol": 0.09181724400129278,
+  "gross_exposure_avg": 2.4198320215507074,
+  "gross_exposure_p95": 3.541721543797947,
+  "gross_exposure_max": 4.0,
+  "leverage_cap": 7.0,
+  "sharpe": -0.11034834195927819,
+  "cagr": -0.017633078052703977,
+  "maxdd": -0.24027583155997148,
+  "vol": 0.09181724400129278,
+  "attribution_status": "PASS",
+  "attribution_residual": 1.1275702593849246e-17,
+  "return_definition": "simple",
+  "weight_timing": "lag1",
+  "annualization_basis": 252,
+  "legacy_pnl": false
+}

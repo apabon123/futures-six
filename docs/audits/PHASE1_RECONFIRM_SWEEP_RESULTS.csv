@@ -1,0 +1,8 @@
+run_id,sleeve,window,universe_size,cagr,sharpe,vol,maxdd,realized_target_vol_ratio,attribution_consistency,historical_cagr,historical_sharpe,historical_vol,historical_maxdd,delta_cagr,delta_sharpe,delta_maxdd,status,notes
+phase1_reconfirm_tsmom_multihorizon_simplepnl_20200106_20251031_20260214_074625,tsmom_multihorizon,2020-01-06_2025-10-31,16,-0.017633078052703977,-0.11034834195927819,0.09181724400129278,-0.24027583155997148,0.42238386478707407,FAIL,,,,,,,,OK,
+phase1_reconfirm_csmom_meta_simplepnl_20200106_20251031_20260214_074625,csmom_meta,2020-01-06_2025-10-31,16,0.12554429510090426,0.8263167704286819,0.12476874482342006,-0.20708546409946357,0.5046560036626836,FAIL,,,,,,,,OK,
+phase1_reconfirm_vrp_core_meta_simplepnl_20200106_20251031_20260214_074625,vrp_core_meta,2020-01-06_2025-10-31,16,0.0,0.0,0.0,,0.25,UNKNOWN,0.0827,0.4045,,-0.3331,-0.0827,-0.4045,,OK,
+phase1_reconfirm_vrp_convergence_meta_simplepnl_20200106_20251031_20260214_074625,vrp_convergence_meta,2020-01-06_2025-10-31,16,0.0,0.0,0.0,,0.25,UNKNOWN,0.0033,0.2671,,-0.0208,-0.0033,-0.2671,,OK,
+phase1_reconfirm_vrp_alt_meta_simplepnl_20200106_20251031_20260214_074625,vrp_alt_meta,2020-01-06_2025-10-31,16,0.0,0.0,0.0,,0.25,UNKNOWN,0.0183,0.9142,,-0.0201,-0.0183,-0.9142,,OK,
+phase1_reconfirm_sr3_curve_rv_meta_simplepnl_20200106_20251031_20260214_074625,sr3_curve_rv_meta,2020-01-06_2025-10-31,16,0.0,0.0,0.0,,0.25,UNKNOWN,,,,,,,,OK,
+phase1_reconfirm_vx_calendar_carry_simplepnl_20200106_20251031_20260214_074625,vx_calendar_carry,2020-01-06_2025-10-31,16,0.0,0.0,0.0,,0.25,UNKNOWN,,,,,,,,OK,

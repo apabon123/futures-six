@@ -1,0 +1,10 @@
+{
+  "run_id": "phase1_reconfirm_csmom_meta_simplepnl_20200106_20251031_20260214_074625",
+  "cagr": 0.12554429510090426,
+  "vol": 0.12476874482342006,
+  "sharpe": 0.8263167704286819,
+  "maxdd": -0.20708546409946357,
+  "cum_return": null,
+  "turnover": null,
+  "hit_rate": 0.5303197353914002
+}

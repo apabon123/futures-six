@@ -1,0 +1,11 @@
+{
+  "run_id": "phase1_reconfirm_vx_calendar_carry_simplepnl_20200106_20251031_20260214_074625",
+  "gross_exposure_avg": 0.0,
+  "gross_exposure_median": 0.0,
+  "gross_exposure_max": 0.0,
+  "gross_exposure_p95": 0.0,
+  "scaling_factor_avg": 4.0,
+  "target_vol": 0.2,
+  "realized_vol": 0.0,
+  "leverage_cap": 7.0
+}

@@ -1,0 +1,11 @@
+{
+  "run_id": "phase1_reconfirm_tsmom_multihorizon_simplepnl_20200106_20251031_20260214_074625",
+  "gross_exposure_avg": 2.4198320215507074,
+  "gross_exposure_median": 2.3675152951525784,
+  "gross_exposure_max": 4.0,
+  "gross_exposure_p95": 3.541721543797947,
+  "scaling_factor_avg": 2.4198320215507074,
+  "target_vol": 0.2,
+  "realized_vol": 0.09181724400129278,
+  "leverage_cap": 7.0
+}

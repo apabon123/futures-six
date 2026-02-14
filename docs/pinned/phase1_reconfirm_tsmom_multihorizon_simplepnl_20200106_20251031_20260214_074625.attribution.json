@@ -1,0 +1,34 @@
+{
+  "run_id": "phase1_reconfirm_tsmom_multihorizon_simplepnl_20200106_20251031_20260214_074625",
+  "consistency_check": {
+    "passed": true,
+    "tolerance": 1e-08,
+    "max_abs_daily_residual": 1.1275702593849246e-17,
+    "cum_residual": 7.929880100547397e-17
+  },
+  "residual_value": 1.1275702593849246e-17,
+  "status": "PASS",
+  "tolerance_thresholds": {
+    "pass": 1e-05,
+    "warn": 0.0001
+  },
+  "atomic_summary": {
+    "tsmom_multihorizon": {
+      "cum_return": -0.07293345824923433,
+      "mean_daily_contrib": -4.018372355329716e-05,
+      "mean_abs_daily_contrib": 0.0039027725921314447,
+      "vol_of_contrib": 0.005782348313234558,
+      "max_dd_of_contrib": -0.25874121844868925,
+      "hit_rate": 0.5027593818984547,
+      "active_days": 1815,
+      "no_signal_days": 0
+    }
+  },
+  "metasleeve_summary": [
+    {
+      "metasleeve": "tsmom_multihorizon",
+      "cum_return": -0.0729334582492342
+    }
+  ],
+  "correlation_matrix_path": "sleeve_contribution_correlation.csv"
+}

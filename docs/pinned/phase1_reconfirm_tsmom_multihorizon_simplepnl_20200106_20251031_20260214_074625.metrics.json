@@ -1,0 +1,10 @@
+{
+  "run_id": "phase1_reconfirm_tsmom_multihorizon_simplepnl_20200106_20251031_20260214_074625",
+  "cagr": -0.017633078052703977,
+  "vol": 0.09181724400129278,
+  "sharpe": -0.11034834195927819,
+  "maxdd": -0.24027583155997148,
+  "cum_return": null,
+  "turnover": null,
+  "hit_rate": 0.5022050716648291
+}
