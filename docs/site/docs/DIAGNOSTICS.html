@@ -92,6 +92,18 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
 <li>Diagnostics remain reproducible and auditable</li>
 </ul>
 <p>This makes DIAGNOSTICS.md the enforcer, not the ledger.</p>
+<h2>V1 Freeze Baseline</h2>
+<p>The <strong>V1 frozen baseline</strong> is the official run produced from <code>configs/phase4_v1_frozen.yaml</code> for paper-trading hardening. It is pinned as <code>v1_frozen_production_baseline</code> in <code>configs/pinned_runs.yaml</code>.</p>
+<p><strong>How the baseline run is generated:</strong>
+- <code>run_strategy.py --config_path configs/phase4_v1_frozen.yaml --run_id v1_frozen_baseline_20200106_20251031_&lt;timestamp&gt; --start 2020-01-06 --end 2025-10-31 --strict_universe</code>
+- No VRP, no SR3 calendar spread carry; metasleeves: tsmom_multihorizon, csmom_meta, sr3_curve_rv_meta, vx_calendar_carry only.</p>
+<p><strong>Required artifacts:</strong>
+- <code>portfolio_returns.csv</code>, <code>weights.csv</code>, <code>sleeve_returns.csv</code>, <code>equity_curve.csv</code>, <code>meta.json</code>
+- <code>sleeve_returns.csv</code> must contain only: <code>tsmom_multihorizon</code>, <code>csmom_meta</code>, <code>sr3_curve_rv_meta</code>, <code>vx_calendar_carry</code> (no VRP columns, no sr3_calendar_spread_carry)</p>
+<p><strong>Attribution requirement:</strong>
+- Attribution must be regenerated for the run; <code>reports/runs/&lt;run_id&gt;/analysis/attribution/</code> must exist with consistency check <strong>PASS</strong> (no partial attribution warning).</p>
+<p><strong>Identity requirement:</strong>
+- No VRP sleeves in any artifacts; no SR3 calendar spread carry column in sleeve_returns or attribution.</p>
 <h2>Governance Fields (Phase 3A)</h2>
 <p>These fields are derived from execution-time metadata (<code>meta.json</code>) and represent the <strong>authoritative</strong> state of system governance. They are <strong>not</strong> inferred from artifact existence (unless explicitly noted for legacy recovery).</p>
 <p>| Stage | Key Fields | Description |
@@ -174,9 +186,11 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
 <li>Residual consistency check (sleeve contributions sum to portfolio return within tolerance)</li>
 <li>Sleeve contribution correlation matrix</li>
 <li>No-signal diagnostics (per-sleeve active vs no-signal days)</li>
+<li>When a sleeve shows materially negative contribution in Phase-4, a Phase-2 vs Phase-4 atomic return stream comparison must be performed before promotion decisions (used for SR3 curve RV and VRP).</li>
 </ul>
 <p>Artifacts are written under <code>reports/runs/&lt;run_id&gt;/analysis/attribution/</code> (e.g. <code>attribution_by_metasleeve.csv</code>, <code>attribution_summary.json</code>, <code>ATTRIBUTION_SUMMARY.md</code>).</p>
 <p>Promotion rules are defined in <a href="PROCEDURES.html">docs/SOTs/PROCEDURES.md</a>.</p>
+<p><strong>Promotion eligibility (engine policy):</strong> Engines whose unconditional implementation exhibits negative or unstable expectation over the canonical evaluation window are ineligible for promotion until a formal engine policy specification exists. This rule applies irrespective of whether the strategy may be profitable under discretionary or informal regime filtering.</p>
 <h3>Universe consistency check</h3>
 <p>Runs must fail if a sleeve emits signals for instruments not present in the configured universe, unless explicitly allowed by sleeve scope (e.g. VRP meta-sleeve restricted to VX1/VX2/VX3). This is enforced by the <code>--strict_universe</code> gate in <code>run_strategy.py</code> for governed runs.</p>
 <h3>Production Readiness Criteria</h3>
@@ -3296,6 +3310,6 @@ python scripts/diagnostics/run_vrp_mid_rv126_phase0.py</code></p>
 - Turnover and cost attribution
 - Sleeve-level attribution (if sleeve P&amp;L is tracked)
 - Statistical significance testing for metric differences</p>
-<footer>Last built: 2026-02-13 18:54 UTC</footer>
+<footer>Last built: 2026-02-14 01:13 UTC</footer>
 </body>
 </html>

@@ -142,6 +142,13 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
 <p><strong>⏸ Defer:</strong>
 - Ablations until RT/Allocator behavior is frozen.
 - [ ] <strong>Next: Phase 3A Attribution Ablations</strong> (Policy / RT / Allocator / Sleeves)</p>
+<h3>Phase-4 / V1 hardening (Feb 2026)</h3>
+<ul>
+<li><strong>VX calendar carry</strong> → accepted into V1 baseline.</li>
+<li><strong>SR3 calendar spread carry</strong> → implemented and validated in Phase-4 but deferred to post-V1 (minimize trading surface for initial release).</li>
+<li><strong>VRP metasleeve</strong> → deferred to V2 pending formal engine policy (policy-conditioned engine).</li>
+<li><strong>SR3 curve RV</strong> → remains part of V1 but flagged for Phase-4 diagnostic follow-up (Phase-2 vs Phase-4 atomic return stream comparison due to negative Phase-4 contribution).</li>
+</ul>
 <h3>Core v7 Upgrade — VRP-Alt Integration (15%)</h3>
 <p><strong>Completed</strong>: Phase-0, Phase-1, Phase-2, and scaling analysis for VRP-Alt.</p>
 <p><strong>VRP-Alt promoted at 15% weight</strong> into VRP Meta-Sleeve.</p>
@@ -179,6 +186,16 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
 - VRP-Convergence (required)
 - (Optional) VRP-CalendarDecay</p>
 <p><strong>Governance note (2026-Q1 update):</strong> Although VRP atomic sleeves were previously promoted into Core v7–v9, all new VRP research and refactoring is now evaluated under the Phase-4 engine-quality workflow. New VRP variants and refactors must first pass engine-quality runs (control + VRP only), and only afterwards be evaluated in integration runs against Core v9.</p>
+<hr />
+<h2>V2 Planned Work</h2>
+<ul>
+<li><strong>VRP Engine Policy development</strong> (gated premia)</li>
+<li><strong>SR3 calendar spread carry</strong> reconsideration</li>
+<li><strong>VRP Phase-4 identity resolution</strong></li>
+<li><strong>Policy-layer formalization</strong> for skewed premia</li>
+<li><strong>Potential atomic expansion</strong> of metasleeves</li>
+<li><strong>Sidecar framework formalization</strong> (V3)</li>
+</ul>
 <hr />
 <h2>Remaining VRP Sleeves That MUST Exist for a Serious VRP Meta-Sleeve</h2>
 <p>Below is the canonical list that institutional volatility premia research converges on. This is how you fill the VRP Meta-Sleeve with 4–6 sleeves.</p>
@@ -659,6 +676,6 @@ Crisis protection to be implemented as allocator-driven convexity allocation (e.
 <p><strong>Step 5: Long-Term Expansion</strong>
 - Move toward 7–10 atomic sleeves per meta-sleeve
 - Institutional Sharpe target (1.5–2.0)</p>
-<footer>Last built: 2026-02-13 18:54 UTC</footer>
+<footer>Last built: 2026-02-14 01:13 UTC</footer>
 </body>
 </html>

@@ -73,6 +73,8 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--muted)
 <p><code>Atomic Sleeves → Meta-Sleeve (vol-normalized, combined) → Risk Overlays → Portfolio</code></p>
 <p><strong>Key Principle</strong>: Risk overlays (macro filters, vol targeting, portfolio allocator) operate <strong>only at the Meta-Sleeve layer</strong>, not on individual atomic sleeves. Atomic sleeves feed into meta-sleeves, and meta-sleeves feed into the portfolio.</p>
 <p>A meta-sleeve may define a <strong>restricted tradable instrument universe</strong>. Instruments outside this scope must be stripped before portfolio combination (e.g. VRP meta-sleeve trades only VX1/VX2/VX3; other sleeves must not emit VX signals).</p>
+<h3>Atomic Sleeves are Not a Substitute for Policy</h3>
+<p>Atomic sleeves are alternative constructions of the same economic hypothesis; they are used to improve robustness and implementation diversity of a validated meta-sleeve. Atomic sleeves must not be used as substitutes for missing engine policy. If a strategy requires conditional validity (regime awareness, stress filters, or contextual gating) to function, this must be implemented in the engine policy layer rather than by adding additional atomic sleeves. Atomic expansion and policy design serve different purposes and must not be conflated.</p>
 <h2>Data Consistency and Run Alignment ⚠️</h2>
 <p><strong>CRITICAL</strong>: To ensure valid performance comparisons, all runs must follow strict data alignment rules.</p>
 <h3>Canonical Evaluation Window</h3>
@@ -224,6 +226,26 @@ Rows dropped: 0</code></p>
   - VRP-Core uses z-scored VRP spread (VIX - 21d realized ES vol) with 252-day z-score window
   - VRP-Convergence uses short-only z-scored convergence spread (VIX - VX1) with 252-day z-score window
   - VRP-Alt uses short-only z-scored Alt-VRP spread (VIX - RV5) with 252-day z-score window</p>
+<h2>V1 Frozen Composition (Phase-4 Freeze)</h2>
+<p>V1 is a <strong>frozen, production-ready stack</strong> for paper-trading hardening. Config: <code>configs/phase4_v1_frozen.yaml</code>.</p>
+<p><strong>Included metasleeves (only):</strong>
+- <strong>tsmom_multihorizon</strong> (trend)
+- <strong>csmom_meta</strong>
+- <strong>sr3_curve_rv_meta</strong>
+- <strong>vx_calendar_carry</strong></p>
+<p><strong>Excluded metasleeves (explicitly disabled):</strong>
+- vrp_core_meta, vrp_convergence_meta, vrp_alt_meta
+- sr3_calendar_spread_carry
+- sr3_carry_curve (if separate)
+- Any experimental sleeves
+- macro_regime</p>
+<p><strong>Statements:</strong>
+- V1 <strong>excludes VRP</strong> pending Engine Policy development (gated premia).
+- <strong>SR3 calendar spread carry</strong> is deferred to V2.</p>
+<p><strong>Clarification:</strong>
+- <strong>SR3 Curve RV</strong> (kept): curve-shape momentum on yield curve structures (rank fly, pack slope). In V1.
+- <strong>SR3 Calendar Spread Carry</strong> (excluded): calendar spread carry sleeve. Deferred to V2.</p>
+<p>All sleeves use explicit enable/disable in config; no reliance on defaults.</p>
 <h2>Baseline Evolution Summary (Core v3 → Core v9)</h2>
 <p><strong>Canonical Baseline Timeline</strong> (Canonical Window: 2020-01-06 → 2025-10-31):</p>
 <p><em>Note: All canonical metrics computed on canonical evaluation window (2020-01-06 to 2025-10-31) for apples-to-apples comparison. See <code>configs/canonical_window.yaml</code> for the authoritative window definition.</em></p>
@@ -442,9 +464,7 @@ Rows dropped: 0</code></p>
 <li><strong>See</strong>: <code>docs/SOTs/DIAGNOSTICS.md</code> § "SR3 Calendar Carry" for full development history and promotion decision</li>
 </ul>
 </li>
-<li>
-<p><strong>VX Calendar Carry</strong>: ✅ <strong>PROMOTED</strong> (Dec 2025)</p>
-<ul>
+<li><strong>VX Calendar Carry</strong>: ✅ <strong>PROMOTED</strong> (Dec 2025)<ul>
 <li><strong>Canonical Atomic Sleeve</strong>: VX2–VX1_short (liquidity-favored, default)</li>
 <li><strong>Secondary Atomic Sleeve</strong>: VX3–VX2_short (Phase-2 PASS, non-default, validated backup)</li>
 <li><strong>Economic Idea</strong>: Volatility term carry via shorting calendar spreads in contango</li>
@@ -460,10 +480,19 @@ Rows dropped: 0</code></p>
 <li><strong>See</strong>: <code>docs/SOTs/DIAGNOSTICS.md</code> § "VX Calendar Carry" for full development history and promotion decision</li>
 </ul>
 </li>
+</ul>
+<p><strong>Carry metasleeve – V1 composition</strong></p>
+<ul>
+<li>V1 carry includes only <strong>vx_calendar_carry</strong>.</li>
+<li><strong>sr3_calendar_spread_carry</strong> is implemented (Phase-2 promoted object, R2−R1 spread) but explicitly excluded from V1 to minimize trading surface for the initial release.</li>
+<li>
+<p><strong>sr3_carry_curve</strong> (directional curve strategy) is not considered a carry sleeve.</p>
+</li>
 <li>
 <p>✅ <strong>Curve RV Meta-Sleeve</strong>: <strong>Phase-1 Complete, Phase-2 Pending</strong></p>
 </li>
 <li><strong>Role</strong>: Momentum-driven regime sleeve for macro state detection on the yield curve</li>
+<li><strong>sr3_curve_rv_meta</strong> represents SR3 curve relative-value (butterflies / shape) and is economically distinct from carry.</li>
 <li><strong>Key Discovery</strong>: Mean-reversion on curves is conditional; momentum on curve shape is unconditional</li>
 <li><strong>Phase-0 Results</strong>: All mean-reversion variants failed; all momentum variants passed (Sharpe 0.42-0.81)</li>
 <li><strong>Phase-1 Results</strong>: Rank Fly Momentum (Sharpe 1.19), Pack Slope Momentum (Sharpe 0.28), Pack Curvature Momentum (Sharpe 0.39)</li>
@@ -1688,6 +1717,6 @@ equity[t+1] = equity[t] * (1 + net_ret)</p>
 <li>✅ <strong>Data Validity Mask</strong>: Invalid signals zeroed before allocation</li>
 <li>✅ <strong>Diagnostics</strong>: "What-moved" reports with top weight changes, k values, turnover</li>
 </ul>
-<footer>Last built: 2026-02-13 18:54 UTC</footer>
+<footer>Last built: 2026-02-14 01:13 UTC</footer>
 </body>
 </html>

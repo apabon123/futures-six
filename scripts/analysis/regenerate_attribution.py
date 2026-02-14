@@ -42,6 +42,8 @@ logger = logging.getLogger(__name__)
 
 VX_SYMBOLS = {"VX1", "VX2", "VX3"}
 VRP_SLEEVES = {"vrp_core_meta", "vrp_convergence_meta", "vrp_alt_meta"}
+# Sleeves that trade only VX instruments (get VX weight in decomposition, not non-VX)
+VX_ONLY_SLEEVES = {"vx_calendar_carry"}
 
 
 def reconstruct_sleeve_signals_from_artifacts(
@@ -57,103 +59,76 @@ def reconstruct_sleeve_signals_from_artifacts(
     Returns:
         sleeve_signals_history dict compatible with compute_attribution().
     """
-    # Read sleeve_returns.csv to identify which sleeves exist
+    # Canonical source: sleeve_returns.csv. If present, use its columns as the sleeve list.
     sleeve_returns_path = run_dir / "sleeve_returns.csv"
     if not sleeve_returns_path.exists():
         logger.error(f"sleeve_returns.csv not found in {run_dir}")
         return {}
 
     sleeve_returns = pd.read_csv(sleeve_returns_path, index_col=0, parse_dates=True)
-    sleeve_names = list(sleeve_returns.columns)
-    logger.info(f"Found sleeves: {sleeve_names}")
+    # Normalize column names (e.g. date might be index; ensure we have sleeve columns only)
+    sleeve_names = [c for c in sleeve_returns.columns if c and str(c).strip() and str(c) != "date"]
+    if not sleeve_names:
+        sleeve_names = list(sleeve_returns.columns)
+    logger.info(f"Canonical sleeves from sleeve_returns.csv: {sleeve_names}")
 
-    # Classify sleeves
-    vrp_sleeves = [s for s in sleeve_names if s in VRP_SLEEVES]
-    non_vrp_sleeves = [s for s in sleeve_names if s not in VRP_SLEEVES]
     vx_cols = [c for c in universe if c in VX_SYMBOLS]
     non_vx_cols = [c for c in universe if c not in VX_SYMBOLS]
 
-    logger.info(f"VRP sleeves: {vrp_sleeves}")
-    logger.info(f"Non-VRP sleeves: {non_vrp_sleeves}")
-    logger.info(f"VX instruments: {vx_cols}")
-    logger.info(f"Non-VX instruments ({len(non_vx_cols)}): {non_vx_cols[:5]}...")
+    # Classify: VRP (VX weight), VX-only non-VRP (vx_calendar_carry -> VX weight), rest (non-VX weight)
+    vrp_sleeves = [s for s in sleeve_names if s in VRP_SLEEVES]
+    vx_only_sleeves = [s for s in sleeve_names if s in VX_ONLY_SLEEVES]
+    non_vx_sleeves = [s for s in sleeve_names if s not in VRP_SLEEVES and s not in VX_ONLY_SLEEVES]
 
-    # Build sleeve signals history
-    # For each rebalance date, construct synthetic weighted signals that produce
-    # the correct weight decomposition.
+    logger.info(f"VRP sleeves (VX weight): {vrp_sleeves}")
+    logger.info(f"VX-only sleeves (VX weight): {vx_only_sleeves}")
+    logger.info(f"Non-VX sleeves (non-VX weight): {non_vx_sleeves}")
+    logger.info(f"VX instruments: {vx_cols}, Non-VX count: {len(non_vx_cols)}")
+
     rebalance_dates = weights_panel.index
     sleeve_signals_history = {s: [] for s in sleeve_names}
 
-    # For VRP weight splitting: use sleeve_returns magnitude as proxy
-    # If sleeve_returns are all zero for VRP, split by equal weight
-    vrp_daily_abs = {}
-    for s in vrp_sleeves:
-        vrp_daily_abs[s] = sleeve_returns[s].abs()
+    def _sleeve_frac_at_date(sleeves_subset: list, sleeve_name: str, date) -> float:
+        """Fraction for one sleeve among sleeves_subset using sleeve_returns at date."""
+        valid_dates = sleeve_returns.index[sleeve_returns.index <= date]
+        if len(valid_dates) == 0 or sleeve_name not in sleeve_returns.columns:
+            return 1.0 / len(sleeves_subset) if sleeves_subset else 0.0
+        nearest = valid_dates[-1]
+        total_abs = sum(
+            sleeve_returns.loc[nearest, s2] ** 2
+            for s2 in sleeves_subset
+            if s2 in sleeve_returns.columns
+        )
+        if total_abs > 1e-18:
+            return sleeve_returns.loc[nearest, sleeve_name] ** 2 / total_abs
+        return 1.0 / len(sleeves_subset) if sleeves_subset else 0.0
 
     for date in rebalance_dates:
         final_w = weights_panel.loc[date].reindex(universe, fill_value=0.0).fillna(0.0)
 
-        # Non-VRP sleeves: each gets full weight on non-VX instruments
-        # If there's only one non-VRP sleeve, it gets everything.
-        # If multiple, we'd need to split. For now, sum them equally
-        # (in the canonical run there's only tsmom).
-        if len(non_vrp_sleeves) == 1:
-            sleeve_name = non_vrp_sleeves[0]
+        # Non-VX weight: split among non_vx_sleeves only (tsmom, csmom, sr3_curve_rv_meta, etc.)
+        if len(non_vx_sleeves) == 1:
+            sleeve_name = non_vx_sleeves[0]
             sig = pd.Series(0.0, index=universe)
             for col in non_vx_cols:
                 w_val = final_w.get(col, 0.0)
                 if abs(w_val) > 1e-15:
-                    # Set signal such that sleeve_weight * signal = w_val (as combined signal)
-                    # But since this is a synthetic signal for decomposition, we just need
-                    # the proportions to be correct. Set signal = final_weight directly.
                     sig[col] = w_val
             sleeve_signals_history[sleeve_name].append((date, sig))
-        else:
-            # Multiple non-VRP sleeves: split proportionally by sleeve_returns
-            for sleeve_name in non_vrp_sleeves:
+        elif non_vx_sleeves:
+            for sleeve_name in non_vx_sleeves:
                 sig = pd.Series(0.0, index=universe)
-                # Use sleeve_returns as proxy for weight fraction
-                # Find nearest earlier date in sleeve_returns
-                valid_dates = sleeve_returns.index[sleeve_returns.index <= date]
-                if len(valid_dates) > 0:
-                    nearest = valid_dates[-1]
-                    total_abs = sum(
-                        sleeve_returns.loc[nearest, s2] ** 2
-                        for s2 in non_vrp_sleeves
-                        if s2 in sleeve_returns.columns
-                    )
-                    if total_abs > 1e-18:
-                        frac = sleeve_returns.loc[nearest, sleeve_name] ** 2 / total_abs
-                    else:
-                        frac = 1.0 / len(non_vrp_sleeves)
-                else:
-                    frac = 1.0 / len(non_vrp_sleeves)
-
+                frac = _sleeve_frac_at_date(non_vx_sleeves, sleeve_name, date)
                 for col in non_vx_cols:
                     sig[col] = final_w.get(col, 0.0) * frac
                 sleeve_signals_history[sleeve_name].append((date, sig))
 
-        # VRP sleeves: share VX weight
-        if vrp_sleeves:
-            # Try to use sleeve_returns around this date for proportional split
-            valid_dates = sleeve_returns.index[sleeve_returns.index <= date]
-            # Look at recent window for activity
-            if len(valid_dates) >= 5:
-                recent = sleeve_returns.loc[valid_dates[-20:], vrp_sleeves]
-                total_abs = recent.abs().sum()
-            else:
-                total_abs = pd.Series(0.0, index=vrp_sleeves)
-
-            total_vrp_activity = total_abs.sum()
-            if total_vrp_activity > 1e-15:
-                vrp_fractions = total_abs / total_vrp_activity
-            else:
-                # Equal split if no recent activity
-                vrp_fractions = pd.Series(1.0 / len(vrp_sleeves), index=vrp_sleeves)
-
-            for sleeve_name in vrp_sleeves:
+        # VX weight: split among vrp_sleeves + vx_only_sleeves
+        vx_sleeves = vrp_sleeves + vx_only_sleeves
+        if vx_sleeves:
+            for sleeve_name in vx_sleeves:
                 sig = pd.Series(0.0, index=universe)
-                frac = vrp_fractions.get(sleeve_name, 0.0)
+                frac = _sleeve_frac_at_date(vx_sleeves, sleeve_name, date)
                 for col in vx_cols:
                     sig[col] = final_w.get(col, 0.0) * frac
                 sleeve_signals_history[sleeve_name].append((date, sig))
