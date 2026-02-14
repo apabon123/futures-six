@@ -2683,6 +2683,43 @@ class ExecSim:
             json.dump(leverage_summary, f, indent=2)
         logger.info(f"[ExecSim] Saved analysis/leverage_summary.json")
         
+        # Risk scalars time series (rebalance frequency, then forward-filled to daily)
+        target_vol = float(risk_targeting.target_vol) if risk_targeting is not None else 0.20
+        leverage_cap_val = float(risk_targeting.leverage_cap) if risk_targeting is not None and getattr(risk_targeting, 'leverage_cap', None) is not None else 7.0
+        if (rt_leverage_history and len(rt_leverage_history) > 0 and not weights_panel.empty):
+            n = min(len(weights_panel), len(rt_leverage_history), len(rt_current_vol_history) if rt_current_vol_history else len(rt_leverage_history))
+            rebal_idx = weights_panel.index[:n]
+            rows = []
+            for i in range(n):
+                date = rebal_idx[i]
+                lev = rt_leverage_history[i] if i < len(rt_leverage_history) else 1.0
+                fvol = rt_current_vol_history[i] if rt_current_vol_history and i < len(rt_current_vol_history) else None
+                gross = weights_panel.loc[date].abs().sum() if date in weights_panel.index else (lev if lev else None)
+                fvol_val = float(fvol) if fvol is not None and np.isfinite(fvol) and fvol > 0 else (target_vol / lev if lev and lev > 0 else None)
+                base_scalar = target_vol / fvol_val if fvol_val and fvol_val > 0 else lev
+                clamp_engaged = 1.0 if (base_scalar is None or base_scalar <= leverage_cap_val) else (leverage_cap_val / base_scalar)
+                rows.append({
+                    'date': date,
+                    'target_vol': target_vol,
+                    'forecast_vol': fvol_val,
+                    'base_scalar': base_scalar if base_scalar is not None else lev,
+                    'clamp_scalar': clamp_engaged,
+                    'drawdown_brake_scalar': 1.0,
+                    'final_scalar_applied': float(lev) if lev is not None else 1.0,
+                    'gross_exposure': gross,
+                    'gross_exposure_after': gross,
+                    'stopout': 0,
+                })
+            risk_scalars_rebal = pd.DataFrame(rows)
+            if not returns_df.empty and len(risk_scalars_rebal) > 0:
+                risk_scalars_rebal = risk_scalars_rebal.set_index('date')
+                risk_scalars_daily = risk_scalars_rebal.reindex(returns_df.index).ffill()
+                risk_scalars_daily.index.name = 'date'
+                risk_scalars_daily.to_csv(run_dir / 'analysis' / 'risk_scalars.csv')
+            else:
+                risk_scalars_rebal.to_csv(run_dir / 'analysis' / 'risk_scalars.csv', index=False)
+            logger.info(f"[ExecSim] Saved analysis/risk_scalars.csv")
+        
         logger.info(f"[ExecSim] Saved artifacts to {run_dir}")
         
         # Attribution: compute portfolio-consistent sleeve-level return attribution
