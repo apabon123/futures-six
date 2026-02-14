@@ -225,6 +225,8 @@ def main():
             corr = float(corr_raw) if pd.notna(corr_raw) else np.nan
             m2 = series_metrics(p2_a, f"{col} Phase-2")
             m4 = series_metrics(p4_a, f"{col} Phase-4")
+            pct_zero_p2 = 100.0 * (p2_a == 0).mean() if len(p2_a) else np.nan
+            pct_zero_p4 = 100.0 * (p4_a == 0).mean() if len(p4_a) else np.nan
             results.append({
                 "sleeve": col,
                 "corr": corr,
@@ -236,6 +238,8 @@ def main():
                 "phase4_ann_return": m4["ann_return"],
                 "phase2_ann_vol": m2["ann_vol"],
                 "phase4_ann_vol": m4["ann_vol"],
+                "phase2_pct_zero": pct_zero_p2,
+                "phase4_pct_zero": pct_zero_p4,
             })
             if np.isfinite(corr) and corr < 0.95:
                 identity_consistent = False
@@ -251,6 +255,13 @@ def main():
         for r in results:
             corr_s = f"{r['corr']:.4f}" if np.isfinite(r["corr"]) else "N/A (Phase-2 sleeve not present or constant)"
             vrp_summary_lines.append(f"- **{r['sleeve']}**: corr = {corr_s}")
+        vrp_summary_lines.append("")
+        vrp_summary_lines.append("## % zero days (after alignment)")
+        vrp_summary_lines.append("")
+        for r in results:
+            p2z = f"{r['phase2_pct_zero']:.1f}%" if np.isfinite(r.get("phase2_pct_zero", np.nan)) else "N/A"
+            p4z = f"{r['phase4_pct_zero']:.1f}%" if np.isfinite(r.get("phase4_pct_zero", np.nan)) else "N/A"
+            vrp_summary_lines.append(f"- **{r['sleeve']}**: Phase-2 = {p2z}, Phase-4 = {p4z}")
         vrp_summary_lines.append("")
         vrp_summary_lines.append("## Per-sleeve mean / vol comparison")
         vrp_summary_lines.append("")
