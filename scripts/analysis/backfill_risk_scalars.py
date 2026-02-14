@@ -62,13 +62,14 @@ def backfill_risk_scalars(run_id: str, run_dir_base: str = "reports/runs") -> bo
         clamp_scalar = 1.0
         rows.append({
             "date": date,
+            "is_rebalance": 1,
             "target_vol": target_vol,
             "forecast_vol": implied_forecast_vol,
             "base_scalar": final_scalar,
             "clamp_scalar": clamp_scalar,
             "drawdown_brake_scalar": 1.0,
             "final_scalar_applied": final_scalar,
-            "gross_exposure": gross,
+            "gross_exposure_before": gross,
             "gross_exposure_after": gross,
             "stopout": 0,
         })
@@ -82,6 +83,8 @@ def backfill_risk_scalars(run_id: str, run_dir_base: str = "reports/runs") -> bo
         daily_index = port.index
         df = df.set_index("date")
         df_daily = df.reindex(daily_index).ffill()
+        df_daily["is_rebalance"] = 0
+        df_daily.loc[df_daily.index.isin(rebal_dates), "is_rebalance"] = 1
         df_daily.index.name = "date"
         df_daily.to_csv(out_path)
     else:

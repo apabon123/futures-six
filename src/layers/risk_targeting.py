@@ -112,6 +112,9 @@ class RiskTargetingLayer:
         # Artifact writer (optional)
         self.artifact_writer = artifact_writer
         
+        # Per-run history for ExecSim (true forecast_vol and scalars at each rebalance)
+        self._rt_history: list = []
+        
         # Validate parameters
         self._validate_params()
         
@@ -438,10 +441,30 @@ class RiskTargetingLayer:
             scaled_weights *= scale
             gross_after = scaled_weights.abs().sum()
         
+        # Record true forecast and scalars for risk_scalars.csv (ExecSim)
+        if current_vol is not None and np.isfinite(current_vol) and current_vol >= self.vol_floor:
+            forecast_vol_raw = float(current_vol)
+        else:
+            forecast_vol_raw = self.vol_floor
+        base_scalar_raw = self.target_vol / forecast_vol_raw
+        at_cap = bool(leverage >= self.leverage_cap - 1e-6)
+        at_floor = bool(leverage <= self.leverage_floor + 1e-6)
+        self._rt_history.append({
+            "date": date,
+            "forecast_vol_raw": forecast_vol_raw,
+            "base_scalar_raw": base_scalar_raw,
+            "leverage_applied": float(leverage),
+            "at_cap": at_cap,
+            "at_floor": at_floor,
+            "gross_before": float(gross_exposure),
+            "gross_after": float(gross_after),
+        })
+        
         # Log summary
+        vol_str = f"{current_vol:.2%}" if current_vol is not None and np.isfinite(current_vol) else "N/A"
         logger.info(
             f"[RiskTargetingLayer] {date.strftime('%Y-%m-%d')}: "
-            f"vol={current_vol:.2%}, leverage={leverage:.2f}x, "
+            f"vol={vol_str}, leverage={leverage:.2f}x, "
             f"gross_before={gross_exposure:.2f}, gross_after={gross_after:.2f}"
         )
         
@@ -450,6 +473,14 @@ class RiskTargetingLayer:
             self._write_artifacts(date, current_vol, leverage, weights, scaled_weights)
         
         return scaled_weights
+    
+    def get_rt_history(self) -> list:
+        """Return the list of RT records (forecast_vol_raw, base_scalar_raw, etc.) per rebalance."""
+        return list(self._rt_history)
+    
+    def clear_rt_history(self) -> None:
+        """Clear RT history (call at start of run if reusing the same layer)."""
+        self._rt_history.clear()
     
     def get_leverage_series(
         self,

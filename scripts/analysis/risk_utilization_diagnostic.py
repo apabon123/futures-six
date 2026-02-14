@@ -43,10 +43,10 @@ def main():
     realized_vol = lev.get("realized_vol")
     leverage_cap = lev.get("leverage_cap")
 
-    # Summary stats
+    # Summary stats (prefer true forecast_vol when present)
     base = df["base_scalar"].dropna()
     final = df["final_scalar_applied"].dropna()
-    fvol = df["forecast_vol"].dropna()
+    fvol = df["forecast_vol_true"].dropna() if "forecast_vol_true" in df.columns else df["forecast_vol"].dropna()
 
     stats = {
         "base_scalar_avg": float(base.mean()) if len(base) > 0 else None,

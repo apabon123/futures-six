@@ -759,6 +759,10 @@ class ExecSim:
         # and don't have roll jumps. The backward-panama adjustment removes price gaps
         # at roll points, so P&L is computed correctly from continuous returns.
         
+        # Clear RT history so this run gets true forecast_vol per rebalance
+        if risk_targeting is not None and hasattr(risk_targeting, 'clear_rt_history'):
+            risk_targeting.clear_rt_history()
+        
         # Loop over rebalance dates
         for i, date in enumerate(rebalance_dates):
             date = self._to_ts(date)
@@ -1465,6 +1469,7 @@ class ExecSim:
             # Risk Targeting governance tracking
             rt_leverage_history=rt_leverage_history,
             rt_current_vol_history=rt_current_vol_history,
+            rt_weights_pre_history=rt_weights_pre_history,
             rt_returns_available_history=rt_returns_available_history,
             rt_cov_available_history=rt_cov_available_history,
             # Allocator v1 governance tracking
@@ -1656,6 +1661,7 @@ class ExecSim:
         # Risk Targeting governance tracking
         rt_leverage_history: Optional[list] = None,
         rt_current_vol_history: Optional[list] = None,
+        rt_weights_pre_history: Optional[list] = None,
         rt_returns_available_history: Optional[list] = None,
         rt_cov_available_history: Optional[list] = None,
         # Allocator v1 governance tracking
@@ -2686,39 +2692,68 @@ class ExecSim:
         # Risk scalars time series (rebalance frequency, then forward-filled to daily)
         target_vol = float(risk_targeting.target_vol) if risk_targeting is not None else 0.20
         leverage_cap_val = float(risk_targeting.leverage_cap) if risk_targeting is not None and getattr(risk_targeting, 'leverage_cap', None) is not None else 7.0
+        rt_history = risk_targeting.get_rt_history() if (risk_targeting is not None and hasattr(risk_targeting, 'get_rt_history')) else []
         if (rt_leverage_history and len(rt_leverage_history) > 0 and not weights_panel.empty):
             n = min(len(weights_panel), len(rt_leverage_history), len(rt_current_vol_history) if rt_current_vol_history else len(rt_leverage_history))
             rebal_idx = weights_panel.index[:n]
+            use_rt_history = len(rt_history) == n
             rows = []
             for i in range(n):
                 date = rebal_idx[i]
                 lev = rt_leverage_history[i] if i < len(rt_leverage_history) else 1.0
-                fvol = rt_current_vol_history[i] if rt_current_vol_history and i < len(rt_current_vol_history) else None
-                gross = weights_panel.loc[date].abs().sum() if date in weights_panel.index else (lev if lev else None)
-                fvol_val = float(fvol) if fvol is not None and np.isfinite(fvol) and fvol > 0 else (target_vol / lev if lev and lev > 0 else None)
-                base_scalar = target_vol / fvol_val if fvol_val and fvol_val > 0 else lev
+                h = rt_history[i] if use_rt_history and i < len(rt_history) else None
+                if h is not None:
+                    fvol_val = h.get('forecast_vol_raw')
+                    base_scalar = h.get('base_scalar_raw')
+                    gross_before = h.get('gross_before')
+                    gross_after = h.get('gross_after')
+                else:
+                    fvol = rt_current_vol_history[i] if rt_current_vol_history and i < len(rt_current_vol_history) else None
+                    gross_post = weights_panel.loc[date].abs().sum() if date in weights_panel.index else None
+                    fvol_val = float(fvol) if fvol is not None and np.isfinite(fvol) and fvol > 0 else (target_vol / lev if lev and lev > 0 else None)
+                    base_scalar = target_vol / fvol_val if fvol_val and fvol_val > 0 else lev
+                    gross_before = gross_after = gross_post if gross_post is not None else (lev if lev else None)
                 clamp_engaged = 1.0 if (base_scalar is None or base_scalar <= leverage_cap_val) else (leverage_cap_val / base_scalar)
                 rows.append({
                     'date': date,
+                    'is_rebalance': 1,
                     'target_vol': target_vol,
+                    'forecast_vol_true': fvol_val,
                     'forecast_vol': fvol_val,
                     'base_scalar': base_scalar if base_scalar is not None else lev,
                     'clamp_scalar': clamp_engaged,
                     'drawdown_brake_scalar': 1.0,
                     'final_scalar_applied': float(lev) if lev is not None else 1.0,
-                    'gross_exposure': gross,
-                    'gross_exposure_after': gross,
+                    'gross_exposure_before': gross_before,
+                    'gross_exposure_after': gross_after,
                     'stopout': 0,
                 })
             risk_scalars_rebal = pd.DataFrame(rows)
             if not returns_df.empty and len(risk_scalars_rebal) > 0:
                 risk_scalars_rebal = risk_scalars_rebal.set_index('date')
                 risk_scalars_daily = risk_scalars_rebal.reindex(returns_df.index).ffill()
+                risk_scalars_daily['is_rebalance'] = 0
+                risk_scalars_daily.loc[risk_scalars_daily.index.isin(rebal_idx), 'is_rebalance'] = 1
                 risk_scalars_daily.index.name = 'date'
                 risk_scalars_daily.to_csv(run_dir / 'analysis' / 'risk_scalars.csv')
             else:
                 risk_scalars_rebal.to_csv(run_dir / 'analysis' / 'risk_scalars.csv', index=False)
             logger.info(f"[ExecSim] Saved analysis/risk_scalars.csv")
+            
+            # RT weights snapshot (weights used in forecast) for object-consistency diagnostic
+            if rt_weights_pre_history and len(rt_weights_pre_history) >= n:
+                (run_dir / 'analysis').mkdir(parents=True, exist_ok=True)
+                snap_rows = []
+                for i in range(n):
+                    date = rebal_idx[i]
+                    wpre = rt_weights_pre_history[i] if i < len(rt_weights_pre_history) else pd.Series(dtype=float)
+                    row = {'date': date}
+                    for k, v in wpre.items():
+                        row[str(k)] = float(v) if np.isfinite(v) else None
+                    snap_rows.append(row)
+                snap_df = pd.DataFrame(snap_rows)
+                snap_df.to_csv(run_dir / 'analysis' / 'rt_weights_snapshot.csv', index=False)
+                logger.info(f"[ExecSim] Saved analysis/rt_weights_snapshot.csv")
         
         logger.info(f"[ExecSim] Saved artifacts to {run_dir}")
         
